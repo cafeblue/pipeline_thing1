@@ -40,3 +40,5 @@ if not, set currentStatus=7, send email.
 load_variants.pl: start if currentStatus=6,
 load the variants into the database, and set currentStatus=8.
 
+##############
+2016-01-27:  Change form https to ssh
