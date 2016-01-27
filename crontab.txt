@@ -1,0 +1,10 @@
+0 * * * * /home/pipeline/bin/rsyncIlmnRunDir.pl  1>>/localhd/data/thing1_pipeline_log/rsyncIlmnRundir.log 2>>/localhd/data/thing1_pipeline_log/rsyncIlmnRundir.err
+1 12,16,20 * * 1-5 /home/pipeline/bin/detect_new_runfolder_on_sequencer.pl 1>>/localhd/data/thing1_pipeline_log/detect_new_runfolder_on_sequencer.log 2>>/localhd/data/thing1_pipeline_log/detect_new_runfolder_on_sequencer.err
+2,12,22,32,42,52 8-17 * * * /home/pipeline/bin/check_new_sampleSheet.pl 1>>/localhd/data/thing1_pipeline_log/check_new_sampleSheet.log 2>>/localhd/data/thing1_pipeline_log/check_new_sampleSheet.err
+3,13,23,33,43,53 * * * * /home/pipeline/bin/run_demultiplex.pl 1>>/localhd/data/thing1_pipeline_log/run_demultiplex.log 2>>/localhd/data/thing1_pipeline_log/run_demultiplex.err
+4,14,24,34,44,54 * * * * /home/pipeline/bin/chksum_fastq.pl 1>>/localhd/data/thing1_pipeline_log/chksum_fastq.log 2>>/localhd/data/thing1_pipeline_log/chksum_fastq.err
+5,15,25,35,45,55 * * * * source /home/pipeline/.bashrc; /home/pipeline/bin/sequencing_stat.pl 1>>/localhd/data/thing1_pipeline_log/sequencing_stat.log 2>>/localhd/data/thing1_pipeline_log/sequencing_stat.err
+6,16,26,36,46,56 * * * * /home/pipeline/bin/submit2HPF.pl 1>>/localhd/data/thing1_pipeline_log/submit2HPF.log 2>>/localhd/data/thing1_pipeline_log/submit2HPF.err
+7,17,27,37,47,57 * * * * /home/pipeline/bin/check_status_on_hpf.pl 1>>/localhd/data/thing1_pipeline_log/check_status_on_hpf.log 2>>/localhd/data/thing1_pipeline_log/check_status_on_hpf.err
+#8,18,28,38,48,58 * * * * /home/pipeline/bin/check_qual_metrics.pl 1>>/localhd/data/thing1_pipeline_log/check_qual_metrics.log 2>>/localhd/data/thing1_pipeline_log/check_qual_metrics.err
+#9,19,29,39,49,59 * * * * /home/pipeline/bin/load_variants.pl 1>>/localhd/data/thing1_pipeline_log/load_variants.log 2>>/localhd/data/thing1_pipeline_log/load_variants.err
