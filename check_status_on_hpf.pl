@@ -30,11 +30,23 @@ my $idpair_ref = &check_unfinished_sample;
 my ($today, $yesterday) = &print_time_stamp();
 foreach my $idpair (@$idpair_ref) {
     &update_hpfJobStatus(@$idpair);
+
+    # All jobs finished successfully
     if (&check_all_jobs(@$idpair) == 1) {
         my $update_CS = "UPDATE sampleInfo set currentStatus = '4' where sampleID = '$$idpair[0]' and analysisID = '$$idpair[1]'";
         print $update_CS,"\n";
         my $sthQNS = $dbh->prepare($update_CS) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
+    }
+    # Check if there are some jobs idled over 1 day
+    elsif (&check_idle_jobs(@$idpair) == 1) {
+        my $update_CS = "UPDATE sampleInfo set currentStatus = '0' where sampleID = '$$idpair[0]' and analysisID = '$$idpair[1]'";
+        print $update_CS,"\n";
+        my $sthQNS = $dbh->prepare($update_CS) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
+        $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
+        my $msg = "There are jobs idled over 30 hours of sampleID: " . $$idpair[0] . " analysisID: " . $$idpair[1] . " currentStatus is set to 0, Please delete the running folder on HPF.\n";
+        print STDERR $msg;
+        &email_error($msg);
     }
 }
 
@@ -85,6 +97,37 @@ sub check_all_jobs {
             }
         }
         return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+sub check_idle_jobs {
+    my $sampleID = shift;
+    my $analysisID = shift;
+    my $query_nonjobID = "SELECT jobID FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND flag = '1' AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
+    my $sthQUF = $dbh->prepare($query_nonjobID);
+    $sthQUF->execute();
+    if ($sthQUF->rows() != 0) {
+        return 1;
+    }
+
+    $query_nonjobID = "SELECT jobID FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,24,time)<CURRENT_TIMESTAMP";
+    $sthQUF = $dbh->prepare($query_nonjobID);
+    $sthQUF->execute();
+    if ($sthQUF->rows() != 0) {
+        my @dataS = ();
+        my $msg = "sampleID $sampleID analysisID $analysisID \n";
+        while (@dataS = $sthQUF->fetchrow_array) {
+            my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobID = '" . $dataS[0] . "'";
+            my $sthSetFlag = $dbh->prepare($seq_flag);
+            $sthSetFlag->execute();
+            my $msg .= "\tjobID " . $dataS[0] . " idled over 24 hours...\n";
+        }
+        print STDERR $msg;
+        &email_error($msg);
+        return 0;
     }
     else {
         return 0;
@@ -151,7 +194,7 @@ sub update_jobStatus {
                     $update_query = "UPDATE sampleInfo set currentStatus = '5'  WHERE sampleID = '$sampleID' AND analysisID = '$analysisID'";
                     $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                     $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
-                    last;
+                    return;
                 }
             }
         }
