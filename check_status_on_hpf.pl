@@ -116,24 +116,24 @@ sub check_all_jobs {
 sub check_idle_jobs {
     my $sampleID = shift;
     my $analysisID = shift;
-    my $query_nonjobID = "SELECT jobID FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND flag = '1' AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
+    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND flag = '1' AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
         return 1;
     }
 
-    $query_nonjobID = "SELECT jobID FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,24,time)<CURRENT_TIMESTAMP";
+    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,24,time)<CURRENT_TIMESTAMP";
     $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
         my @dataS = ();
         my $msg = "sampleID $sampleID analysisID $analysisID \n";
         while (@dataS = $sthQUF->fetchrow_array) {
-            my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobID = '" . $dataS[0] . "'";
+            my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobName = '" . $dataS[0] . "'";
             my $sthSetFlag = $dbh->prepare($seq_flag);
             $sthSetFlag->execute();
-            my $msg .= "\tjobID " . $dataS[0] . " idled over 24 hours...\n";
+            my $msg .= "\tjobName " . $dataS[0] . " idled over 24 hours...\n";
         }
         print STDERR $msg;
         &email_error($msg);
