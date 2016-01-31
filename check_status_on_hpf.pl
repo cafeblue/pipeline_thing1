@@ -12,6 +12,7 @@ use Mail::Sender;
 my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/llau/clinical/samples/pl_illumina';
 my $GET_JSUBID = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca /home/wei.wang/apps/bin/get_jsub_pl.sh "';
 my $GET_STATUS = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca /home/wei.wang/apps/bin/get_status_pl.sh "';
+my $DEL_RUNDIR = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca /home/wei.wang/apps/bin/del_rundir_pl.sh "';
 
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -40,6 +41,15 @@ foreach my $idpair (@$idpair_ref) {
     }
     # Check if there are some jobs idled over 1 day
     elsif (&check_idle_jobs(@$idpair) == 1) {
+        my $cmd = $DEL_RUNDIR . $HPF_RUNNING_FOLDER . " " . $$idpair[0] . "-" . $$idpair[1] . ' 2>/dev/null"';
+        print $cmd,"\n";
+        `$cmd`;
+        if ($? != 0) {
+            my $msg = "remove the running folder " . $HPF_RUNNING_FOLDER . " " . $$idpair[0] . "-" . $$idpair[1] . " which idled over 30 hours failed with errorcode: $?\n";
+            print $STDERR $msg;
+            &email_error($msg);
+            exit(0);
+        }
         my $update_CS = "UPDATE sampleInfo set currentStatus = '0' where sampleID = '$$idpair[0]' and analysisID = '$$idpair[1]'";
         print $update_CS,"\n";
         my $sthQNS = $dbh->prepare($update_CS) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
