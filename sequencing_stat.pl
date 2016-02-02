@@ -24,6 +24,9 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
                        $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
 my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
 my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
+my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
+my $PIPELINE_HPF_ROOT = '/hpf/largeprojects/pray/wei.wang/pipeline_hpf_v5';
+my $SSHDATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "';
 
 my %ilmnBarcodes;
 while (<DATA>) {
@@ -38,12 +41,7 @@ my $chksum_ref = &get_chksum_list;
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
 
 foreach my $ref (@$chksum_ref) {
-    #if ($$ref[1] =~ /hiseq/) {
-    #    &update_table(&get_qual_stat_hiseq(@$ref), &read_config);
-    #}
-    #else {
-        &update_table(&get_qual_stat(@$ref), &read_config);
-    #}
+    &update_table(&get_qual_stat(@$ref), &read_config);
 }
 
 sub update_table {
@@ -59,17 +57,18 @@ sub update_table {
         my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
         if ($sthQNS->rows() == 1) {  
+            my ($pipething1ver, $pipehpfver) = &get_pipelinever;
             while (my @data_ref = $sthQNS->fetchrow_array) {
                 my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype) = @data_ref;
                 my $key = $gp . "\t" . $ck;
                 if (defined $ps) {
                     $ps = &get_pairID($ps, $sampleID);
-                    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus ) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $ps . "','" . $gp . "','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','" . $specimen . "', '" . $sampletype, "', '" . $tt . "','"  . $pt . "', '0')"; 
+                    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer ) VALUES ('" . $sampleID . "','$flowcellID','$ps','$gp','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','$specimen', '$sampletype', '$tt','$pt', '0', '$pipething1ver', '$pipehpfver')"; 
                     my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
                     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
                 }
                 else {
-                    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus ) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $gp . "','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','" . $specimen . "', '" . $sampletype . "', '" . $tt . "','"  . $pt . "', '0')"; 
+                    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer ) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $gp . "','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','" . $specimen . "', '" . $sampletype . "', '" . $tt . "','$pt', '0', '$pipething1ver', '$pipehpfver')"; 
                     my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
                     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
                 }
@@ -82,6 +81,25 @@ sub update_table {
             die $msg;
         }
     }
+}
+
+sub get_pipelinever {
+    my $msg = "";
+    my $cmd = $SSHDATA . "cd $PIPELINE_HPF_ROOT ; git log -1 |head -1 |awk '{print \\\$2}' ; git tag |head -1\" 2>/dev/null";
+    my @commit_tag = `$cmd`;
+    if ($? != 0) {
+        $msg .= "get the commit and tag failed from HPF with the errorcode $?\n";
+    }
+    chomp(@commit_tag);
+    my $hpf_ver = join('(',@commit_tag) . ")";
+    $cmd = "cd $PIPELINE_THING1_ROOT ; git log -1 | head -1 |awk '{print \\\$2}' ; git tag |head -1";
+    @commit_tag = `$cmd`;
+    if ($? != 0) {
+        $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
+    }
+    chomp(@commit_tag);
+    my $thing1_ver = join('(',@commit_tag) . ")";
+    return($thing1_ver, $hpf_ver);
 }
 
 sub get_pairID {
@@ -229,80 +247,6 @@ sub get_qual_stat {
     }
 }
 
-sub get_qual_stat_hiseq {
-    my ($flowcellID, $machine) = @_;
-
-    my $query = "SELECT sampleID,barcode from sampleSheet where flowcell_ID = '" . $flowcellID . "' and machine = '" . $machine . "'";
-    my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-    $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
-
-        my %sample_barcode;
-        while (my @data_ref = $sthQNS->fetchrow_array) {
-            $sample_barcode{$data_ref[0]} = $ilmnBarcodes{$data_ref[1]};
-        }
-        print "\n";
-
-        my $sub_flowcellID = substr $flowcellID, 1 ;
-        my $demuxSummaryFile = "$FASTQ_FOLDER/$machine\_$flowcellID/Basecall_Stats_$sub_flowcellID/Demultiplex_Stats.htm";
-        print $demuxSummaryFile,"\n";
-        my $te = HTML::TableExtract->new( depth => 0, count => 0 );
-        $te->parse_file($demuxSummaryFile) or die $!;
-        my $heads = @{$te->rows}[0];
-        my %table_pos;
-        for (0..$#$heads) {
-            $heads->[$_] =~ s/\n//;
-            if ($heads->[$_] eq 'Sample ID') {
-                $table_pos{'Sample'} = $_;
-            }
-            elsif ($heads->[$_] eq 'Index') {
-                $table_pos{'Barcode'} = $_;
-            }
-            elsif ($heads->[$_] eq '# Reads') {
-                $table_pos{'reads'} = $_;
-            }
-            elsif ($heads->[$_] eq 'Yield (Mbases)') {
-                $table_pos{'Yield'} = $_;
-            }
-            elsif ($heads->[$_] eq '% of >= Q30 Bases (PF)') {
-                $table_pos{'perQ30'} = $_;
-            }
-        }
-        $te = HTML::TableExtract->new( depth => 0, count => 1 );
-        $te->parse_file($demuxSummaryFile) or die $!;;
-        my %sample_cont;
-        my %perQ30;
-        my @table_cont = @{$te->rows};
-        foreach my $row (@table_cont) {
-            next if ($$row[$table_pos{'Barcode'}] eq 'Undetermined');
-            if ($$row[$table_pos{'Barcode'}] ne $sample_barcode{$$row[$table_pos{'Sample'}]}) {
-                my $msg = "barcode does not match for $machine of $flowcellID\nSampleID: \"" . $$row[$table_pos{'Sample'}] . "\"\t\"" . $$row[$table_pos{'Barcode'}] . "\"\t\"" . $sample_barcode{$$row[$table_pos{'Sample'}]} . "\"\n" . $table_pos{'Barcode'} . "\t" . $table_pos{'Sample'} . "\n";
-                die $msg,"\n";
-                email_error($msg);
-            }
-            $$row[$table_pos{'reads'}] =~ s/,//g;
-            $$row[$table_pos{'Yield'}] =~ s/,//g;
-            $sample_cont{$$row[$table_pos{'Sample'}]}{'reads'} += $$row[$table_pos{'reads'}]; 
-            $sample_cont{$$row[$table_pos{'Sample'}]}{'Yield'} += $$row[$table_pos{'Yield'}]; 
-            push @{$perQ30{$$row[$table_pos{'Sample'}]}}, $$row[$table_pos{'perQ30'}]; 
-        }
-        foreach my $sid (keys %perQ30) {
-            my $total30Q = 0;
-            foreach (@{$perQ30{$sid}}) {
-                $total30Q += $_;
-            }
-            $sample_cont{$sid}{'perQ30'} = $total30Q/scalar(@{$perQ30{$sid}});
-        }
-
-        return($flowcellID, \%sample_cont);
-    }
-    else {
-        my $msg = "No sampleID found in table sampleSheet for $machine of $flowcellID\n\n Please check the table carefully \n $query";
-        email_error($msg);
-        die $msg;
-    }
-}
-
 sub get_chksum_list {
     my $db_query = 'SELECT flowcellID,machine from thing1JobStatus where chksum = "2"';
     my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
@@ -330,19 +274,15 @@ sub email_error {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
         to                   => 'weiw.wang@sickkids.ca',
-        #to                   => 'weiw.wang@sickkids.ca',
         subject              => "Job Status on thing1 for update sample info.",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
         msg                  => $errorMsg 
     };
     my $ret =  $sender->MailMsg($mail);
-#    print $ret;
-#    print STDERR $_[0];
 }
 
 sub print_time_stamp {
-    # print the time:
     my $retval = time();
     my $yetval = $retval - 86400;
     $yetval = localtime($yetval);
