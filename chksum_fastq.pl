@@ -119,7 +119,6 @@ sub checksum_fastq {
             }
         }
     }
-    my @sampleIDs = keys %sampleID_lst;
 
     ####### Double check the sampleIDs with the databases;
     my $query = "SELECT sampleID from sampleSheet where flowcell_ID = '" . $flowcellID . "'";
@@ -150,28 +149,34 @@ sub checksum_fastq {
 
     ####### checksum for fastq files
     my @gz_files = `ls $FASTQ_FOLDER/$machine\_$flowcellID/*_$flowcellID\_*.fastq.gz`;
+    my @all_fastq_names = ();
     my @commands;
     chomp(@gz_files);
     foreach my $source ( @gz_files ) {
         my $filename = (split(/\//, $source))[-1];
+        push @all_fastq_names, $filename;
         my $cmd = "cd $FASTQ_FOLDER/$machine\_$flowcellID/ ; sha256sum $filename > $filename.sha256sum";
         push @commands, $cmd;
     }
     &multiprocess(\@commands, 6);
 
     #####  rsync fastq and sha256sum files to HPF 
+    my %sampleIDs;
+    foreach (@all_fastq_names) {
+        my $tmp_sID = (split(/_$flowcellID/))[0];
+        $sampleIDs{$tmp_sID} = 0;
+    }
     `$SSHCMD "mkdir $FASTQ_HPF/$flowcellID"`;
     print "$SSHCMD \"mkdir $FASTQ_HPF/$flowcellID\"\n";
     my $msg = "";
     if ($? != 0 ) {
         $msg .= "error sshmsg: create directory $FASTQ_HPF/$flowcellID on hpf failed with error code: $?\n";
     }
-    foreach my $sampleID ( @sampleIDs ) {
+    foreach my $sampleID ( keys %sampleIDs ) {
         `$SSHCMD "mkdir $FASTQ_HPF/$flowcellID/Sample_$sampleID"`;
         print "$SSHCMD \"mkdir $FASTQ_HPF/$flowcellID/Sample_$sampleID\"\n";
         if ( $? != 0 ) {
-            $msg .= "error ssh msg: $sampleID, $machine, $flowcellID, $?\n";
-            next;
+            $msg .= "error ssh msg: create directory $FASTQ_HPF/$flowcellID/Sample_$sampleID for $machine, $flowcellID on hpf failed with error code: $?\n";
         }
         `$RSYNCCMD $FASTQ_FOLDER/$machine\_$flowcellID/$sampleID\_* wei.wang\@data1.ccm.sickkids.ca:$FASTQ_HPF/$flowcellID/Sample_$sampleID `;
         print "$RSYNCCMD $FASTQ_FOLDER/$machine\_$flowcellID/$sampleID\_* wei.wang\@data1.ccm.sickkids.ca:$FASTQ_HPF/$flowcellID/Sample_$sampleID \n";
