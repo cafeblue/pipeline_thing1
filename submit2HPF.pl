@@ -21,7 +21,7 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
                        $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
 
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
-my $PIPELINE_HPF_ROOT = '/hpf/largeprojects/pray/wei.wang/pipeline_hpf_v5';
+my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $sshdat = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
 my $sshhpf = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
 my $call_screen = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";

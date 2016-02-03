@@ -25,7 +25,7 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
 my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
 my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
-my $PIPELINE_HPF_ROOT = '/hpf/largeprojects/pray/wei.wang/pipeline_hpf_v5';
+my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SSHDATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "';
 
 my %ilmnBarcodes;
