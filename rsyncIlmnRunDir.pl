@@ -33,8 +33,10 @@ my $db_query = 'SELECT rundir,destinationDir from thing1JobStatus where sequenci
 my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
 $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
 if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
+    &print_time_stamp;
     while (my @runs = $sthQNS->fetchrow_array()) {
         `rsync -Lav --progress --stats  $runs[0]/  $runs[1] 1>/dev/null`;  
+        print "rsync -Lav --progress --stats  $runs[0]/  $runs[1] 1>/dev/null\n";
         if ($? != 0) {
             my $msg = "rsync $runs[0] to $runs[1] failed with the error code $?\n";
             &print_time_stam;
@@ -53,7 +55,7 @@ sub email_error {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
         to                   => 'weiw.wang@sickkids.ca',
-        subject              => "rsync sequencer folder",
+        subject              => "error info of rsync sequencer folder",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
         msg                  => "$errorMsg\n"
