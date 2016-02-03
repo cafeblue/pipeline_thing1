@@ -8,7 +8,7 @@ use Time::Piece;
 
 ###########       Global Parameters   ##########################
 our ($sampleID, $analysisID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
-my  $SCRIPTDIR = '/hpf/largeprojects/pray/wei.wang/pipeline_hpf_v5';
+my  $SCRIPTDIR = '/home/wei.wang/pipeline_hpf_v5';
 
 GetOptions ("sampleID|s=s" => \$sampleID,
             "analysisID|a=s"   => \$analysisID,  
