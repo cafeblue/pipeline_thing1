@@ -151,6 +151,7 @@ sub update_jobID {
     my $analysisID = shift;
     my $data_ref = shift;
     my @joblst = ();
+    my $msg = "";
 
     foreach my $tmp_ref (@$data_ref) {
         push @joblst, @$tmp_ref;
@@ -170,11 +171,13 @@ sub update_jobID {
                 $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
             }
             else {
-                my $msg = "Failed to get jobID for $jobName of sampleID $sampleID analysisID $analysisID \n";
+                $msg .= "Failed to get jobID for $jobName of sampleID $sampleID analysisID $analysisID \n";
                 print STDERR $msg;
-                email_error($msg);
             }
         }
+    }
+    if ($msg ne '') {
+        &email_error($msg);
     }
 }
 
