@@ -92,7 +92,7 @@ sub get_pipelinever {
     }
     chomp(@commit_tag);
     my $hpf_ver = join('(',@commit_tag) . ")";
-    $cmd = "cd $PIPELINE_THING1_ROOT ; git log -1 | head -1 |awk '{print \\\$2}' ; git tag |head -1";
+    $cmd = "cd $PIPELINE_THING1_ROOT ; git log -1 | head -1 |awk '{print \$2}' ; git tag |head -1";
     @commit_tag = `$cmd`;
     if ($? != 0) {
         $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
