@@ -85,14 +85,14 @@ sub update_table {
 
 sub get_pipelinever {
     my $msg = "";
-    my $cmd = $SSHDATA . "cd $PIPELINE_HPF_ROOT ; git log -1 |head -1 |awk '{print \\\$2}' ; git tag |head -1\" 2>/dev/null";
+    my $cmd = $SSHDATA . "cd $PIPELINE_HPF_ROOT ; git tag | head -1 ; git log -1 |head -1 |awk '{print \\\$2}'\" 2>/dev/null";
     my @commit_tag = `$cmd`;
     if ($? != 0) {
         $msg .= "get the commit and tag failed from HPF with the errorcode $?\n";
     }
     chomp(@commit_tag);
     my $hpf_ver = join('(',@commit_tag) . ")";
-    $cmd = "cd $PIPELINE_THING1_ROOT ; git log -1 | head -1 |awk '{print \$2}' ; git tag |head -1";
+    $cmd = "cd $PIPELINE_THING1_ROOT ; git tag | head -1 ; git log -1 | head -1 |awk '{print \$2}'";
     @commit_tag = `$cmd`;
     if ($? != 0) {
         $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
