@@ -299,7 +299,7 @@ sub get_sequencing_list {
 
 sub email_error {
     my $errorMsg = shift;
-    my $sampleID = shift;
+    my $flowcellID = shift;
     my $machine = shift;
     print STDERR $errorMsg ;
     my $sender = Mail::Sender->new();
