@@ -51,11 +51,12 @@ foreach my $ref (@$machine_flowcellID_cycles_ref) {
         print "sequencing failed: $update\n"; 
         my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
         $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
-        email_error("$folder failed. the final cycle number  $finalcycles does not equal to the initialed cycle number $cycles \n");
+        email_error("$folder failed. the final cycle number  $finalcycles does not equal to the initialed cycle number $cycles \n", $flowcellID, $machine);
     }
     else {
         my $update = "UPDATE thing1JobStatus SET sequencing = '1' where destinationDir = '" . $folder . "'"; 
         print "sequencing finished: $update\n";
+        &email_error("Sequencing finished successfully, demultiplexing is starting...\n", $flowcellID, $machine);
         my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
         $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
         &demultiplex($folder, $machine, $flowcellID, $cycles);
@@ -77,7 +78,7 @@ sub demultiplex {
             $msg .= "rm -rf $extfolder\n";
             `rm -rf $extfolder`;
         }
-        email_error($msg);
+        email_error($msg, $flowcellID, $machine);
     }
     my $demultiplexJobID = `echo "$demultiplexCmd" | /localhd/tools/jsub/jsub-5/jsub -b  $jsubDir -j $jobDir -nn 1 -nm 72000`;
     print "echo $demultiplexCmd | /localhd/tools/jsub/jsub-5/jsub -b  $jsubDir -j $jobDir -nn 1 -nm 72000\n";
@@ -89,7 +90,7 @@ sub demultiplex {
         $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
     }
     else {
-        email_error("demultiplex job failed to submit for $machine $flowcellID\n");
+        email_error("demultiplex job failed to be submitted.", $flowcellID, $machine);
     }
 }
 
@@ -142,7 +143,7 @@ sub create_sample_sheet {
         }
     }
     else {
-        email_error("no sample could be found for $flowcellID \n");
+        email_error("no sample could be found.", $flowcellID, $machine);
         die "no sample could be found for $flowcellID \n";
     }
 
@@ -162,11 +163,11 @@ sub create_sample_sheet {
     }
 
     if ($check_ident == 1) {
-        email_error($errlog);
+        email_error($errlog, $flowcellID, $machine);
         die $errlog;
     }
     elsif ($check_ident == 0 && $errlog ne '') {
-        email_error($errlog);
+        email_error($errlog, $flowcellID, $machine);
         return $filename;
     }
 
@@ -298,15 +299,15 @@ sub get_sequencing_list {
 
 sub email_error {
     my $errorMsg = shift;
-    print STDERR $errorMsg;
     my $sampleID = shift;
-    my $analysisID = shift;
+    my $machine = shift;
+    print STDERR $errorMsg ;
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'weiw.wang@sickkids.ca',
-        subject              => "Job Status on thing1",
+        to                   => 'weiw.wang@sickkids.ca, marianne.eliou@sickkids.ca, jennifer.orr@sickkids.ca, cameron.ellahi@sickkids.ca',
+        subject              => "Status of flowcell $flowcellID on Sequencer $machine",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
         msg                  => $errorMsg 
