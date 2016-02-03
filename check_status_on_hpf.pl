@@ -78,7 +78,7 @@ sub check_unfinished_sample {
 sub update_hpfJobStatus {
     my $sampleID = shift;
     my $analysisID = shift;
-    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' and jobID is NULL and TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP";
+    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobID IS NULL AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP AND TIMESTAMPADD(HOUR,3,time)>CURRENT_TIMESTAMP";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
