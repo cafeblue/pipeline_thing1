@@ -39,7 +39,6 @@ if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
         print "rsync -Lav --progress --stats  $runs[0]/  $runs[1] 1>/dev/null\n";
         if ($? != 0) {
             my $msg = "rsync $runs[0] to $runs[1] failed with the error code $?\n";
-            &print_time_stam;
             print STDERR "$msg";
             email_error($msg);
         }
