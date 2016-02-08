@@ -43,14 +43,14 @@ foreach my $idpair (@$idpair_ref) {
     }
     # Check if there are some jobs idled over 1 day
     elsif (&check_idle_jobs(@$idpair) == 1) {
-        my $cmd = $DEL_RUNDIR . $HPF_RUNNING_FOLDER . " " . $$idpair[0] . "-" . $$idpair[1] . ' 2>/dev/null"';
+        my $cmd = $DEL_RUNDIR . $HPF_RUNNING_FOLDER . " " . $$idpair[0] . "-" . $$idpair[1] . '"';
         print $cmd,"\n";
         `$cmd`;
         if ($? != 0) {
             my $msg = "remove the running folder " . $HPF_RUNNING_FOLDER . " " . $$idpair[0] . "-" . $$idpair[1] . " which idled over 30 hours failed with errorcode: $?\n";
             print STDERR $msg;
             &email_error($msg);
-            exit(0);
+            next;
         }
         my $update_CS = "UPDATE sampleInfo set currentStatus = '0' where sampleID = '$$idpair[0]' and analysisID = '$$idpair[1]'";
         print $update_CS,"\n";
