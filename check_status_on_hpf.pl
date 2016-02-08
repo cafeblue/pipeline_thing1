@@ -218,6 +218,7 @@ sub update_jobStatus {
 
 sub email_error {
     my $errorMsg = shift;
+    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
     print STDERR $errorMsg;
     my $sampleID = shift;
     my $analysisID = shift;
