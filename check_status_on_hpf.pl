@@ -48,7 +48,7 @@ foreach my $idpair (@$idpair_ref) {
         `$cmd`;
         if ($? != 0) {
             my $msg = "remove the running folder " . $HPF_RUNNING_FOLDER . " " . $$idpair[0] . "-" . $$idpair[1] . " which idled over 30 hours failed with errorcode: $?\n";
-            print $STDERR $msg;
+            print STDERR $msg;
             &email_error($msg);
             exit(0);
         }

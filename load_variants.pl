@@ -27,7 +27,7 @@ chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
                        $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
 
-my $demultiplex_ref = &check_goodQuality_samples;
+my $idpair_ref = &check_goodQuality_samples;
 `touch /dev/shm/loadvariantsrunning`;
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
 foreach my $idpair (@$idpair_ref) {
@@ -55,7 +55,7 @@ sub check_goodQuality_samples {
 sub rsync_files {
     my $sampleID = shift;
     my $analysisID = shift;
-
+    
 }
 
 sub email_error {
