@@ -36,7 +36,7 @@ foreach my $idpair (@$idpair_ref) {
 
     # All jobs finished successfully
     if (&check_all_jobs(@$idpair) == 1) {
-        my $update_CS = "UPDATE sampleInfo set currentStatus = '4' where sampleID = '$$idpair[0]' and analysisID = '$$idpair[1]'";
+        my $update_CS = "UPDATE sampleInfo set currentStatus = '4', analysisFinishedTime = NOW() where sampleID = '$$idpair[0]' and analysisID = '$$idpair[1]'";
         print $update_CS,"\n";
         my $sthQNS = $dbh->prepare($update_CS) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
@@ -206,7 +206,7 @@ sub update_jobStatus {
                     my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID analysisID $analysisID failed with exitcode $1\n";
                     print STDERR $msg;
                     email_error($msg);
-                    $update_query = "UPDATE sampleInfo set currentStatus = '5'  WHERE sampleID = '$sampleID' AND analysisID = '$analysisID'";
+                    $update_query = "UPDATE sampleInfo set currentStatus = '5', analysisFinishedTime = NOW() WHERE sampleID = '$sampleID' AND analysisID = '$analysisID'";
                     $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                     $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
                     return;
