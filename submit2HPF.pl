@@ -61,8 +61,8 @@ sub main {
         }
         elsif ($sampleType eq 'T' || $sampleType eq 't' || $sampleType eq 'tumor' || $sampleType eq 'tumour') {
             &insert_jobstatus($sampleID,$analysisID,"cancerT");
-            `$sshdat "mkdir $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37"`;
             print "$sshdat \"mkdir $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37\"\n";
+            `$sshdat "mkdir $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
                 $msg .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
                 print STDERR $msg,"\n";
@@ -106,8 +106,8 @@ sub main {
                 }
             }
 
-            `$sshhpf "$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam "`;
             print "$sshhpf \"$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam\" \n";
+            `$sshhpf "$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam "`;
             if ( $? != 0 ) {
                 $msg .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
                 email_error($msg);
@@ -117,16 +117,16 @@ sub main {
         }
         else {
             &insert_jobstatus($sampleID,$analysisID,"cancerN");
-            `$sshdat "mkdir $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37"`;
             print "$sshdat \"mkdir $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37\"\n";
+            `$sshdat "mkdir $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
                 $msg .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
                 email_error($msg);
                 print STDERR $msg,"\n";
                 return(1);
             }
-            `$sshhpf "$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN "`;
             print "$sshhpf \"$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN\" \n";
+            `$sshhpf "$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN "`;
             if ( $? != 0 ) {
                 $msg .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
                 email_error($msg);
@@ -145,16 +145,16 @@ sub main {
             my @data_ref = $sthQNS->fetchrow_array ;
             my $oldAID = $data_ref[0];
             my $oldGP  = $data_ref[1];
-            `$sshdat "$newGP_sh $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37 $sampleID $oldAID $analysisID $oldGP"`;
             print "$sshdat \"$newGP_sh $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37 $sampleID $oldAID $analysisID $oldGP\"\n";
+            `$sshdat "$newGP_sh $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37 $sampleID $oldAID $analysisID $oldGP"`;
             if ( $? != 0 ) {
                 $msg .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
                 email_error($msg);
                 print STDERR $msg,"\n";
                 return(1);
             }
-            `$sshhpf "$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome_newGP "`;
             print "$sshhpf \"$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome_newGP \"\n";
+            `$sshhpf "$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome_newGP "`;
             if ( $? != 0 ) {
                 $msg .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
                 email_error($msg);
@@ -171,16 +171,16 @@ sub main {
         ### no previous run found                                    ####
         else {
             &insert_jobstatus($sampleID,$analysisID,"exome");
-            `$sshdat "mkdir $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37"`;
             print "$sshdat \"mkdir $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37\"\n";
+            `$sshdat "mkdir $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
                 $msg .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
                 email_error($msg);
                 print STDERR $msg,"\n";
                 return(1);
             }
-            `$sshhpf "$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome "`;
             print "$sshhpf \"$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome \"\n";
+            `$sshhpf "$call_screen -r $runfolder/$sampleID-$analysisID-$currentTime-$genePanelVer-b37  -s $sampleID -a $analysisID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome "`;
             if ( $? != 0 ) {
                 $msg .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code:$?\n";
                 email_error($msg);
