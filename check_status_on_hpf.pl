@@ -135,7 +135,7 @@ sub check_idle_jobs {
             my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobName = '" . $dataS[0] . "'";
             my $sthSetFlag = $dbh->prepare($seq_flag);
             $sthSetFlag->execute();
-            my $msg .= "\tjobName " . $dataS[0] . " idled over 24 hours...\n";
+            $msg .= "\tjobName " . $dataS[0] . " idled over 24 hours...\n";
         }
         print STDERR $msg;
         &email_error($msg);
