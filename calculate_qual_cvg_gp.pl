@@ -19,7 +19,7 @@ my $criticalGeneFile = $splitDot[0] . ".critical_genes_hgmd.txt";
 
 my $predictedGender = "";
 my $data = "";
-my $lowCvgExons = "";
+my @lowCvgExons = ();
 
 
 my %geneInfo = (); #hash of arrays -  key is chrom, the array is all the location information
@@ -83,47 +83,16 @@ while ($data=<FILE>) {
                 my $panel = "Panel ". $critGene{$gS} . ":";
                 $iInfo = "*" . $panel . $iInfo;
             }
-
-            if ($start <= $iStart && $end >= $iStart) {
-                if ($lowCvgExons eq "") {
-                    $lowCvgExons = $iInfo . " (" . $pabv10 . "%, " . $target . ")";
-                } 
-                else {
-                    $lowCvgExons = $lowCvgExons . "; " . $iInfo . " (" . $pabv10 . "%, " . $target . ")";
-                }
+            if ($start < $iEnd && $end > $iStart) {
+                push @lowCvgExons, "$iInfo ($pabv10%, $target)";
                 last;
             } 
-            elsif ($start <= $iEnd && $end >= $iEnd) {
-                if ($lowCvgExons eq "") {
-                    $lowCvgExons = $iInfo . " (" . $pabv10 . "%, " . $target . ")";
-                } 
-                else {
-                    $lowCvgExons = $lowCvgExons . "; " . $iInfo . " (" . $pabv10 . "%, " . $target . ")";
-                }
-                last;
-            } 
-            elsif ($start >= $iStart && $end <= $iEnd) {
-                if ($lowCvgExons eq "") {
-                    $lowCvgExons = $iInfo . " (" . $pabv10 . "%, " . $target . ")";
-                } 
-                else {
-                    $lowCvgExons = $lowCvgExons . "; " . $iInfo . " (" . $pabv10 . "%, " . $target . ")";
-                }
-                last;
-            } 
-            elsif ($start <= $iStart && $end >= $iEnd) {
-                if ($lowCvgExons eq "") {
-                    $lowCvgExons = $iInfo . " (" . $pabv10 . "%, " . $target . ")";
-                } 
-                else {
-                    $lowCvgExons = $lowCvgExons . "; " . $iInfo . " (" . $pabv10 . "%, " . $target . ")";
-                }
-                last;
-            }
         }
     }
 }
 close(FILE);
+
+$lowCvgExons = join("; ", sort @lowCvgExons);
 
 open (FILE, "< $cvgFile") or die "Can't open $cvgFile for read: $!\n";
 $data=<FILE>;
@@ -133,7 +102,7 @@ while ($data=<FILE>) {
         my ($meanCvg, $thirdquartile, $firstquartile, $perBaseAbv1X, $perBaseAbv10X, $perBaseAbv20X, $perBaseAbv30X) = (split(/\t/,$data))[2,3,5,6,7,8,9];
         my $uniformity = $thirdquartile - $firstquartile;
 
-        my $insert = "UPDATE sampleInfo SET meanCvgGP = '$meanCvg', uniformityCvgGP = '$uniformity', perbasesAbove1XGP = '$perBaseAbv1X', perbasesAbove10XGP = '$perBaseAbv10X', perbasesAbove20XGP = '$perBaseAbv20X', perbasesAbove30XGP = '$perBaseAbv30X' WHERE analysisID = '$analysisID' and sampleID = '$sampleID';";
+        my $insert = "UPDATE sampleInfo SET meanCvgGP = '$meanCvg', uniformityCvgGP = '$uniformity', perbasesAbove1XGP = '$perBaseAbv1X', perbasesAbove10XGP = '$perBaseAbv10X', perbasesAbove20XGP = '$perBaseAbv20X', perbasesAbove30XGP = '$perBaseAbv30X', notes = '$lowCvgExons' WHERE analysisID = '$analysisID' and sampleID = '$sampleID';";
         print $insert,"\n";
     }
 }
