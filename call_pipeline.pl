@@ -1370,7 +1370,7 @@ sub snpEff_newGP {
         . "/hpf/largeprojects/pray/llau/internal_databases/OMIM/Oct29_2014/morbidmap \\\n"
         . "/hpf/largeprojects/pray/llau/internal_databases/hgnc/hgnc_complete_set.txt \\\n"
         . "/hpf/largeprojects/pray/llau/internal_databases/nhgri_cgd/CGD.txt $pipeID{$genePanel} \\\n"
-        . "> $runfolder/snpEff/$sampleID.$analysisID.var.annotated.tsv   && \\\n"
+        . "> $runfolder/snpEff/sid_$sampleID.aid_$analysisID.var.annotated.tsv   && \\\n"
         . "\\\n"
         . "perl $SCRIPTDIR/cal_rare_variant_gene.pl $runfolder/snpEff/$sampleID.$analysisID.var.annotated.tsv \\\n" 
         . "> $runfolder/snpEff/$sampleID.$analysisID.number.variant.tsv && \\\n"
@@ -1380,7 +1380,11 @@ sub snpEff_newGP {
         . "$runfolder/gatkCovCalGP/$sampleID.$analysisID.genepanel.dp.sample_interval_summary \\\n"
         . "$runfolder/calAF/merged.snp.$genePanel.AF.bed $runfolder/calAF/merged.indel.$genePanel.AF.bed $runfolder/annovar/$sampleID.$analysisID.gatk.snp.indel.annovar.hg19_disease_associations_bed \\\n"
         . "$runfolder/snpEff/$sampleID.$analysisID.number.variant.tsv /hpf/largeprojects/pray/llau/gene_panels/ACMG_20140918/acmg_genes.HGMD2014.2.txt "
-        . "$runfolder/snpEff/$genePanel.$sampleID.$analysisID.annotated.filter.xlsx > $runfolder/snpEff/$genePanel.$sampleID.$analysisID.annotated.filter.txt \\\n"
+        . "$runfolder/snpEff/sid_$sampleID.aid_$analysisID.gp_$genePanel.annotated.filter.xlsx > $runfolder/snpEff/sid_$sampleID.aid_$analysisID.gp_$genePanel.annotated.filter.txt &&\\\n"
+        . "\\\n"
+        . "cd $runfolder/snpEff/ && sha256sum sid_$sampleID.aid_$analysisID.var.annotated.tsv > sid_$sampleID.aid_$analysisID.var.annotated.tsv.sha256sum  && \\\n"
+        . "sha256sum sid_$sampleID.aid_$analysisID.gp_$genePanel.annotated.filter.xlsx > sid_$sampleID.aid_$analysisID.gp_$genePanel.annotated.filter.xlsx.sha256sum && \\\n"
+        . "sha256sum sid_$sampleID.aid_$analysisID.gp_$genePanel.annotated.filter.txt  >  sid_$sampleID.aid_$analysisID.gp_$genePanel.annotated.filter.txt.sha256sum \\\n"
         . "\\\n"
         . "\'| jsub -a -j snpEff -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 02:00:00 -ng localhd:1 $depend";
     print "\n\n************\nsnpeEff-annotation:\n$cmd\n************\n\n";
