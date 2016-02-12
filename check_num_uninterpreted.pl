@@ -8,7 +8,7 @@ use Time::Piece;
 use Mail::Sender;
 
 #### Database connection ###################
-open(ACCESS_INFO, "</home/wei.wang/.thing1.cnf") || die "Can't access login credentials";
+open(ACCESS_INFO, "</home/pipeline/.clinical.cnf") || die "Can't access login credentials";
 my $host = <ACCESS_INFO>;
 my $port = <ACCESS_INFO>;
 my $user = <ACCESS_INFO>;
