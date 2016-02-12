@@ -92,7 +92,7 @@ while ($data=<FILE>) {
 }
 close(FILE);
 
-$lowCvgExons = join("; ", sort @lowCvgExons);
+my $lowCvgExons = join("; ", sort @lowCvgExons);
 
 open (FILE, "< $cvgFile") or die "Can't open $cvgFile for read: $!\n";
 $data=<FILE>;
