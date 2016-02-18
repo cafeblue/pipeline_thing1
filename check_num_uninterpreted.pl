@@ -21,7 +21,7 @@ my $sender = Mail::Sender->new();
 my $msg = "Dear All, \n\nPlease see below for numbers of different samples waiting for interpretation: \n\n    ";
 my $total = 0;
 
-my $query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'ct.gp16';";
+my $query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'ct.gp16' and n.testType like '%linical';";
 my $sthQGPV = $dbh->prepare($query) or die "Can't query database for gene panel version: ". $dbh->errstr() . "\n";
 $sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh->errstr() . "\n";
 my $dataS = $sthQGPV->fetchall_arrayref;
@@ -30,7 +30,7 @@ $msg .= sprintf ('%-16s', "ct.gp16:");
 $msg .=$$datas[0]."\n    ";
 $total += $$datas[0];
 
-$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'ai.gp18';";
+$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'ai.gp18' and n.testType like '%linical';";
 $sthQGPV = $dbh->prepare($query) or die "Can't query database for gene panel version: ". $dbh->errstr() . "\n";
 $sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh->errstr() . "\n";
 $dataS = $sthQGPV->fetchall_arrayref;
@@ -39,7 +39,7 @@ $msg .= sprintf('%-16s',"ai.gp18:");
 $msg .= $$datas[0]."\n    ";
 $total += $$datas[0];
 
-$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'hl.gp3';";
+$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'hl.gp3' and n.testType like '%linical';";
 $sthQGPV = $dbh->prepare($query) or die "Can't query database for gene panel version: ". $dbh->errstr() . "\n";
 $sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh->errstr() . "\n";
 $dataS = $sthQGPV->fetchall_arrayref;
@@ -48,7 +48,7 @@ $msg .= sprintf ('%-16s', "hl.gp3:");
 $msg .= $$datas[0]."\n    ";
 $total += $$datas[0];
 
-$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'noonan.gp7';";
+$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'noonan.gp7' and n.testType like '%linical';";
 $sthQGPV = $dbh->prepare($query) or die "Can't query database for gene panel version: ". $dbh->errstr() . "\n";
 $sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh->errstr() . "\n";
 $dataS = $sthQGPV->fetchall_arrayref;
@@ -57,7 +57,7 @@ $msg .= sprintf ('%-16s', "noonan.gp7:");
 $msg .= $$datas[0]."\n    ";
 $total += $$datas[0];
 
-$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'hsp.gp4';";
+$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'hsp.gp4' and n.testType like '%linical';";
 $sthQGPV = $dbh->prepare($query) or die "Can't query database for gene panel version: ". $dbh->errstr() . "\n";
 $sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh->errstr() . "\n";
 $dataS = $sthQGPV->fetchall_arrayref;
