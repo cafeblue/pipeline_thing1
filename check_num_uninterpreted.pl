@@ -57,15 +57,6 @@ $msg .= sprintf ('%-16s', "noonan.gp7:");
 $msg .= $$datas[0]."\n    ";
 $total += $$datas[0];
 
-$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'renal.gp17' and n.testType like '%linical';";
-$sthQGPV = $dbh->prepare($query) or die "Can't query database for gene panel version: ". $dbh->errstr() . "\n";
-$sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh->errstr() . "\n";
-$dataS = $sthQGPV->fetchall_arrayref;
-$datas = pop(@$dataS);
-$msg .= sprintf ('%-16s', "renal.gp17:");
-$msg .= $$datas[0]."\n    ";
-$total += $$datas[0];
-
 $query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'hsp.gp4' and n.testType like '%linical';";
 $sthQGPV = $dbh->prepare($query) or die "Can't query database for gene panel version: ". $dbh->errstr() . "\n";
 $sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh->errstr() . "\n";
@@ -74,13 +65,28 @@ $datas = pop(@$dataS);
 $msg .= sprintf ('%-16s', "hsp.gp4:");
 $msg .= $$datas[0]."\n";
 $total += $$datas[0];
+my $msg1 = $msg;
 
 $msg .= "    --------------------\n    ";
 $msg .= sprintf('%-16s', "Total:");
 $msg .= $total."\n";
 $msg .= "\nSend from our Thing1. Please contact weiw.wang\@sickkids.ca if you have any other questions.\n"; 
-
 &email_error($msg);
+
+$query = "SELECT COUNT(*) FROM ngsSample AS n INNER JOIN sampleAnalysis AS a ON a.labID = n.labID INNER JOIN samplePostProcess AS p ON p.analysisID = a.analysisID WHERE p.confirmDiagnosis = '2' AND p.filter = '1' AND p.annotation  = '1' AND ((p.diagnosis NOT LIKE 'Failed%' AND p.diagnosis NOT LIKE '%HOLD%' AND p.diagnosis NOT LIKE '%DO NOT%' AND p.diagnosis NOT LIKE '%Do not analyze%' AND p.diagnosis NOT LIKE '%Hold analysis%') or p.diagnosis IS NULL ) AND  (p.locked IS NULL OR p.locked != '1') AND n.genePanel = 'renal.gp17' and n.testType like '%linical';";
+$sthQGPV = $dbh->prepare($query) or die "Can't query database for gene panel version: ". $dbh->errstr() . "\n";
+$sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh->errstr() . "\n";
+$dataS = $sthQGPV->fetchall_arrayref;
+$datas = pop(@$dataS);
+$msg1 .= sprintf ('%-16s', "renal.gp17:");
+$msg1 .= $$datas[0]."\n    ";
+$total += $$datas[0];
+
+$msg1 .= "    --------------------\n    ";
+$msg1 .= sprintf('%-16s', "Total:");
+$msg1 .= $total."\n";
+$msg1 .= "\nSend from our Thing1. Please contact weiw.wang\@sickkids.ca if you have any other questions.\n"; 
+&email_error($msg1);
 
 sub email_error {
     my $info = shift;
