@@ -78,6 +78,7 @@ $sthQGPV = $dbh->prepare($query) or die "Can't query database for gene panel ver
 $sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh->errstr() . "\n";
 $dataS = $sthQGPV->fetchall_arrayref;
 $datas = pop(@$dataS);
+$msg1 .= "    ";
 $msg1 .= sprintf ('%-16s', "renal.gp17:");
 $msg1 .= $$datas[0]."\n    ";
 $total += $$datas[0];
