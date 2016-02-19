@@ -7,7 +7,8 @@ use Time::ParseDate;
 use Time::Piece;
 use Mail::Sender;
 
-my $RSYNCCMD = "rsync -Lav -e 'ssh -i /home/pipeline/.ssh/id_sra_thing1'";
+my $RSYNCCMD = "rsync -Lav -e 'ssh -i /home/pipeline/.ssh/id_sra_thing1' ";
+my $HPF_BACKUP_FOLDER = '/hpf/largeprojects/pray/llau/clinical/backup_files/variants';
 
 if ( -e "/dev/shm/loadvariantsrunning" ) {
     email_error( "load variants is still running, aborting...\n" );
@@ -31,7 +32,7 @@ my $demultiplex_ref = &check_goodQuality_samples;
 `touch /dev/shm/loadvariantsrunning`;
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
 foreach my $idpair (@$idpair_ref) {
-    &rsync_files(@$idpair);
+    next if (&rsync_files(@$idpair) != 0);
 }
 `rm /dev/shm/loadvariantsrunning`;
 
@@ -55,6 +56,15 @@ sub check_goodQuality_samples {
 sub rsync_files {
     my $sampleID = shift;
     my $analysisID = shift;
+    my $rsyncCMD = $RSYNCCMD . "wei.wang\@data1.ccm.sickkids.ca:" . $HPF_BACKUP_FOLDER . "/sid_$sampleID.aid_$analysisID* /tmp/";
+    `$rsyncCMD`;
+    if ($? != 0) {
+        my $msg = "Copy the variants to thing1 for sampleID $sampleID, analysisID $analysisID failed with exitcode $?\n";
+        email_error($msg);
+        print STDERR $msg;
+        return 1;
+    }
+
 
 }
 
