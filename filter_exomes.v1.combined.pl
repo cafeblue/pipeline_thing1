@@ -212,6 +212,7 @@ my $annovarEnsNonCoding = "Annovar Ensembl Gene or Nearest Gene";
 #need to calculate percent CDS affected and the 1> variant/gene
 
 my $rareFreq = 0.05;            #rare frequency we want to filter on
+my $rareFreqInternal = 0.1;            #rare frequency we want to filter on
 #my $dpThreshold = 20;
 #my $qdSnpThreshold = 5.0;
 #my $qdIndelThreshold = 10.0;
@@ -667,7 +668,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $espAFFilter = 0;
               } else {
@@ -678,7 +679,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "esp no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "esp filtered out\n";
               #$filter = 0;
               $espAFFilter = 0;
@@ -691,7 +692,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) {
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) {
+              if ($sFreq >= $rareFreq) {
                 #$filter = 0;
                 $thouAFFilter = 0;
                 #print STDERR "failed"
@@ -702,7 +703,7 @@ while ($data=<FILE>) {
               }
             }
           } else {
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "1000G filtered out\n";
               #$filter = 0;
               $thouAFFilter = 0;
@@ -716,7 +717,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $exacAFFilter = 0;
               } else {
@@ -727,7 +728,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "exac no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "exac filtered out\n";
               #$filter = 0;
               $exacAFFilter = 0;
@@ -741,7 +742,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $espMAFAAAFFilter = 0;
               } else {
@@ -752,7 +753,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $espMAFAAAFFilter = 0;
@@ -766,7 +767,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $espMAFEAAFFilter = 0;
               } else {
@@ -777,7 +778,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $espMAFEAAFFilter = 0;
@@ -791,7 +792,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $thousGAFRAFFilter = 0;
               } else {
@@ -802,7 +803,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $thousGAFRAFFilter = 0;
@@ -816,7 +817,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $thousGAMRAFFilter = 0;
               } else {
@@ -827,7 +828,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $thousGAMRAFFilter = 0;
@@ -841,7 +842,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $thousGEASNAFFilter = 0;
               } else {
@@ -852,7 +853,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $thousGEASNAFFilter = 0;
@@ -866,7 +867,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $thousGSASNAFFilter = 0;
               } else {
@@ -877,7 +878,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $thousGSASNAFFilter = 0;
@@ -891,7 +892,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $thousGEURAFFilter = 0;
               } else {
@@ -902,7 +903,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $thousGEURAFFilter = 0;
@@ -916,7 +917,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $exacAFRAFFilter = 0;
               } else {
@@ -927,7 +928,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $exacAFRAFFilter = 0;
@@ -941,7 +942,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $exacAMRAFFilter = 0;
               } else {
@@ -952,7 +953,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $exacAMRAFFilter = 0;
@@ -966,7 +967,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $exacEASAFFilter = 0;
               } else {
@@ -977,7 +978,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $exacEASAFFilter = 0;
@@ -991,7 +992,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $exacFINAFFilter = 0;
               } else {
@@ -1002,7 +1003,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $exacFINAFFilter = 0;
@@ -1016,7 +1017,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $exacNFEAFFilter = 0;
               } else {
@@ -1027,7 +1028,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $exacNFEAFFilter = 0;
@@ -1041,7 +1042,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $exacOTHAFFilter = 0;
               } else {
@@ -1052,7 +1053,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $exacOTHAFFilter = 0;
@@ -1066,7 +1067,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $exacSASAFFilter = 0;
               } else {
@@ -1077,7 +1078,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreq) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $exacSASAFFilter = 0;
@@ -1091,7 +1092,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreqInternal) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $internalAFSNPsAFFilter = 0;
               } else {
@@ -1102,7 +1103,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreqInternal) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $internalAFSNPsAFFilter = 0;
@@ -1116,7 +1117,7 @@ while ($data=<FILE>) {
           if ($colInfo=~/\;/) { #if
             my @splitL = split(/\;/,$colInfo);
             foreach my $sFreq (@splitL) {
-              if ($sFreq > $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+              if ($sFreq >= $rareFreqInternal) { #if any of the frequencies are greater than rare freq filter them out
                 #$filter = 0;
                 $internalAFIndelsAFFilter = 0;
               } else {
@@ -1127,7 +1128,7 @@ while ($data=<FILE>) {
             }
           } else {
             #print STDERR "espMAF no |\n";
-            if ($colInfo > $rareFreq) {
+            if ($colInfo >= $rareFreqInternal) {
               #print STDERR "espMAF filtered out\n";
               #$filter = 0;
               $internalAFIndelsAFFilter = 0;
@@ -1281,7 +1282,7 @@ while ($data=<FILE>) {
         # print STDERR $splitTab[0];
         print STDERR $tidName . "\n";
 
-        if (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1) && ($espMAFAAAFFilter == 1) && ($espMAFEAAFFilter == 1) && ($thousGAFRAFFilter == 1) && ($thousGAMRAFFilter == 1) && ($thousGEASNAFFilter == 1) && ($thousGSASNAFFilter == 1) && ($thousGEURAFFilter == 1) && ($exacAFRAFFilter == 1) && ($exacAMRAFFilter == 1) && ($exacEASAFFilter == 1) && ($exacFINAFFilter == 1) && ($exacNFEAFFilter == 1) && ($exacOTHAFFilter == 1) && ($exacSASAFFilter == 1)) {
+        if (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1) && ($espMAFAAAFFilter == 1) && ($espMAFEAAFFilter == 1) && ($thousGAFRAFFilter == 1) && ($thousGAMRAFFilter == 1) && ($thousGEASNAFFilter == 1) && ($thousGSASNAFFilter == 1) && ($thousGEURAFFilter == 1) && ($exacAFRAFFilter == 1) && ($exacAMRAFFilter == 1) && ($exacEASAFFilter == 1) && ($exacFINAFFilter == 1) && ($exacNFEAFFilter == 1) && ($exacOTHAFFilter == 1) && ($exacSASAFFilter == 1) && ($internalAFSNPsAFFilter == 1) && ($internalAFIndelsAFFilter == 1)) {
           if (defined $variant{$tidName}) {
             $variant{$tidName} = $variant{$tidName} + 1;
           } else {
@@ -1297,7 +1298,7 @@ while ($data=<FILE>) {
           #print STDERR "2. HGMD/ClinVar present $data\n";
           push @datatoprint, $data;
           
-          if (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1) && ($espMAFAAAFFilter == 1) && ($espMAFEAAFFilter == 1) && ($thousGAFRAFFilter == 1) && ($thousGAMRAFFilter == 1) && ($thousGEASNAFFilter == 1) && ($thousGSASNAFFilter == 1) && ($thousGEURAFFilter == 1) && ($exacAFRAFFilter == 1) && ($exacAMRAFFilter == 1) && ($exacEASAFFilter == 1) && ($exacFINAFFilter == 1) && ($exacNFEAFFilter == 1) && ($exacOTHAFFilter == 1) && ($exacSASAFFilter == 1)) {
+          if (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1) && ($espMAFAAAFFilter == 1) && ($espMAFEAAFFilter == 1) && ($thousGAFRAFFilter == 1) && ($thousGAMRAFFilter == 1) && ($thousGEASNAFFilter == 1) && ($thousGSASNAFFilter == 1) && ($thousGEURAFFilter == 1) && ($exacAFRAFFilter == 1) && ($exacAMRAFFilter == 1) && ($exacEASAFFilter == 1) && ($exacFINAFFilter == 1) && ($exacNFEAFFilter == 1) && ($exacOTHAFFilter == 1) && ($exacSASAFFilter == 1) && ($internalAFSNPsAFFilter == 1) && ($internalAFIndelsAFFilter == 1)) {
             if (defined $variant{$tidName}) {
               $variant{$tidName} = $variant{$tidName} + 1;
             } else {
