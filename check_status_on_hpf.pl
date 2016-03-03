@@ -36,7 +36,7 @@ foreach my $idpair (@$idpair_ref) {
 
     # All jobs finished successfully
     if (&check_all_jobs(@$idpair) == 1) {
-        my $update_CS = "UPDATE sampleInfo set currentStatus = '4', analysisFinishedTime = NOW() where sampleID = '$$idpair[0]' and analysisID = '$$idpair[1]'";
+        my $update_CS = "UPDATE sampleInfo set currentStatus = '4', analysisFinishedTime = NOW() where sampleID = '$$idpair[0]' and postprocID = '$$idpair[1]'";
         print $update_CS,"\n";
         my $sthQNS = $dbh->prepare($update_CS) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
@@ -52,18 +52,18 @@ foreach my $idpair (@$idpair_ref) {
             &email_error($msg);
             next;
         }
-        my $update_CS = "UPDATE sampleInfo set currentStatus = '0' where sampleID = '$$idpair[0]' and analysisID = '$$idpair[1]'";
+        my $update_CS = "UPDATE sampleInfo set currentStatus = '0' where sampleID = '$$idpair[0]' and postprocID = '$$idpair[1]'";
         print $update_CS,"\n";
         my $sthQNS = $dbh->prepare($update_CS) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
-        my $msg = "There are jobs idled over 30 hours of sampleID: " . $$idpair[0] . " analysisID: " . $$idpair[1] . " currentStatus is set to 0, Please delete the running folder on HPF.\n";
+        my $msg = "There are jobs idled over 30 hours of sampleID: " . $$idpair[0] . " postprocID: " . $$idpair[1] . " currentStatus is set to 0, Please delete the running folder on HPF.\n";
         print STDERR $msg;
         &email_error($msg);
     }
 }
 
 sub check_unfinished_sample {
-    my $query_running_sample = "SELECT sampleID,analysisID FROM sampleInfo WHERE currentStatus = '2'";
+    my $query_running_sample = "SELECT sampleID,postprocID FROM sampleInfo WHERE currentStatus = '2'";
     my $sthQNS = $dbh->prepare($query_running_sample) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
     if ($sthQNS->rows() == 0) {  
@@ -77,28 +77,28 @@ sub check_unfinished_sample {
 
 sub update_hpfJobStatus {
     my $sampleID = shift;
-    my $analysisID = shift;
-    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobID IS NULL AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP AND TIMESTAMPADD(HOUR,3,time)>CURRENT_TIMESTAMP";
+    my $postprocID = shift;
+    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobID IS NULL AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP AND TIMESTAMPADD(HOUR,3,time)>CURRENT_TIMESTAMP";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
         my $data_ref = $sthQUF->fetchall_arrayref;
-        &update_jobID( $sampleID, $analysisID, $data_ref);
+        &update_jobID( $sampleID, $postprocID, $data_ref);
     }
 
-    my $query_noexitcode = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' and jobID is not NULL and exitcode is NULL";
+    my $query_noexitcode = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobID is not NULL and exitcode is NULL";
     $sthQUF = $dbh->prepare($query_noexitcode);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
         my $data_ref = $sthQUF->fetchall_arrayref;
-        &update_jobStatus($sampleID, $analysisID, $data_ref);
+        &update_jobStatus($sampleID, $postprocID, $data_ref);
     }
 }
 
 sub check_all_jobs {
     my $sampleID = shift;
-    my $analysisID = shift;
-    my $query_nonjobID = "SELECT jobID,exitcode FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' and jobName != 'gatkGenoTyper'";
+    my $postprocID = shift;
+    my $query_nonjobID = "SELECT jobID,exitcode FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName != 'gatkGenoTyper'";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
@@ -117,22 +117,22 @@ sub check_all_jobs {
 
 sub check_idle_jobs {
     my $sampleID = shift;
-    my $analysisID = shift;
-    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND flag = '1' AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
+    my $postprocID = shift;
+    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
         return 1;
     }
 
-    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,24,time)<CURRENT_TIMESTAMP";
+    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,24,time)<CURRENT_TIMESTAMP";
     $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
         my @dataS = ();
-        my $msg = "sampleID $sampleID analysisID $analysisID \n";
+        my $msg = "sampleID $sampleID postprocID $postprocID \n";
         while (@dataS = $sthQUF->fetchrow_array) {
-            my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' AND jobName = '" . $dataS[0] . "'";
+            my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = '" . $dataS[0] . "'";
             my $sthSetFlag = $dbh->prepare($seq_flag);
             $sthSetFlag->execute();
             $msg .= "\tjobName " . $dataS[0] . " idled over 24 hours...\n";
@@ -148,7 +148,7 @@ sub check_idle_jobs {
 
 sub update_jobID {
     my $sampleID = shift;
-    my $analysisID = shift;
+    my $postprocID = shift;
     my $data_ref = shift;
     my @joblst = ();
     my $msg = "";
@@ -157,7 +157,7 @@ sub update_jobID {
         push @joblst, @$tmp_ref;
     }
     my $joblst = join(" ", @joblst);
-    my $cmd = $GET_JSUBID . $HPF_RUNNING_FOLDER . " " . $sampleID . "-" . $analysisID . " " . $joblst . '"';
+    my $cmd = $GET_JSUBID . $HPF_RUNNING_FOLDER . " " . $sampleID . "-" . $postprocID . " " . $joblst . '"';
     print $cmd,"\n";
     @joblst = `$cmd`;
     for (my $i = 0; $i<$#joblst; $i++) {
@@ -166,12 +166,12 @@ sub update_jobID {
             my $jobID = '';
             if ($joblst[$i+1] =~ /QUEUEING RESULT: (.+)/) {
                 $jobID = $1;
-                my $update_query = "UPDATE hpfJobStatus set jobID = '$jobID'  WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' and jobName = '$jobName'";
+                my $update_query = "UPDATE hpfJobStatus set jobID = '$jobID'  WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName = '$jobName'";
                 my $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                 $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
             }
             else {
-                $msg .= "Failed to get jobID for $jobName of sampleID $sampleID analysisID $analysisID \n";
+                $msg .= "Failed to get jobID for $jobName of sampleID $sampleID postprocID $postprocID \n";
                 print STDERR $msg;
             }
         }
@@ -183,7 +183,7 @@ sub update_jobID {
 
 sub update_jobStatus {
     my $sampleID = shift;
-    my $analysisID = shift;
+    my $postprocID = shift;
     my $data_ref = shift;
     my @joblst = ();
 
@@ -191,7 +191,7 @@ sub update_jobStatus {
         push @joblst, @$tmp_ref;
     }
     my $joblst = join(" ", @joblst);
-    my $cmd = $GET_STATUS . $HPF_RUNNING_FOLDER . " " . $sampleID . "-" . $analysisID . " " . $joblst . ' 2>/dev/null"';
+    my $cmd = $GET_STATUS . $HPF_RUNNING_FOLDER . " " . $sampleID . "-" . $postprocID . " " . $joblst . ' 2>/dev/null"';
     print $cmd,"\n";
     @joblst = `$cmd`;
     for (my $i = 0; $i<$#joblst; $i++) {
@@ -199,14 +199,14 @@ sub update_jobStatus {
             my $jobName = (split(/\//, $joblst[$i]))[9]; 
             my $jobID = '';
             if ($joblst[$i+1] =~ /EXIT STATUS: (.+)/) {
-                my $update_query = "UPDATE hpfJobStatus set exitcode = '$1'  WHERE sampleID = '$sampleID' AND analysisID = '$analysisID' and jobName = '$jobName'";
+                my $update_query = "UPDATE hpfJobStatus set exitcode = '$1'  WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName = '$jobName'";
                 my $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                 $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
                 if ($1 ne '0') {
-                    my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID analysisID $analysisID failed with exitcode $1\n";
+                    my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n";
                     print STDERR $msg;
                     email_error($msg);
-                    $update_query = "UPDATE sampleInfo set currentStatus = '5', analysisFinishedTime = NOW() WHERE sampleID = '$sampleID' AND analysisID = '$analysisID'";
+                    $update_query = "UPDATE sampleInfo set currentStatus = '5', analysisFinishedTime = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
                     $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                     $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
                     return;
@@ -221,7 +221,7 @@ sub email_error {
     $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
     print STDERR $errorMsg;
     my $sampleID = shift;
-    my $analysisID = shift;
+    my $postprocID = shift;
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',

@@ -120,8 +120,8 @@ sub update_database {
     my $test_exists = "SELECT * from thing1JobStatus where flowcellID = '" . $flowcellID . "'";
 
     #check clinicalA
-    my $sthstats = $dbh->prepare($test_exists) or $msg .=  "Can't query database for analysisID info: ". $dbh->errstr() . "\n";
-    $sthstats->execute() or $msg .= "Can't execute query for analysisID info: " . $dbh->errstr() . "\n";
+    my $sthstats = $dbh->prepare($test_exists) or $msg .=  "Can't query database for postprocID info: ". $dbh->errstr() . "\n";
+    $sthstats->execute() or $msg .= "Can't execute query for postprocID info: " . $dbh->errstr() . "\n";
     if ($sthstats->rows() != 0) { 
         $msg = "$flowcellID already exists in the database, please check if there are two or more running folders of this flowcell on the sequencer.\n" ;
         print STDERR $msg;

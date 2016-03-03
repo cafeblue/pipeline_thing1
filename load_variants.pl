@@ -40,7 +40,7 @@ foreach my $idpair (@$idpair_ref) {
 ######          Subroutines          ######
 ###########################################
 sub check_goodQuality_samples {
-    my $query_running_sample = "SELECT sampleID,analysisID FROM sampleInfo WHERE currentStatus = '6';";
+    my $query_running_sample = "SELECT sampleID,postprocID FROM sampleInfo WHERE currentStatus = '6';";
     my $sthQNS = $dbh->prepare($query_running_sample) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
     if ($sthQNS->rows() == 0) {  
@@ -54,7 +54,7 @@ sub check_goodQuality_samples {
 
 sub rsync_files {
     my $sampleID = shift;
-    my $analysisID = shift;
+    my $postprocID = shift;
     
 }
 
@@ -64,7 +64,7 @@ sub email_error {
     $mail_list = defined($mail_list) ? $mail_list : 'weiw.wang@sickkids.ca';
     print STDERR $errorMsg;
     my $sampleID = shift;
-    my $analysisID = shift;
+    my $postprocID = shift;
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
