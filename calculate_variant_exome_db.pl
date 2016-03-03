@@ -5,7 +5,7 @@ use strict;
 my $gatkSnpEvalFile = $ARGV[0]; #/hpf/tcagstor/llau/clinical/samples/illumina/165907-20140303172435-gatk2.8.1-cardio-hg19/gatk-filtered-recal-variant/165907.snp.recal.eval.old.txt
 my $gatkIndelEvalFile = $ARGV[1];
 my $sampleID = $ARGV[2];
-my $analysisID = $ARGV[3];
+my $postprocID = $ARGV[3];
 my $updateDBDir = $ARGV[4]; #"/hpf/tcagstor/llau/clinical_test/thing1";
 
 my $numSnps = 0;
@@ -58,4 +58,4 @@ while ($data=<FILE>) {
 }
 close(FILE);
 
-print "UPDATE sampleInfo SET snpTiTvRatio = '$titvSnps', nSNPExome = '$numSnps', nINDELExome = '$numIndels' WHERE analysisID = '$analysisID' AND sampleID = '$sampleID';\n";
+print "UPDATE sampleInfo SET snpTiTvRatio = '$titvSnps', nSNPExome = '$numSnps', nINDELExome = '$numIndels' WHERE postprocID = '$postprocID' AND sampleID = '$sampleID';\n";

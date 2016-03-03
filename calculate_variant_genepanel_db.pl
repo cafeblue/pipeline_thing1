@@ -3,7 +3,7 @@ use strict;
 
 my $annovarGenePanelFile = $ARGV[0];
 my $sampleID = $ARGV[1];
-my $analysisID = $ARGV[2];
+my $postprocID = $ARGV[2];
 my $updateDBDir = $ARGV[3]; 
 
 my $data = "";
@@ -24,4 +24,4 @@ while ($data=<FILE>) {
 }
 close(FILE);
 
-print "UPDATE sampleInfo SET nSNPGP = '$numSnps', nINDELGP = '$numIndels' WHERE analysisID = '$analysisID';\n";
+print "UPDATE sampleInfo SET nSNPGP = '$numSnps', nINDELGP = '$numIndels' WHERE postprocID = '$postprocID';\n";

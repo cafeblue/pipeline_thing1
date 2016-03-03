@@ -10,7 +10,7 @@ my $predictedGender = "";
 
 my $cvgFile = $ARGV[0]; #/hpf/tcagstor/llau/clinical/samples/illumina/165907-20140226091318-gatk2.8.1-cardio-hg19/gatk-coverage-calculation-exome-targets/165907.exome.dp.sample_summary
 my $sampleID = $ARGV[1];
-my $analysisID = $ARGV[2];          #165907
+my $postprocID = $ARGV[2];          #165907
 my $updateDBDir = $ARGV[3]; #"/hpf/tcagstor/llau/clinical_test/thing1";
 
 my $data = "";
@@ -91,7 +91,7 @@ for (my $j=0; $j < $numY; $j++) {
     $predictedGender = $predictedGender . "Y";
 }
 
-my $metricsFile = $updateDBDir . "/$sampleID.$analysisID.exomeCov.metrics.sql";
+my $metricsFile = $updateDBDir . "/$sampleID.$postprocID.exomeCov.metrics.sql";
 
 open (FILE, "< $cvgFile") or die "Can't open $cvgFile for read: $!\n";
 $data=<FILE>; $data=<FILE>;
@@ -99,7 +99,7 @@ chomp $data;
 my ($meanCvg, $thirdquartile, $firstquartile, $perBaseAbv1X, $perBaseAbv10X, $perBaseAbv20X, $perBaseAbv30X) = (split(/\t/,$data))[2,3,5,6,7,8,9];
 my $uniformity = $thirdquartile - $firstquartile;
 
-my $insert = "UPDATE sampleInfo SET meanCvgExome = '$meanCvg', uniformityCvgExome = '$uniformity', lowCovExonNum = '$total', lowCovATRatio = '$lt38_over_gt38_ratio', perbasesAbove1XExome = '$perBaseAbv1X', perbasesAbove10XExome = '$perBaseAbv10X', perbasesAbove20XExome = '$perBaseAbv20X', perbasesAbove30XExome = '$perBaseAbv30X', gender = '$predictedGender' WHERE analysisID = '$analysisID' and sampleID = '$sampleID';";
+my $insert = "UPDATE sampleInfo SET meanCvgExome = '$meanCvg', uniformityCvgExome = '$uniformity', lowCovExonNum = '$total', lowCovATRatio = '$lt38_over_gt38_ratio', perbasesAbove1XExome = '$perBaseAbv1X', perbasesAbove10XExome = '$perBaseAbv10X', perbasesAbove20XExome = '$perBaseAbv20X', perbasesAbove30XExome = '$perBaseAbv30X', gender = '$predictedGender' WHERE postprocID = '$postprocID' and sampleID = '$sampleID';";
 print $insert,"\n";
 close(FILE);
 
