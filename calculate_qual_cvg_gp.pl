@@ -10,7 +10,7 @@ my $thresGPPerBasesAbove20X = 90.0;
 
 my $cvgFile = $ARGV[0]; #/hpf/tcagstor/llau/clinical/samples/illumina/165907-20140226091318-gatk2.8.1-cardio-hg19/gatk-coverage-calculation-exome-targets/165907.exome.dp.sample_summary
 my $sampleID = $ARGV[1];
-my $analysisID = $ARGV[2];          #165907
+my $postprocID = $ARGV[2];          #165907
 my $updateDBDir = $ARGV[3]; #"/hpf/tcagstor/llau/clinical_test/thing1";
 my $genePanelFile = $ARGV[4];
 
@@ -102,7 +102,7 @@ while ($data=<FILE>) {
         my ($meanCvg, $thirdquartile, $firstquartile, $perBaseAbv1X, $perBaseAbv10X, $perBaseAbv20X, $perBaseAbv30X) = (split(/\t/,$data))[2,3,5,6,7,8,9];
         my $uniformity = $thirdquartile - $firstquartile;
 
-        my $insert = "UPDATE sampleInfo SET meanCvgGP = '$meanCvg', uniformityCvgGP = '$uniformity', perbasesAbove1XGP = '$perBaseAbv1X', perbasesAbove10XGP = '$perBaseAbv10X', perbasesAbove20XGP = '$perBaseAbv20X', perbasesAbove30XGP = '$perBaseAbv30X', notes = '$lowCvgExons' WHERE analysisID = '$analysisID' and sampleID = '$sampleID';";
+        my $insert = "UPDATE sampleInfo SET meanCvgGP = '$meanCvg', uniformityCvgGP = '$uniformity', perbasesAbove1XGP = '$perBaseAbv1X', perbasesAbove10XGP = '$perBaseAbv10X', perbasesAbove20XGP = '$perBaseAbv20X', perbasesAbove30XGP = '$perBaseAbv30X', notes = '$lowCvgExons' WHERE postprocID = '$postprocID' and sampleID = '$sampleID';";
         print $insert,"\n";
     }
 }

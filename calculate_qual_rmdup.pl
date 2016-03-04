@@ -3,7 +3,7 @@
 use strict;
 my $rmdupMetricFile = $ARGV[0];
 my $sampleID = $ARGV[1];
-my $analysisID = $ARGV[2];
+my $postprocID = $ARGV[2];
 
 open (FILE, "< $rmdupMetricFile") or die "Can't open $rmdupMetricFile for read: $!\n";
 while (my $data=<FILE>) {
@@ -23,7 +23,7 @@ while (my $data=<FILE>) {
         my $perAlign = (($unpairedReadsEx + ($readPairsEx * 2)) / $totalReads) * 100;
         my $perUniqueAlign = ((($unpairedReadsEx - $unpairedReadDup) + (($readPairsEx - $readPairDup) * 2)) / $totalReads) * 100;
     
-        print "UPDATE sampleInfo SET peralignment = '$perAlign', perPCRdup = '$percentDup', perAlignedUnique = '$perUniqueAlign' WHERE analysisID = '$analysisID' AND sampleID = '$sampleID';\n";
+        print "UPDATE sampleInfo SET peralignment = '$perAlign', perPCRdup = '$percentDup', perAlignedUnique = '$perUniqueAlign' WHERE postprocID = '$postprocID' AND sampleID = '$sampleID';\n";
         exit(0);
     }
 }
