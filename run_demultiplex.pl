@@ -119,13 +119,18 @@ sub create_sample_sheet {
     }
 
     my $csvlines = "";
-    my $db_query = "SELECT sampleID,barcode,lane from sampleSheet where flowcell_ID = \'$flowcellID\'" ;
+    my $db_query = "SELECT sampleID,barcode,lane,barcode2 from sampleSheet where flowcell_ID = \'$flowcellID\'" ;
     my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
     if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
         if ($machineType eq 'MiSeq') {
+            $csvlines .= "Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,I5_Index_ID,index2,Manifest,GenomeFolder,Sample_Project,Description\n";
+            while (my @data_line = $sthQNS->fetchrow_array()) {
+                foreach my $lane (split(/,/, $data_line[2])) {
+                    $csvlines .= $data_line[0] . ",,,," . $data_line[1] . "," .  $ilmnBarcodes{$data_line[1]} . "," . $data_line[3] . "," .  $ilmnBarcodes{$data_line[3]} . ",,,,\n";
+                }
+            }
         }
-
         elsif ($machineType eq 'HiSeq') {
             $csvlines .= "Lane,Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description\n";
             while (my @data_line = $sthQNS->fetchrow_array()) {
@@ -134,7 +139,6 @@ sub create_sample_sheet {
                 }
             }
         }
-
         elsif ($machineType eq 'NextSeq') {
             $csvlines .= "Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description\n";
             while (my @data_line = $sthQNS->fetchrow_array()) {
@@ -172,7 +176,12 @@ sub create_sample_sheet {
     }
 
     open (CSV, ">$filename") or die "failed to open file $filename";
-    print CSV "[Header]\nIEMFileVersion,4\nDate,$currentDate\nWorkflow,GenerateFASTQ\nApplication,$machineType FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n$cycle\n$cycle\n\n[Settings]\nAdapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA\nAdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT\n\n[Data]\n";
+    if ($machineType eq 'HiSeq' || $machineType eq 'NextSeq') {
+        print CSV "[Header]\nIEMFileVersion,4\nDate,$currentDate\nWorkflow,GenerateFASTQ\nApplication,$machineType FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n$cycle\n$cycle\n\n[Settings]\nAdapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA\nAdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT\n\n[Data]\n";
+    }
+    elsif ($machineType eq 'MiSeq') {
+        print CSV "[Header]\nIEMFileVersion,4\nDate,$currentDate\nWorkflow,GenerateFASTQ\nApplication,$machineType FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n$cycle\n$cycle\n\n[Settings]\nVariantFilterQualityCutoff,30\noutputgenomevcf,FALSE\n\n[Data]\n";
+    }
     print CSV $csvlines;
 
     ########    HiSeq2500 samplesheet  #######
@@ -224,8 +233,35 @@ sub check_status {
             return 2;
         }
     }
-    else {
+    elsif ($folder =~ /hiseq/) {
         if (-e "$folder/Data/Intensities/BaseCalls/L002/C$cycles.1/s_2_2216.bcl.gz") {
+            my $retval = time();
+            my $localTime = gmtime( $retval );
+            my $filetimestamp;
+            if ( -e "$folder/RTAComplete.txt") {
+                $filetimestamp = ctime(stat("$folder/RTAComplete.txt")->mtime);
+            }
+            else {
+                return 2;
+            }
+    
+            my $parseLocalTime = parsedate($localTime);
+            my $parseFileTime = parsedate($filetimestamp);
+            my $diff = $parseLocalTime - $parseFileTime;
+    
+            if ($diff > 600) {
+                return 1;
+            }
+            else {
+                return 2;
+            }
+        }
+        else {
+            return 2;
+        }
+    }
+    elsif ($folder =~ /miseq/) {
+        if (-e "$folder/Data/Intensities/BaseCalls/L001/C$cycles.1/s_1_2104.bcl") {
             my $retval = time();
             my $localTime = gmtime( $retval );
             my $filetimestamp;

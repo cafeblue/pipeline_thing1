@@ -118,10 +118,13 @@ foreach my $file  (@worklist) {
         if ( ! defined $ilmnBarcodes{$lines_ref->{'barcode'}} ) {
             $errorMsg .= "ERROR: Ilumina Barcode doesn't exist in line $..\n";
         }
+        if ( $lines_ref->{'machine'} =~ "miseq" && (! defined $ilmnBarcodes{$lines_ref->{'barcode2'}})) {
+            $errorMsg .= "ERROR: Ilumina Barcode2 for miseq doesn't exist in line $..\n";
+        }
         if ( $lines_ref->{'lane'} !~ /[1-8](,[1-8])*/ ) {
             $errorMsg .= "ERROR: lane is greater than 8 OR less than 0 in line $..\n";
         }
-        if ( $lines_ref->{'flowcell_ID'} !~ /^(A|B)/ ) {
+        if ( $lines_ref->{'flowcell_ID'} !~ /^(A|B)/ && $lines_ref->{'machine'} !~ "miseq") {
             $errorMsg .= "ERROR: FlowcellID is missing A or B in line $..\n";
         }
         if ( lc($lines_ref->{'capture_kit'}) ne "ssv4" && lc($lines_ref->{'capture_kit'}) ne "cr" && lc($lines_ref->{'capture_kit'}) ne "wgs" ) {

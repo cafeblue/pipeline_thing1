@@ -9,7 +9,7 @@ use Mail::Sender;
 
 ####### Constant Variables ################
 my $TEMP_LOG_FILES_FOLDER = '/home/pipeline/pipeline_temp_log_files';
-my @newdetected = `find /localhd/data/sequencers/hiseq2500_?/flowcell?/ /localhd/data/sequencers/miseqdx_?/ /localhd/data/sequencers/nextseq500_?/ -maxdepth 1 -name "??????_[DN]*_????_*" -mtime -1 `;
+my @newdetected = `find /localhd/data/sequencers/hiseq2500_?/flowcell?/ /localhd/data/sequencers/miseqdx_?/Illumina/MiSeqOutput/ /localhd/data/sequencers/nextseq500_?/ -maxdepth 1 -name "??????_[DNM]*_????_*" -mtime -1 `;
 
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";

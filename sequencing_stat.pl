@@ -188,7 +188,7 @@ sub get_qual_stat {
         }
         print "\n";
 
-        my $sub_flowcellID = substr $flowcellID, 1 ;
+        my $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $flowcellID, 1 ;
         my $demuxSummaryFile = "$FASTQ_FOLDER/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
         print $demuxSummaryFile,"\n";
         my $te = HTML::TableExtract->new( depth => 0, count => 2 );
