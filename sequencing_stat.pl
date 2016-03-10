@@ -177,7 +177,7 @@ sub read_config {
 sub get_qual_stat {
     my ($flowcellID, $machine) = @_;
 
-    my $query = "SELECT sampleID,barcode from sampleSheet where flowcell_ID = '" . $flowcellID . "' and machine = '" . $machine . "'";
+    my $query = "SELECT sampleID,barcode,barcode2 from sampleSheet where flowcell_ID = '" . $flowcellID . "' and machine = '" . $machine . "'";
     my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
     if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
@@ -185,6 +185,9 @@ sub get_qual_stat {
         my %sample_barcode;
         while (my @data_ref = $sthQNS->fetchrow_array) {
             $sample_barcode{$data_ref[0]} = $ilmnBarcodes{$data_ref[1]};
+            if ($data_ref[2]) {
+                $sample_barcode{$data_ref[0]} .= "+" . $ilmnBarcodes{$data_ref[2]};
+            }
         }
         print "\n";
 
