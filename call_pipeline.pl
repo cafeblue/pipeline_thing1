@@ -103,7 +103,7 @@ our %pipeline_lst = ( 'cancerT' => \&cancerT, 'cancerN' => \&cancerN, 'exome' =>
 
 our %startPoint_lst = ( 'NEW' => '', 'bwaAlign' => '', 'picardMarkDup' => 'bwaAlign', 'picardMarkDupIndex' => "picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam", 
                        #'picardCollectAlignmentSummaryMetrics' => "picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam", 
-                       #'picardMeanQualityByCycle' => "picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam", 'callAF' => '', 'faidx' => '',
+                       #'picardMeanQualityByCycle' => "picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam", 'calAF' => '', 'faidx' => '',
                        'gatkLocalRealign' => "picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam", 'gatkQscoreRecalibration' => "gatkLocalRealign/$sampleID.$postprocID.realigned.rmduped.mapq.bam",
                        'gatkGenoTyper' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam", 'gatkCovCalExomeTargets' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
                        'gatkCovCalGP' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam", 'gatkRawVariantsCall' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
@@ -147,7 +147,7 @@ sub exome {
     my @jobID_and_Pfolder;
     my @jobID_and_Pfolder1;
     my @jobID_and_Pfolder2;
-    my @jobID_and_Pfolder3;
+    #my @jobID_and_Pfolder3;
     if ($startPoint ne 'NEW') {
         $jobID_and_Pfolder[0] = '';
         if (ref($startPoint_lst{$startPoint})) {
@@ -161,7 +161,8 @@ sub exome {
     NEW:                       @jobID_and_Pfolder   =  &chk_sum;
     sleep 1;
     #faidx:                                             &faidx(@jobID_and_Pfolder);
-    callAF:                    @jobID_and_Pfolder3  =  &callAF(@jobID_and_Pfolder);
+    #calAF:                    @jobID_and_Pfolder3  =  &calAF(@jobID_and_Pfolder);
+    calAF:                                             &calAF(@jobID_and_Pfolder);
     bwaAlign:                  @jobID_and_Pfolder   =  &bwa_mem(@jobID_and_Pfolder); 
     sleep 1;
     picardMarkDup:             @jobID_and_Pfolder   =  &picardMarkDup(@jobID_and_Pfolder);
@@ -199,7 +200,7 @@ sub exome {
     windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder);
     annovar:                   @jobID_and_Pfolder    = &annovar(@jobID_and_Pfolder1);
     sleep 1;
-                               $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0] . "," . $jobID_and_Pfolder3[0];
+                               $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
                                push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
                                push @jobID_and_Pfolder, $jobID_and_Pfolder2[1];
                                push @jobID_and_Pfolder, $jobID_and_Pfolder2[2];
@@ -208,10 +209,10 @@ sub exome {
 
 sub exome_newGP {
     my @jobID_and_Pfolder = ('',"gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam");
-    my @jobID_and_Pfolder3 = ('',"gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf");
+    #my @jobID_and_Pfolder3 = ('',"gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf");
     $bed4chr   = '/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.bed';
     $depthct   = ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500';
-    callAF:                                            &callAF(@jobID_and_Pfolder);
+    calAF:                                            &calAF(@jobID_and_Pfolder);
     gatkCovCalGP:                                      &gatkCovCalGP(@jobID_and_Pfolder);
     annovar_newGP:             @jobID_and_Pfolder   =  &annovar_newGP(@jobID_and_Pfolder);
                                push @jobID_and_Pfolder, ("gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snps.indel.vcf", 
@@ -224,7 +225,7 @@ sub cancerN {
     my @jobID_and_Pfolder;
     my @jobID_and_Pfolder1;
     my @jobID_and_Pfolder2;
-    my @jobID_and_Pfolder3;
+    #my @jobID_and_Pfolder3;
     $bed4chr   = '/hpf/largeprojects/pray/llau/gene_panels/CANCER_20151016/CANCER_20151016.gene_100bp_padding.bed';
     $depthct   = ' -ct 1 -ct 200 -ct 400 -ct 600 -ct 1000 --start 1 --stop 2500 ';
     if ($startPoint ne 'NEW') {
@@ -240,7 +241,8 @@ sub cancerN {
     NEW:                       @jobID_and_Pfolder    =  &chk_sum;
     sleep 1;
     #faidx:                                              &faidx(@jobID_and_Pfolder);
-    callAF:                    @jobID_and_Pfolder3   =  &callAF(@jobID_and_Pfolder);
+    #calAF:                    @jobID_and_Pfolder3   =  &calAF(@jobID_and_Pfolder);
+    calAF:                                              &calAF(@jobID_and_Pfolder);
     bwaAlign:                  @jobID_and_Pfolder    =  &bwa_mem(@jobID_and_Pfolder); 
     sleep 1;
     picardMarkDup:             @jobID_and_Pfolder    =  &picardMarkDup(@jobID_and_Pfolder);
@@ -276,7 +278,7 @@ sub cancerN {
     windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder);
     annovar:                   @jobID_and_Pfolder    = &annovar(@jobID_and_Pfolder1);
     sleep 1;
-                               $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0] . "," . $jobID_and_Pfolder3[0];
+                               $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
                                push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
                                push @jobID_and_Pfolder, $jobID_and_Pfolder2[1];
                                push @jobID_and_Pfolder, $jobID_and_Pfolder2[2];
@@ -299,7 +301,7 @@ sub cancerT {
     }
     NEW:                       @jobID_and_Pfolder = &chk_sum;
     #faidx:                                          &faidx(@jobID_and_Pfolder);
-    #callAF:                                         &callAF(@jobID_and_Pfolder);
+    #calAF:                                         &calAF(@jobID_and_Pfolder);
     bwaAlign:                  @jobID_and_Pfolder = &bwa_mem(@jobID_and_Pfolder); 
     picardMarkDup:             @jobID_and_Pfolder = &picardMarkDup(@jobID_and_Pfolder);
     picardMarkDupIdx:          @jobID_and_Pfolder = &picardMarkDupIdx(@jobID_and_Pfolder);
@@ -393,7 +395,7 @@ sub faidx {
     }
 }
 
-sub callAF {
+sub calAF {
     my ($jobID, $Pfolder) = @_;
     my $depend = $jobID eq '' ? "" : " -aft afterok -o $jobID";
     my $walltime = $genePanel =~ /unknown/ ? "72:00:00" : "24:00:00";
@@ -408,7 +410,7 @@ sub callAF {
         . 'module load vcftools/0.1.12a && ' . " \\\n"
         . 'module load gatk/2.8.1 && ' . " \\\n"
         . "\\\n"
-        . "perl $SCRIPTDIR/diseaseAF.gatk.pl $genePanel $runfolder/calAF $sampleID $postprocID $backup_basedir/region_vcf $SCRIPTDIR/cal_internal_alleleFreq.bed.pl $reference;" . "\n"
+        . "perl $SCRIPTDIR/diseaseAF.gatk.ignore.pl $genePanel $runfolder/calAF $sampleID $postprocID $backup_basedir/region_vcf $SCRIPTDIR/cal_internal_alleleFreq.bed.pl $reference;" . "\n"
         . "\'| jsub -j calAF -b $runfolder  -nm 32000 -np 1 -nn 1 -nw $walltime -ng localhd:20 $depend";
     print "\n\n************\ncalAF:\n $cmd\n************\n\n";
     my $cmdOut = `$cmd`;
