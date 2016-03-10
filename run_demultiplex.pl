@@ -126,9 +126,9 @@ sub create_sample_sheet {
         if ($machineType eq 'MiSeq') {
             $csvlines .= "Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,I5_Index_ID,index2,Manifest,GenomeFolder,Sample_Project,Description\n";
             while (my @data_line = $sthQNS->fetchrow_array()) {
-                foreach my $lane (split(/,/, $data_line[2])) {
+                #foreach my $lane (split(/,/, $data_line[2])) {
                     $csvlines .= $data_line[0] . ",,,," . $data_line[1] . "," .  $ilmnBarcodes{$data_line[1]} . "," . $data_line[3] . "," .  $ilmnBarcodes{$data_line[3]} . ",,,,\n";
-                }
+                #}
             }
         }
         elsif ($machineType eq 'HiSeq') {
