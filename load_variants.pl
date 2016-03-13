@@ -35,7 +35,7 @@ my $idpair_ref = &check_goodQuality_samples;
 my ($today, $todayDate, $yesterdayDate) = &print_time_stamp;
 foreach my $idpair (@$idpair_ref) {
     next if (&rsync_files(@$idpair) != 0);
-    &loadVariants2DB(@$idpair);
+    &updateDB(&loadVariants2DB(@$idpair),@$idpair);
 }
 `rm /dev/shm/loadvariantsrunning`;
 
@@ -44,7 +44,7 @@ foreach my $idpair (@$idpair_ref) {
 ######          Subroutines          ######
 ###########################################
 sub check_goodQuality_samples {
-    my $query_running_sample = "SELECT sampleID,postprocID,genePanelVer FROM sampleInfo WHERE currentStatus = '6';";
+    my $query_running_sample = "SELECT i.sampleID,i.postprocID, i.genePanelVer,i.flowcellID,s.machine FROM sampleInfo AS i INNER JOIN sampleSheet AS s ON i.flowcellID = s.flowcell_ID AND i.sampleID = s.sampleID WHERE i.currentStatus = '6';";
     my $sthQNS = $dbh->prepare($query_running_sample) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
     if ($sthQNS->rows() == 0) {  
@@ -77,6 +77,34 @@ sub rsync_files {
     return 0;
 }
 
+sub updateDB {
+    my ($exitcode, $sampleID, $postprocID, $genePanelVer, $flowcellID, $machine) = @_;
+    my $msg = "":
+    if ($exitcode == 0) {
+        my $update_sql = "UPDATE sampleInfo SET currentstatus = '10' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
+        $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
+        if ($msg eq '') {
+            email_finished($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine);
+        }
+        else {
+            email_error("Failed to update the currentStatus set to 10 for sampleID: $sampleID posrprocID: $postprocID\n\nError Message:\n$msg\n");
+        }
+    }
+    elsif ($exitcode == 1) {
+        my $update_sql = "UPDATE sampleInfo SET currentstatus = '9' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
+        $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
+        if ($msg ne '') {
+            email_error("Failed to update the currentStatus set to 9 for sampleID: $sampleID posrprocID: $postprocID\n\nError Message:\n$msg\n");
+        }
+    }
+    else {
+        $msg = "Impossible happened! what does the exitcode = $exitcode mean?\n";
+        email_error($msg);
+    }
+}
+
 sub loadVariants2DB {
     my ($sampleID, $postprocID, $genePanelVer) = @_;
     my $msg = "";
@@ -85,13 +113,13 @@ sub loadVariants2DB {
     open (ALLFILE,  ">$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt") or $msg .= "Failed to open file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt\n";
     if ($msg ne '') {
         email_error($msg);
-        return;
+        return 1;
     }
     my $lines = <FILTERED>; $lines = <FILTERED>; $lines = <FILTERED>; $lines = <FILTERED>;
     if ($lines !~ /^Coordinator/) {
         $msg .= "Line 4 of file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.annotated.filter.txt is not the HEAD line. aborting the variants load...\n";
         email_error($msg);
-        return;
+        return 1;
     }
     chomp($lines);
     my @header = split(/\t/, $lines);
@@ -166,7 +194,7 @@ sub loadVariants2DB {
     if ($lines !~ /^##Chrom/) {
         $msg .= "Line 4 of file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.annotated.tsv is not the HEAD line. aborting the variants load...\n";
         email_error($msg);
-        return;
+        return 1;
     }
     chomp($lines);
     $lines =~ s/^##//;
@@ -209,7 +237,7 @@ sub loadVariants2DB {
         if ($sthVarCheck->rows() != 0) {
             my $msg = "This postprocID=$postprocID has already have interpretation variants inserted into the table\n";
             email_error($msg);
-            return;
+            return 1;
         }
 
 
@@ -217,8 +245,8 @@ sub loadVariants2DB {
         print STDERR "insert=$insert\n";
 
         my $sth = $dbh->prepare($insert) or die "Can't prepare insert: ". $dbh->errstr() . "\n";
-#        $sth->execute(@splitFilter) or die "Can't execute insert: " . $dbh->errstr() . "\n";
-#        $interID = $sth->{'mysql_insertid'}; #LAST_INSERT_ID(); or try $dbh->{'mysql_insertid'}
+        $sth->execute(@splitFilter) or die "Can't execute insert: " . $dbh->errstr() . "\n";
+        $interID = $sth->{'mysql_insertid'}; #LAST_INSERT_ID(); or try $dbh->{'mysql_insertid'}
 
         print ALLFILE "$postprocID\t" . $lines_ref->{'Chrom'} . "\t" . $lines_ref->{'Position'} . "\t$gEnd\t$typeVer\t" . $lines_ref->{'Genotype'} . "\t" . $lines_ref->{'Reference'} . "\t$altAllele\t$cDNA\t$aaChange\t" . $lines_ref->{'Effect'}
             . "\t" . $lines_ref->{'Quality By Depth'} . "\t" . $lines_ref->{"Fisher's Exact Strand Bias Test"} . "\t" . $lines_ref->{'RMS Mapping Quality'} . "\t" . $lines_ref->{'Haplotype Score'} . "\t" . $lines_ref->{'Mapping Quality Rank Sum Test'} 
@@ -236,6 +264,9 @@ sub loadVariants2DB {
     if ($msg ne '') {
         email_error($msg);
         return 1;
+    }
+    else {
+        return 0;
     }
 }
 
@@ -586,18 +617,33 @@ sub code_aa_change {
 
 
 sub email_error {
-    my ($errorMsg, $mail_list, $sampleID, $postprocID) = @_;
-    $mail_list = defined($mail_list) ? $mail_list : 'weiw.wang@sickkids.ca';
+    my $errorMsg = shift;
     print STDERR $errorMsg;
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => $mail_list,
+        to                   => 'weiw.wang@sickkids.ca',
         subject              => "Variants loading status...",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
         msg                  => $errorMsg 
+    };
+    my $ret =  $sender->MailMsg($mail);
+}
+
+sub email_finished {
+    my ($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine) = shift;
+    print STDERR $errorMsg;
+    my $sender = Mail::Sender->new();
+    my $mail   = {
+        smtp                 => 'localhost',
+        from                 => 'notice@thing1.sickkids.ca',
+        to                   => 'weiw.wang@sickkids.ca',
+        subject              => "$sampleID ($flowcellID $machine) completed analysis",
+        ctype                => 'text/plain; charset=utf-8',
+        skip_bad_recipients  => 1,
+        msg                  => "$sampleID ($flowcellID $machine) has finished analysis using gene panel $genePanelVer with no errors. The sample can be viewed through the website. http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary The filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel/$genePanelVer.$today.$sampleID.annotated.filter.postprocID_$postprocID..xlsx.\n\nPlease login to thing1 using your Samba account in order to view this file.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca\n\nThanks,\n\nThing1\n"
     };
     my $ret =  $sender->MailMsg($mail);
 }
