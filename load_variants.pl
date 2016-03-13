@@ -184,9 +184,10 @@ sub loadVariants2DB {
             $lines_ref->{$header[$_]} = $splitTab[$_];
         }
 
-        $lines_ref->{'Chrom'} = &code_chrom($lines_ref->{'Chrom'}); 
+        $lines_ref->{'Chrom'} =~ s/chr//;
         my $key = $lines_ref->{'Chrom'} . ":" . $lines_ref->{'Position'} . ":" . $lines_ref->{'Type of Mutation'} . ":" . $lines_ref->{'Transcript ID'};
         next unless (exists $filteredVariants{$key});
+        $lines_ref->{'Chrom'} = &code_chrom($lines_ref->{'Chrom'}); 
         $lines_ref->{'Gatk Filters'} = &code_gatk_filter($lines_ref->{'Gatk Filters'}); 
         $lines_ref->{'Genotype'} = &code_genotype($lines_ref->{'Genotype'}); 
         $lines_ref->{'Effect'} = &code_effect($lines_ref->{'Effect'}); 
