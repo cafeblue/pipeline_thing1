@@ -82,10 +82,11 @@ sub updateDB {
     my $msg = "";
     if ($exitcode == 0) {
         my $update_sql = "UPDATE sampleInfo SET currentstatus = '10' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        print $update_sql,"\n";
         my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
         $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
         if ($msg eq '') {
-            email_finished($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine);
+            &email_finished($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine);
         }
         else {
             email_error("Failed to update the currentStatus set to 10 for sampleID: $sampleID posrprocID: $postprocID\n\nError Message:\n$msg\n");
@@ -93,6 +94,7 @@ sub updateDB {
     }
     elsif ($exitcode == 1) {
         my $update_sql = "UPDATE sampleInfo SET currentstatus = '9' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        print $update_sql,"\n";
         my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
         $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
         if ($msg ne '') {
@@ -242,8 +244,6 @@ sub loadVariants2DB {
 
 
         my $insert = "INSERT INTO interpretation (time, reporter, interpretation, note, history, clinVarAcc, hgmdDbn, polyphen, sift, mutTaster, cgAF, espAF, thouGAF, internalAFSNP, internalAFINDEL, segdup, homology, lowCvgExon, espAFAA, espAFEA, thouGAFAFR, thouGAFAMR, thouGAFEASN, thouGAFSASN, thouGAFEUR, clinVarIndelWindow, hgmdIndelWindow, genePanelSnpsAF, genePanelIndelsAF, cgdInherit, variantPerGene, omimDisease, wellderly, mutAss, cadd, perCdsAff, perTxAff, acmgGene, exacALL, exacAFR, exacAMR, exacEAS, exacFIN, exacNFE, exacOTH, exacSAS, diseaseAs) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-        print STDERR "insert=$insert\n";
-
         my $sth = $dbh->prepare($insert) or die "Can't prepare insert: ". $dbh->errstr() . "\n";
         $sth->execute(@splitFilter) or die "Can't execute insert: " . $dbh->errstr() . "\n";
         $interID = $sth->{'mysql_insertid'}; #LAST_INSERT_ID(); or try $dbh->{'mysql_insertid'}
@@ -258,7 +258,7 @@ sub loadVariants2DB {
     close(VARIANTS);
     close(ALLFILE);
     my $fileload = "LOAD DATA LOCAL INFILE \'$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt\' INTO TABLE variants_sub FIELDS TERMINATED BY \'\\t\' ENCLOSED BY \'NULL\' ESCAPED BY \'\\\\'";
-    print STDERR $fileload,"\n";
+    print $fileload,"\n";
     my $msg = '';
     $dbh->do( $fileload ) or $msg .= "Unable load in file: " . $dbh->errstr . "\n";
     if ($msg ne '') {
@@ -633,7 +633,7 @@ sub email_error {
 }
 
 sub email_finished {
-    my ($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine) = shift;
+    my ($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine) = @_;
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
