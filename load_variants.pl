@@ -63,7 +63,6 @@ sub rsync_files {
     if ($? != 0) {
         my $msg = "Copy the variants to thing1 for sampleID $sampleID, postprocID $postprocID failed with exitcode $?\n";
         email_error($msg);
-        print STDERR $msg;
         return 1;
     }
     my $chksumCMD = "cd $THING1_BACKUP_DIR; sha256sum -c sid_$sampleID.aid_$postprocID*.sha256sum";
@@ -72,7 +71,6 @@ sub rsync_files {
         if (/computed checksum did NOT match/) {
             my $msg = "chksum of variants files from sampleID $sampleID, postprocID $postprocID failed, please check the following files:\n\n$THING1_BACKUP_DIR\n\n" . join("", @chksum_output);
             email_error($msg);
-            print STDERR $msg;
             return 1;
         }
     }
@@ -87,14 +85,12 @@ sub loadVariants2DB {
     open (ALLFILE,  ">$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt") or $msg .= "Failed to open file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt\n";
     if ($msg ne '') {
         email_error($msg);
-        print STDERR $msg;
         return;
     }
     my $lines = <FILTERED>; $lines = <FILTERED>; $lines = <FILTERED>; $lines = <FILTERED>;
     if ($lines !~ /^Coordinator/) {
         $msg .= "Line 4 of file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.annotated.filter.txt is not the HEAD line. aborting the variants load...\n";
         email_error($msg);
-        print STDERR $msg;
         return;
     }
     chomp($lines);
@@ -170,7 +166,6 @@ sub loadVariants2DB {
     if ($lines !~ /^##Chrom/) {
         $msg .= "Line 4 of file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.annotated.tsv is not the HEAD line. aborting the variants load...\n";
         email_error($msg);
-        print STDERR $msg;
         return;
     }
     chomp($lines);
@@ -213,7 +208,6 @@ sub loadVariants2DB {
         if ($sthVarCheck->rows() != 0) {
             my $msg = "This postprocID=$postprocID has already have interpretation variants inserted into the table\n";
             email_error($msg);
-            print STDERR $msg;
             return;
         }
 
@@ -240,7 +234,6 @@ sub loadVariants2DB {
     $dbh->do( $fileload ) or $msg .= "Unable load in file: " . $dbh->errstr . "\n";
     if ($msg ne '') {
         email_error($msg);
-        print STDERR $msg;
         return 1;
     }
 }
@@ -592,12 +585,9 @@ sub code_aa_change {
 
 
 sub email_error {
-    my $errorMsg = shift;
-    my $mail_list = shift;
+    my ($errorMsg, $mail_list, $sampleID, $postprocID) = @_;
     $mail_list = defined($mail_list) ? $mail_list : 'weiw.wang@sickkids.ca';
     print STDERR $errorMsg;
-    my $sampleID = shift;
-    my $postprocID = shift;
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
