@@ -79,7 +79,7 @@ sub rsync_files {
 
 sub updateDB {
     my ($exitcode, $sampleID, $postprocID, $genePanelVer, $flowcellID, $machine) = @_;
-    my $msg = "":
+    my $msg = "";
     if ($exitcode == 0) {
         my $update_sql = "UPDATE sampleInfo SET currentstatus = '10' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
         my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
@@ -634,7 +634,6 @@ sub email_error {
 
 sub email_finished {
     my ($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine) = shift;
-    print STDERR $errorMsg;
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
