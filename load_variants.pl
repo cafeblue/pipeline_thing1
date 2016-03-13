@@ -172,7 +172,7 @@ sub loadVariants2DB {
     $lines =~ s/^##//;
     @header = split(/\t/, $lines);
 
-    while (<VARIANTS>) {
+    while ($lines = <VARIANTS>) {
         my $interID = -1;
         chomp($lines);
         my @splitTab = split(/\t/,$lines);
