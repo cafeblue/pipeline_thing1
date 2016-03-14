@@ -36,6 +36,7 @@ my ($today, $todayDate, $yesterdayDate) = &print_time_stamp;
 foreach my $idpair (@$idpair_ref) {
     if (&rsync_files(@$idpair) != 0) {
         &updateDB(1,@$idpair);
+        next;
     }
     &updateDB(&loadVariants2DB(@$idpair),@$idpair);
 }
