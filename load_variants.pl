@@ -34,7 +34,9 @@ my $idpair_ref = &check_goodQuality_samples;
 `touch /dev/shm/loadvariantsrunning`;
 my ($today, $todayDate, $yesterdayDate) = &print_time_stamp;
 foreach my $idpair (@$idpair_ref) {
-    next if (&rsync_files(@$idpair) != 0);
+    if (&rsync_files(@$idpair) != 0) {
+        &updateDB(1,@$idpair);
+    }
     &updateDB(&loadVariants2DB(@$idpair),@$idpair);
 }
 `rm /dev/shm/loadvariantsrunning`;
