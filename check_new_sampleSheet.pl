@@ -9,7 +9,6 @@ use Mail::Sender;
 
 #### constant variables for HPF ############
 my $SAMPLE_INFO = '/localhd/sample_info/done';
-my $PARSED_FILES = '/home/pipeline/pipeline_temp_log_files/sample_sheet_files.txt';
 
 #### Database connection ###################
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -34,35 +33,16 @@ while (<DATA>) {
 close(DATA);
 
 #### Get the new file list #################
-my %parsed;
-my @new_fl;
-foreach (`cat $PARSED_FILES`) {
-    chomp;
-    $parsed{$_} = 0;
-}
-@new_fl = `find $SAMPLE_INFO/*.txt -mtime -1`;
+my @new_fl = `find $SAMPLE_INFO/*.txt -mmin -20`;
 chomp(@new_fl);
-
-my @worklist = ();
-open (LST, ">$PARSED_FILES") or die "Can't open $PARSED_FILES for writing... $!\n";
-foreach my $file (@new_fl) {
-    if (exists $parsed{$file}) {
-        print LST $file,"\n";
-        next;
-    }
-    else {
-        push @worklist, $file;
-    }
-}
-
-if ($#worklist == -1) {
+if ($#new_fl == -1) {
     exit(0);
 }
 my ($today, $yesterday) = &print_time_stamp();
 
 
 #### Start to parse each new file ##########
-foreach my $file  (@worklist) {
+foreach my $file  (@new_fl) {
     print STDOUT "file=$file\n";
 
     my @header = ();
