@@ -14,8 +14,9 @@ my $postprocID = $ARGV[2];          #165907
 my $updateDBDir = $ARGV[3]; #"/hpf/tcagstor/llau/clinical_test/thing1";
 my $genePanelFile = $ARGV[4];
 
-my @splitDot = split(/\./,$genePanelFile);
-my $criticalGeneFile = $splitDot[0] . ".critical_genes_hgmd.txt";
+my $criticalGeneFile = $genePanelFile;
+$criticalGeneFile =~ s/\.exon_10bp_padding\.bed/\.critical_genes_hgmd\.txt/;
+$criticalGeneFile =~ s/\.ICCG_include_nonCRtargets\.exons_10bp_padding\.sort\.merged\.bed/\.critical_genes_hgmd\.txt/;
 
 my $predictedGender = "";
 my $data = "";
