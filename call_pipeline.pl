@@ -8,7 +8,18 @@ use Time::Piece;
 
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
-my  $SCRIPTDIR = '/home/wei.wang/pipeline_hpf_v5';
+my  $SCRIPTDIR       = '/home/wei.wang/pipeline_hpf_v5';
+my  $ANNOVAR         = '/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl';
+our $BACKUP_BASEDIR  = '/hpf/largeprojects/pray/llau/clinical/backup_files';
+my  $GATK            = 'gatk/2.8.1';
+my  $BWA             = 'bwa/0.7.8';
+my  $PICARDTOOLS     = 'picard-tools/1.108';
+my  $SAMTOOLS        = 'samtools/0.1.19';
+my  $TABIX           = 'tabix/0.2.6';
+my  $PERL            = 'perl/5.18.2';
+my  $VCFTOOLS        = 'vcftools/0.1.12a';
+my  $BEDTOOLS        = 'bedtools/2.17.0';
+my  $RSCRIPT         = 'R/3.1.0';
 
 GetOptions ("sampleID|s=s" => \$sampleID,
             "postprocID|a=s"   => \$postprocID,  
@@ -29,9 +40,10 @@ our $clinvar_indel_vcf    = '/hpf/largeprojects/pray/llau/internal_databases/cli
 our $hgmdAML              = '/hpf/largeprojects/pray/llau/internal_databases/hgmd/current/HGMD_Advanced_Micro_Lesions.sort.bed';
 our $hgmdAS               = '/hpf/largeprojects/pray/llau/internal_databases/hgmd/current/HGMD_Advanced_Substitutions.sort.bed';
 our $hapmap_vcf           = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/hapmap_3.3.b37.vcf';
-our $backup_basedir       = '/hpf/largeprojects/pray/llau/clinical/backup_files';
 our $bed4chr              = ''; 
 our $depthct              = '';
+our $maxGaussians_SNP     = $fastqDir !~ /000000000/ ? '--maxGaussians 8' : '--maxGaussians 0';
+our $maxGaussians_INDEL   = $fastqDir !~ /000000000/ ? '--maxGaussians 1' : '--maxGaussians 0';
 our %pipeID               = ('exome.gp10' => 'ilmn.cr.p2',
                              'hsp.gp4' => 'ilmn.cr.p2',
                              'unknown.gp11' => 'ilmn.cr.p2',
@@ -379,7 +391,7 @@ sub faidx {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load samtools/0.1.19 && ' . "\\\n"
+        . 'module load ' . $SAMTOOLS . ' && ' . "\\\n"
         . "\\\n"
         . "samtools faidx  $reference;" . "\n"
         . "\'| jsub -j samtools-index-reference -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 00:15:00 -ng localhd:1 $depend";
@@ -406,11 +418,11 @@ sub calAF {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load perl/5.18.2 && ' . " \\\n"
-        . 'module load vcftools/0.1.12a && ' . " \\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
+        . 'module load ' . $PERL . ' && ' . " \\\n"
+        . 'module load ' . $VCFTOOLS . ' && ' . " \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
         . "\\\n"
-        . "perl $SCRIPTDIR/diseaseAF.gatk.ignore.pl $genePanel $runfolder/calAF $sampleID $postprocID $backup_basedir/region_vcf $SCRIPTDIR/cal_internal_alleleFreq.bed.pl $reference;" . "\n"
+        . "perl $SCRIPTDIR/diseaseAF.gatk.ignore.pl $genePanel $runfolder/calAF $sampleID $postprocID $BACKUP_BASEDIR/region_vcf $SCRIPTDIR/cal_internal_alleleFreq.bed.pl $reference;" . "\n"
         . "\'| jsub -j calAF -b $runfolder  -nm 32000 -np 1 -nn 1 -nw $walltime -ng localhd:20 $depend";
     print "\n\n************\ncalAF:\n $cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -439,8 +451,8 @@ sub bwa_mem {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load bwa/0.7.8 && ' . " \\\n"
-        . 'module load picard-tools/1.108 && ' . " \\\n"
+        . 'module load ' . $BWA . ' && ' . " \\\n"
+        . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . 'mkdir $TMPDIR/bwa-mem && ' . " \\\n"
         . 'bwa mem -R "@RG\tID:' . $sampleID . '\tSM:' . $sampleID . '\tLB:' . $sampleID . '\tPL:illumina"' .  " -t 4 $reference $file_prefix\_R1_" . '$PBS_ARRAYID.fastq.gz' . " $file_prefix\_R2_" . '$PBS_ARRAYID.fastq.gz ' . "|" . " \\\n"
@@ -475,10 +487,10 @@ sub picardMarkDup {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load picard-tools/1.108 perl && ' . " \\\n"
+        . 'module load ' . $PICARDTOOLS . ' ' . $PERL . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $PICARD/MarkDuplicates.jar ' . $inputfiles . " REMOVE_DUPLICATES=false CREATE_INDEX=true ASSUME_SORTED=true OUTPUT=$runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam  METRICS_FILE=$runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file &&" . " \\\n"
-        . "ln -f $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $backup_basedir/matrics/ ; \\\n"
+        . "ln -f $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $BACKUP_BASEDIR/matrics/ ; \\\n"
         . "perl $SCRIPTDIR/calculate_qual_rmdup.pl $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $sampleID $postprocID > $runfolder/picardMarkDup/$sampleID.$postprocID.rmdup.sql \\\n"
         . "\'| jsub -j picardMarkDup -b $runfolder  -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
     print "\n\n************\npicardMarkDup:\n $cmd\n************\n\n";
@@ -503,7 +515,7 @@ sub picardMarkDupIdx {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load samtools/0.1.19 && ' . " \\\n"
+        . 'module load ' . $SAMTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . "samtools index $runfolder/$Pfolder ;" . " \\\n"
         . "\'| jsub -j picardMarkDupIdx -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:1 $depend";
@@ -529,11 +541,11 @@ sub picardMeanQualityByCycle {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load R/3.1.0 && ' . " \\\n"
-        . 'module load picard-tools/1.108 && ' . " \\\n"
+        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
+        . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx4G $PICARD/MeanQualityByCycle.jar' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardMeanQualityByCycle/$sampleID.$postprocID.mean_quality_score_by_cycle.metrics.ods CHART_OUTPUT=$runfolder/picardMeanQualityByCycle/$sampleID.$postprocID.mean_quality_score_by_cycle_chart.pdf &&" . " \\\n"
-        . "ln -f $runfolder/picardMeanQualityByCycle/$sampleID.$postprocID.mean_quality_score_by_cycle.* $backup_basedir/matrics/ ; \\\n"
+        . "ln -f $runfolder/picardMeanQualityByCycle/$sampleID.$postprocID.mean_quality_score_by_cycle.* $BACKUP_BASEDIR/matrics/ ; \\\n"
         . "\'| jsub -j picardMeanQualityByCycle -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10 $depend";
     print "\n\n************\npicardMeanQualityByCycle:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -557,11 +569,11 @@ sub picardCollectInsertSizeMetrics {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load R/3.1.0 && ' . " \\\n"
-        . 'module load picard-tools/1.108 && ' . " \\\n"
+        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
+        . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx4G $PICARD/CollectInsertSizeMetrics.jar' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardCollectInsertSizeMetrics/$sampleID.$postprocID.insert.metrics.ods HISTOGRAM_FILE=$runfolder/picardCollectInsertSizeMetrics/$sampleID.$postprocID.historgram.pdf &&" . " \\\n"
-        . "ln -f $runfolder/picardCollectInsertSizeMetrics/$sampleID.$postprocID.* $backup_basedir/matrics/ ; \\\n"
+        . "ln -f $runfolder/picardCollectInsertSizeMetrics/$sampleID.$postprocID.* $BACKUP_BASEDIR/matrics/ ; \\\n"
         . "\'| jsub -j picardCollectInsertSizeMetrics -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
     print "\n\n************\npicardCollectInsertSizeMetrics:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -585,11 +597,11 @@ sub picardCollectGcBiasMetrics {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load R/3.1.0 && ' . " \\\n"
-        . 'module load picard-tools/1.108 && ' . " \\\n"
+        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
+        . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx4G $PICARD/CollectGcBiasMetrics.jar' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardCollectGcBiasMetrics/$sampleID.$postprocID.gc_bias.metrics.ods CHART_OUTPUT=$runfolder/picardCollectGcBiasMetrics/$sampleID.$postprocID.gc_bias.pdf SUMMARY_OUTPUT=$runfolder/picardCollectGcBiasMetrics/$sampleID.$postprocID.gc_bias_summary.txt REFERENCE_SEQUENCE=$reference &&" . " \\\n"
-        . "ln -f $runfolder/picardCollectGcBiasMetrics/$sampleID.$postprocID.gc_bias* $backup_basedir/matrics/ ; \\\n"
+        . "ln -f $runfolder/picardCollectGcBiasMetrics/$sampleID.$postprocID.gc_bias* $BACKUP_BASEDIR/matrics/ ; \\\n"
         . "\'| jsub -j picardCollectGcBiasMetrics -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
     print "\n\n************\npicardCollectGcBiasMetrics:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -613,11 +625,11 @@ sub picardQualityScoreDistribution {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load R/3.1.0 && ' . " \\\n"
-        . 'module load picard-tools/1.108 && ' . " \\\n"
+        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
+        . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx4G $PICARD/QualityScoreDistribution.jar' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardQualityScoreDistribution/$sampleID.$postprocID.quality_score.metrics.ods CHART_OUTPUT=$runfolder/picardQualityScoreDistribution/$sampleID.$postprocID.quality_score.chart.pdf &&" . " \\\n"
-        . "ln -f $runfolder/picardQualityScoreDistribution/$sampleID.$postprocID.quality_score.* $backup_basedir/matrics/ ; \\\n"
+        . "ln -f $runfolder/picardQualityScoreDistribution/$sampleID.$postprocID.quality_score.* $BACKUP_BASEDIR/matrics/ ; \\\n"
         . "\'| jsub -j picardQualityScoreDistribution -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
     print "\n\n************\npicardQualityScoreDistribution:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -641,14 +653,14 @@ sub picardCalculateHsMetrics {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load R/3.1.0 && ' . " \\\n"
-        . 'module load picard-tools/1.108 && ' . " \\\n"
+        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
+        . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $PICARD/CalculateHsMetrics.jar VALIDATION_STRINGENCY=SILENT' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.ods \\\n"
         . "BAIT_INTERVALS=/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.interval_list \\\n"
         . "TARGET_INTERVALS=/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.interval_list && \\\n"
         . "tail -n 4 $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.ods  | tsp > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.ods && \\\n"
-        . "ln -f $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs* $backup_basedir/matrics/ ; \\\n"
+        . "ln -f $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs* $BACKUP_BASEDIR/matrics/ ; \\\n"
         . "\'| jsub -j picardCalculateHsMetrics -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
     print "\n\n************\npicardCalculateHsMetrics:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -672,11 +684,11 @@ sub CollectAlignmentSummaryMetrics {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load R/3.1.0 && ' . " \\\n"
-        . 'module load picard-tools/1.108 && ' . " \\\n"
+        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
+        . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx4G $PICARD/CollectAlignmentSummaryMetrics.jar' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/CollectAlignmentSummaryMetrics/$sampleID.$postprocID.aligment_summary.metrics.ods REFERENCE_SEQUENCE=$reference &&" . " \\\n"
-        . "ln -f $runfolder/CollectAlignmentSummaryMetrics/$sampleID.$postprocID.ali* $backup_basedir/matrics/ ; \\\n"
+        . "ln -f $runfolder/CollectAlignmentSummaryMetrics/$sampleID.$postprocID.ali* $BACKUP_BASEDIR/matrics/ ; \\\n"
         . "\'| jsub -j CollectAlignmentSummaryMetrics -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
     print "\n\n************\npicardCollectAlignmentSummaryMetrics:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -700,8 +712,8 @@ sub gatkLocalRealign {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
-        . 'module load samtools/0.1.19 && ' . " \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
+        . 'module load ' . $SAMTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T RealignerTargetCreator' . " -I $runfolder/$Pfolder -o $runfolder/gatkLocalRealign/forRealigner.intervals -R $reference -l INFO &&" . " \\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T IndelRealigner' . " -I $runfolder/$Pfolder -o $runfolder/gatkLocalRealign/$sampleID.$postprocID.realigned.rmduped.mapq.bam -R $reference -l INFO -targetIntervals  $runfolder/gatkLocalRealign/forRealigner.intervals -compress 0 &&" . " \\\n"
@@ -729,13 +741,13 @@ sub gatkQscoreRecalibration {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
-        . 'module load samtools/0.1.19 && ' . " \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
+        . 'module load ' . $SAMTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T BaseRecalibrator' . " -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/recal_data.txt -R $reference -l INFO -knownSites $dbSNP -nct 4 &&" . " \\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T PrintReads' . " -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam -R $reference -l INFO -BQSR $runfolder/gatkQscoreRecalibration/recal_data.txt &&" . " \\\n"
         . 'samtools index' . " $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam && " . " \\\n"
-        . "ln -f $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.ba* $backup_basedir/bam/" . " \\\n"
+        . "ln -f $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.ba* $BACKUP_BASEDIR/bam/" . " \\\n"
         . "\'| jsub -j gatkQscoreRecalibration -b $runfolder  -nm 32000 -np 4 -nn 1 -nw 12:00:00 -ng localhd:100 $depend";
     print "\n\n************\ngatkQscoreRecalibration:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -759,8 +771,8 @@ sub offtargetChr1Counting {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load samtools/0.1.19 && ' . " \\\n"
-        . 'module load perl && ' . " \\\n"
+        . 'module load ' . $SAMTOOLS . ' && ' . " \\\n"
+        . 'module load ' . $PERL . ' && ' . " \\\n"
         . "\\\n"
         . "perl $SCRIPTDIR/offtarget_chr.pl $runfolder/$Pfolder $sampleID $postprocID > $runfolder/offtargetChr1Counting/$sampleID.$postprocID.offtarget.sql \\\n"
         . "\\\n"
@@ -787,35 +799,35 @@ sub gatkGenoTyper {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
-        . 'module load tabix/0.2.6 && ' . " \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
+        . 'module load ' . $TABIX . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T UnifiedGenotyper --output_mode EMIT_ALL_CONFIDENT_SITES -rf BadCigar --min_indel_count_for_genotyping 5 ' . " \\\n"
         . '-stand_call_conf 30 --min_base_quality_score 20 --max_deletion_fraction 0.50 -stand_emit_conf 10 -glm BOTH'. " \\\n" 
         . "-L $bed4chr -I $runfolder/$Pfolder -o $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf -R $reference --dbsnp $dbSNP &&" . " \\\n"
         . "bgzip $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf &&" . " \\\n"
         . "tabix -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf.gz -p vcf &&" . " \\\n" 
-        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf.gz $backup_basedir/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.all.vcf.gz &&" . " \\\n"
-        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf.gz.tbi $backup_basedir/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.all.vcf.gz.tbi &&" . " \\\n"
-        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf.idx $backup_basedir/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.all.vcf.idx &&" . " \\\n"
+        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf.gz $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.all.vcf.gz &&" . " \\\n"
+        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf.gz.tbi $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.all.vcf.gz.tbi &&" . " \\\n"
+        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf.idx $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.all.vcf.idx &&" . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T UnifiedGenotyper --output_mode EMIT_ALL_CONFIDENT_SITES -rf BadCigar --min_indel_count_for_genotyping 5 ' . " \\\n"
         . '-stand_call_conf 30 --min_base_quality_score 20 --max_deletion_fraction 0.50 -stand_emit_conf 10 -glm SNP'. " \\\n" 
         . "-L $bed4chr -I $runfolder/$Pfolder -o $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf -R $reference --dbsnp $dbSNP &&" . " \\\n"
         . "bgzip $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf &&" . " \\\n"
         . "tabix -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf.gz -p vcf &&" . " \\\n" 
-        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf.gz $backup_basedir/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.snp.vcf.gz &&" . " \\\n"
-        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf.gz.tbi $backup_basedir/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.snp.vcf.gz.tbi &&" . " \\\n"
-        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf.idx $backup_basedir/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.snp.vcf.idx &&" . " \\\n"
+        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf.gz $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.snp.vcf.gz &&" . " \\\n"
+        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf.gz.tbi $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.snp.vcf.gz.tbi &&" . " \\\n"
+        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf.idx $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.snp.vcf.idx &&" . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T UnifiedGenotyper --output_mode EMIT_ALL_CONFIDENT_SITES -rf BadCigar --min_indel_count_for_genotyping 5 ' . " \\\n"
         . '-stand_call_conf 30 --min_base_quality_score 20 --max_deletion_fraction 0.50 -stand_emit_conf 10 -glm INDEL'. " \\\n" 
         . "-L $bed4chr -I $runfolder/$Pfolder -o $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf -R $reference --dbsnp $dbSNP &&" . " \\\n"
         . "bgzip $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf &&" . " \\\n"
         . "tabix -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf.gz -p vcf &&" . " \\\n" 
-        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf.gz $backup_basedir/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.indel.vcf.gz  &&" . " \\\n"
-        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf.gz.tbi $backup_basedir/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.indel.vcf.gz.tbi  &&" . " \\\n"
-        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf.idx $backup_basedir/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.indel.vcf.idx ;" . " \\\n"
+        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf.gz $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.indel.vcf.gz  &&" . " \\\n"
+        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf.gz.tbi $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.indel.vcf.gz.tbi  &&" . " \\\n"
+        . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf.idx $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.indel.vcf.idx ;" . " \\\n"
         . "\'| jsub -j gatkGenoTyper -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 48:00:00 -ng localhd:10 $depend";
     print "\n\n************\ngatkGenoTyper:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -839,12 +851,12 @@ sub gatkCovCalExomeTargets {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
-        . "module load perl && \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
+        . 'module load ' . $PERL . ' && \\\n'
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T DepthOfCoverage --printBaseCounts --includeRefNSites ' . $depthct 
         . " -L $bed4chr -I $runfolder/$Pfolder -o $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.exome.dp -R $reference ;" . " \\\n"
-        . "ln -f $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.exome.dp* $backup_basedir/matrics/ && \\\n"
+        . "ln -f $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.exome.dp* $BACKUP_BASEDIR/matrics/ && \\\n"
         . "perl $SCRIPTDIR/calculate_qual_cvg_exome.pl $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.exome.dp.sample_summary $sampleID $postprocID $runfolder/gatkCovCalExomeTargets/ > $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.qualCvgExome.sql; \\\n"
         . " \\\n"
         . "\'| jsub -j gatkCovCalExomeTargets -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:1 $depend";
@@ -870,12 +882,12 @@ sub gatkCovCalGP {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
-        . "module load perl && \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
+        . "module load $PERL && \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T DepthOfCoverage --printBaseCounts --includeRefNSites ' . $depthct 
         . " -L " . $panelExon10bpPadFull{$genePanel} . " -I $runfolder/$Pfolder -o $runfolder/gatkCovCalGP/$sampleID.$postprocID" . '.genepanel.dp' . " -R $reference &&" . " \\\n"
-        . "ln -f $runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp* $backup_basedir/matrics/ && \\\n"
+        . "ln -f $runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp* $BACKUP_BASEDIR/matrics/ && \\\n"
         . "perl $SCRIPTDIR/calculate_qual_cvg_gp.pl $runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp.sample_summary $sampleID $postprocID $runfolder/gatkCovCalGP/ $panelExon10bpPadFull{$genePanel} > $runfolder/gatkCovCalGP/$sampleID.$postprocID.qualCvgGP.sql; \\\n"
         . "\'| jsub -j gatkCovCalGP -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:1 $depend";
     print "\n\n************\ngatkCovCalExomeGP:\n$cmd\n************\n\n";
@@ -900,7 +912,7 @@ sub gatkRawVariantsCall {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
         . "\\\n"
         . 'chr=${PBS_ARRAYID};' . " \\\n"
         . 'if [ ${chr} = "23" ]; then'
@@ -951,7 +963,7 @@ sub gatkRawVariants {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T CombineVariants --printComplexMerges -genotypeMergeOptions PRIORITIZE -l INFO' . " \\\n"
         . '-priority raw_chr1,raw_chr2,raw_chr3,raw_chr4,raw_chr5,raw_chr6,raw_chr7,raw_chr8,raw_chr9,raw_chr10,raw_chr11,raw_chr12,raw_chr13,raw_chr14,raw_chr15,raw_chr16,raw_chr17,raw_chr18,raw_chr19,raw_chr20,raw_chr21,raw_chr22,raw_chrX,raw_chrY,raw_chrM'. " \\\n" 
@@ -985,10 +997,10 @@ sub gatkFilteredRecalSNP {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T VariantRecalibrator -mode SNP -tranche 100.0 -tranche 99.9 -tranche 99.0 -tranche 90.0 -an DP -an QD -an FS -an MQRankSum -an ReadPosRankSum ' . " \\\n"
-        . " -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP \\\n"
+        . "$maxGaussians_SNP -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP \\\n"
         . "-recalFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal -rscriptFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.plot.R -resource:omni,known=false,training=true,truth=true,prior=12.0 $omni_vcf \\\n"
         . "-resource:1000G,known=false,training=true,truth=false,prior=10.0 $g1k_snp_vcf -resource:hapmap,known=false,training=true,truth=true,prior=15.0 $hapmap_vcf  \\\n"
         . "-input $runfolder/$Pfolder_snp  -R $reference &&" . " \\\n"
@@ -1024,10 +1036,10 @@ sub gatkFilteredRecalINDEL {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T VariantRecalibrator -mode INDEL -tranche 100.0 -tranche 99.9 -tranche 99.0 -tranche 90.0 -an DP -an FS -an MQRankSum -an ReadPosRankSum ' . " \\\n"
-        . "--maxGaussians 1 -tranchesFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.tranches -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP \\\n"
+        . "$maxGaussians_INDEL -tranchesFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.tranches -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP \\\n"
         . "-recalFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.recal -rscriptFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.plot.R --minNumBadVariants 5000 \\\n"
         . "-resource:mills,known=true,training=true,truth=true,prior=12.0 $g1k_indel_vcf -input $runfolder/$Pfolder_indel  -R $reference &&" . " \\\n"
         . "\\\n"
@@ -1066,8 +1078,8 @@ sub gatkFilteredRecalVariant {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load gatk/2.8.1 && ' . " \\\n"
-        . 'module load perl &&' . " \\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
+        . 'module load ' . $PERL . ' &&' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T CombineVariants --printComplexMerges -genotypeMergeOptions PRIORITIZE -priority recal_indels,recal_snps -l INFO ' . " \\\n"
         . " -o $runfolder/gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf -R $reference " . " \\\n"
@@ -1075,7 +1087,7 @@ sub gatkFilteredRecalVariant {
         . "\\\n"
         . "perl $SCRIPTDIR/calculate_variant_exome_db.pl $runfolder/$snp_eval $runfolder/$indel_eval $sampleID $postprocID $runfolder/gatkFilteredRecalVariant > $runfolder/gatkFilteredRecalVariant/$sampleID.$postprocID.variants_exome_metrics.sql && \\\n"
         . "\\\n"
-        . "ln -f $runfolder/gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf* $backup_basedir/recal_vcf/ ;"
+        . "ln -f $runfolder/gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf* $BACKUP_BASEDIR/recal_vcf/ ;"
         . "\'| jsub -j gatkFilteredRecalVariant -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 03:00:00 -ng localhd:10 $depend";
     print "\n\n************\ngatkFilteredRecalVariant:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -1101,14 +1113,14 @@ sub windowBed {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load bedtools/2.17.0 && ' . " \\\n"
+        . 'module load ' . $BEDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . "windowBed -a $runfolder/$Pfolder2 -b $clinvar_indel_vcf -w 20 > $runfolder/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv &&" . " \\\n" 
         . "windowBed -a $runfolder/$Pfolder2 -b $hgmdAML        -w 20 > $runfolder/windowBed/$sampleID.$postprocID.hgmd.window20bp.indel.tsv &&" . " \\\n" 
         . "windowBed -a $runfolder/$Pfolder1 -b $hgmdAS -w 3 > $runfolder/windowBed/$sampleID.$postprocID.hgmd.window3bp.snp.tsv &&" . " \\\n" 
         . "cat  $runfolder/windowBed/$sampleID.$postprocID.hgmd.window20bp.indel.tsv $runfolder/windowBed/$sampleID.$postprocID.hgmd.window3bp.snp.tsv > $runfolder/windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv && " . " \\\n" 
-        . "ln -f $runfolder/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv $backup_basedir/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv && " . " \\\n"
-        . "ln -f $runfolder/windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv $backup_basedir/windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv " . " \\\n"
+        . "ln -f $runfolder/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv $BACKUP_BASEDIR/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv && " . " \\\n"
+        . "ln -f $runfolder/windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv $BACKUP_BASEDIR/windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv " . " \\\n"
         . "\'| jsub -j windowBed -b $runfolder  -nm 12000 -np 1 -nn 1 -nw 02:00:00 -ng localhd:1 $depend";
     print "\n\n************\nwindowBed:\n$cmd\n************\n\n";
     my $cmdOut = `$cmd`;
@@ -1135,88 +1147,88 @@ sub annovar {
         . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/convert2annovar.pl -format vcf4 \\\n"
         . "$runfolder/$Pfolder > $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar &&" . " \\\n" 
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype ljb26_sift \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype ljb26_sift \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -score_threshold 0 -dbtype ljb23_pp2hvar \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -score_threshold 0 -dbtype ljb23_pp2hvar \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -regionanno -buildver hg19 -dbtype segdup \\\n" 
+        . "$ANNOVAR -regionanno -buildver hg19 -dbtype segdup \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype cg46 \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype cg46 \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -otherinfo -buildver hg19 -dbtype ljb26_mt \\\n" 
+        . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype ljb26_mt \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype snp138 \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype snp138 \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype esp6500si_all \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype esp6500si_all \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype esp6500si_aa \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype esp6500si_aa \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype esp6500si_ea \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype esp6500si_ea \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype 1000g2014sep_all \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_all \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype 1000g2014sep_afr \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_afr \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype 1000g2014sep_amr \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_amr \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype 1000g2014sep_eas \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_eas \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype 1000g2014sep_sas \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_sas \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype 1000g2014sep_eur \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_eur \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype clinvar_20140929 \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype clinvar_20140929 \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19_hgmd -dbtype generic --genericdbfile hg19_hgmd.txt \\\n" 
+        . "$ANNOVAR -filter -buildver hg19_hgmd -dbtype generic --genericdbfile hg19_hgmd.txt \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl --regionanno -buildver hg19_gene_panel -dbtype bed --bedfile $panelExon10bpPadBedFile{$genePanel} \\\n" 
+        . "$ANNOVAR --regionanno -buildver hg19_gene_panel -dbtype bed --bedfile $panelExon10bpPadBedFile{$genePanel} \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl --geneanno --hgvs -buildver hg19 -dbtype refgene \\\n" 
+        . "$ANNOVAR --geneanno --hgvs -buildver hg19 -dbtype refgene \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl --regionanno --colsWanted 4 -buildver hg19_region_homology -dbtype bed --bedfile hg19wUnassembled_RefSeqGenes_refGene.Jan312014.exons_no_padding.sort.merge.blat.sort.bed \\\n" 
+        . "$ANNOVAR --regionanno --colsWanted 4 -buildver hg19_region_homology -dbtype bed --bedfile hg19wUnassembled_RefSeqGenes_refGene.Jan312014.exons_no_padding.sort.merge.blat.sort.bed \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl --regionanno --colsWanted 4 -buildver hg19_disease_associations -dbtype bed --bedfile $panelBedFile{$genePanel} \\\n" 
+        . "$ANNOVAR --regionanno --colsWanted 4 -buildver hg19_disease_associations -dbtype bed --bedfile $panelBedFile{$genePanel} \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -otherinfo -buildver hg19 -dbtype ljb26_cadd \\\n" 
+        . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype ljb26_cadd \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -otherinfo -buildver hg19 -dbtype ljb26_ma \\\n" 
+        . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype ljb26_ma \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -otherinfo -buildver hg19 -dbtype ljb23_phylop \\\n" 
+        . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype ljb23_phylop \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19 -dbtype cosmic68wgs \\\n" 
+        . "$ANNOVAR -filter -buildver hg19 -dbtype cosmic68wgs \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl --geneanno --hgvs -buildver hg19 -dbtype ensGene -out $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.ensGene \\\n" 
+        . "$ANNOVAR --geneanno --hgvs -buildver hg19 -dbtype ensGene -out $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.ensGene \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -otherinfo -buildver hg19 -dbtype exac02 \\\n" 
+        . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype exac02 \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl -filter -buildver hg19_cgWellderly -dbtype generic --genericdbfile hg19_cgWellderly.txt \\\n" 
+        . "$ANNOVAR -filter -buildver hg19_cgWellderly -dbtype generic --genericdbfile hg19_cgWellderly.txt \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
         . "perl $SCRIPTDIR/calculate_variant_genepanel_db.pl $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed $sampleID $postprocID $runfolder/annovar > $runfolder/annovar/$sampleID.$postprocID.variants_gp_metrics.sql ; \\\n"
@@ -1244,10 +1256,10 @@ sub annovar_newGP {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl --regionanno -buildver hg19_gene_panel -dbtype bed --bedfile $panelExon10bpPadBedFile{$genePanel} \\\n" 
+        . "$ANNOVAR --regionanno -buildver hg19_gene_panel -dbtype bed --bedfile $panelExon10bpPadBedFile{$genePanel} \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl --regionanno --colsWanted 4 -buildver hg19_disease_associations -dbtype bed --bedfile $panelBedFile{$genePanel} \\\n" 
+        . "$ANNOVAR --regionanno --colsWanted 4 -buildver hg19_disease_associations -dbtype bed --bedfile $panelBedFile{$genePanel} \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
         . "perl $SCRIPTDIR/calculate_variant_genepanel_db.pl $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed $sampleID $postprocID $runfolder/annovar > $runfolder/annovar/$sampleID.$postprocID.variants_gp_metrics.sql ; \\\n"
@@ -1281,7 +1293,7 @@ sub snpEff {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load perl/5.18.2 && ' . " \\\n"
+        . 'module load ' . $PERL . ' && ' . " \\\n"
         . "\\\n"
         . "/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Xmx11G /hpf/largeprojects/pray/llau/programs/snpEff/current/snpEff/snpEff.jar eff \\\n"
         . "-v -i vcf -o vcf -c /hpf/largeprojects/pray/llau/programs/snpEff/current/snpEff/snpEff.config -spliceSiteSize 7 hg19 \\\n" 
@@ -1327,6 +1339,7 @@ sub snpEff {
         . "cd $runfolder/snpEff/ && sha256sum sid_$sampleID.aid_$postprocID.var.annotated.tsv > sid_$sampleID.aid_$postprocID.var.annotated.tsv.sha256sum  && \\\n"
         . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx.sha256sum && \\\n"
         . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt  >  sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt.sha256sum \\\n"
+        . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
         . "\\\n"
         . "\'| jsub -j snpEff -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 02:00:00 -ng localhd:1 $depend";
     print "\n\n************\nsnpeEff-annotation:\n$cmd\n************\n\n";
@@ -1355,7 +1368,7 @@ sub snpEff_newGP {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'module load perl/5.18.2 && ' . " \\\n"
+        . 'module load ' . $PERL . ' && ' . " \\\n"
         . "\\\n"
         . "perl $SCRIPTDIR/merge_snpEff.pl /hpf/largeprojects/pray/llau/internal_databases/txLength/refseq.cds_transcript_length.Aug132014.txt \\\n"
         . "$gene_panel_text{$genePanel} $runfolder/snpEff/$sampleID.$postprocID.splice_site.refseq.vcf $runfolder/snpEff/$sampleID.$postprocID.splice_site.ens.vcf \\\n"
@@ -1487,7 +1500,7 @@ sub annovarMutect {
         . "\\\n"
         . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/annovarMutect/$sampleID.$postprocID\_annotated.rda $runfolder/annovarMutect/$sampleID.$postprocID.csv ; "
         . "\\\n"
-        . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/annovarMutect/$sampleID.$postprocID.csv"
+        . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/annovarMutect/$sampleID.$postprocID.csv"
         . "\\\n"
         . "\'| jsub -j annovarMutect -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 08:00:00 -ng localhd:1 $depend";
     print "\n\n************\nannovarMutect:\n$cmd\n************\n\n";
