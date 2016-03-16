@@ -31,19 +31,21 @@ GetOptions ("sampleID|s=s" => \$sampleID,
             "normalPair|n=s"   => \$normalPair)  
             or die("Error in command line arguments\n");
 
-our $reference            = "/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/human_g1k_v37_decoy.fasta";
-our $dbSNP                = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/dbsnp_138.b37.vcf';
-our $omni_vcf             = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/1000G_omni2.5.b37.vcf';
-our $g1k_snp_vcf          = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/1000G_phase1.snps.high_confidence.b37.vcf';
-our $g1k_indel_vcf        = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/Mills_and_1000G_gold_standard.indels.b37.vcf';
-our $clinvar_indel_vcf    = '/hpf/largeprojects/pray/llau/internal_databases/clinVar/clinvar_20131230.indels.vcf';
-our $hgmdAML              = '/hpf/largeprojects/pray/llau/internal_databases/hgmd/current/HGMD_Advanced_Micro_Lesions.sort.bed';
-our $hgmdAS               = '/hpf/largeprojects/pray/llau/internal_databases/hgmd/current/HGMD_Advanced_Substitutions.sort.bed';
-our $hapmap_vcf           = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/hapmap_3.3.b37.vcf';
-our $bed4chr              = ''; 
-our $depthct              = '';
-our $maxGaussians_SNP     = $fastqDir !~ /000000000/ ? '--maxGaussians 8' : '--maxGaussians 0';
-our $maxGaussians_INDEL   = $fastqDir !~ /000000000/ ? '--maxGaussians 1' : '--maxGaussians 0';
+our $reference               = "/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/human_g1k_v37_decoy.fasta";
+our $dbSNP                   = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/dbsnp_138.b37.vcf';
+our $omni_vcf                = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/1000G_omni2.5.b37.vcf';
+our $g1k_snp_vcf             = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/1000G_phase1.snps.high_confidence.b37.vcf';
+our $g1k_indel_vcf           = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/Mills_and_1000G_gold_standard.indels.b37.vcf';
+our $clinvar_indel_vcf       = '/hpf/largeprojects/pray/llau/internal_databases/clinVar/clinvar_20131230.indels.vcf';
+our $hgmdAML                 = '/hpf/largeprojects/pray/llau/internal_databases/hgmd/current/HGMD_Advanced_Micro_Lesions.sort.bed';
+our $hgmdAS                  = '/hpf/largeprojects/pray/llau/internal_databases/hgmd/current/HGMD_Advanced_Substitutions.sort.bed';
+our $hapmap_vcf              = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/hapmap_3.3.b37.vcf';
+our $bed4chr                 = ''; 
+our $depthct                 = '';
+our $maxGaussians_SNP        = $fastqDir !~ /000000000/ ? '--maxGaussians 8' : '--maxGaussians 0';
+our $maxGaussians_INDEL      = $fastqDir !~ /000000000/ ? '--maxGaussians 1' : '--maxGaussians 0';
+our $maxReadsForRealignment  = $fastqDir !~ /000000000/ ? '' : '--maxReadsForRealignment 3000';
+our $max_deletion_fraction   = $fastqDir !~ /000000000/ ? '--max_deletion_fraction 0.5' : '--max_deletion_fraction 0.3';
 our %pipeID               = ('exome.gp10' => 'ilmn.cr.p2',
                              'hsp.gp4' => 'ilmn.cr.p2',
                              'unknown.gp11' => 'ilmn.cr.p2',
@@ -63,6 +65,7 @@ our %gene_panel_text      = ('exome.gp10' => '/hpf/largeprojects/pray/llau/gene_
                              'ai.gp18' => '/hpf/largeprojects/pray/llau/gene_panels/AI_20150304/AI_20150304.txt',
                              'renal.gp17' => '/hpf/largeprojects/pray/llau/gene_panels/RENAL_20150304/RENAL_20150304.txt',
                              'noonan.gp7' => '/hpf/largeprojects/pray/llau/gene_panels/NOONAN_20150304/NOONAN_20150304.txt',
+                             'nonf1.gp21' => '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.txt',
                              'cancer.gp19' => '/hpf/largeprojects/pray/llau/gene_panels/CANCER_20151016/CANCER_20151016.txt',
                              'hsp.gp20' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20151122/HSP_20151122.txt'
                               );
@@ -74,6 +77,7 @@ our %panelExon10bpPadFull    = ('exome.gp10' => '/hpf/largeprojects/pray/llau/ge
                              'ai.gp18' => '/hpf/largeprojects/pray/llau/gene_panels/AI_20150304/AI_20150304.exon_10bp_padding.bed',
                              'renal.gp17' => '/hpf/largeprojects/pray/llau/gene_panels/RENAL_20150304/RENAL_20150304.exon_10bp_padding.bed',
                              'noonan.gp7' => '/hpf/largeprojects/pray/llau/gene_panels/NOONAN_20150304/NOONAN_20150304.exon_10bp_padding.bed',
+                             'nonf1.gp21' => '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.exon_10bp_padding.bed',
                              'cancer.gp19' => '/hpf/largeprojects/pray/llau/gene_panels/CANCER_20151016/CANCER_20151016.exon_10bp_padding.bed',
                              'hsp.gp20' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20151122/HSP_20151122.exon_10bp_padding.bed'
                               );
@@ -85,6 +89,7 @@ our %panelExon10bpPadBedFile  = ('exome.gp10' => 'refSeqLongest_exICCG_CR.ICCG_i
                              'ai.gp18' => 'AI_20150304.exon_10bp_padding.bed',
                              'renal.gp17' => 'RENAL_20150304.exon_10bp_padding.bed',
                              'noonan.gp7' => 'NOONAN_20150304.exon_10bp_padding.bed',
+                             'nonf1.gp21' => 'NOONAN_NF1.exon_10bp_padding.bed',
                              'cancer.gp19' => 'CANCER_20151016.exon_10bp_padding.bed',
                              'hsp.gp20' => 'HSP_20151122.exon_10bp_padding.bed'
                               );
@@ -96,6 +101,7 @@ our %panelBedFile             = ('exome.gp10' => 'hg19wUnassembled_RefSeqGenes_r
                              'ai.gp18' => 'AI_20150304.panel.bed',
                              'renal.gp17' => 'RENAL_20150304.panel.bed',
                              'noonan.gp7' => 'NOONAN_20150304.panel.bed',
+                             'nonf1.gp21' => 'NOONAN_NF1.exon_10bp_padding.bed',
                              'cancer.gp19' => 'CANCER_20151016.gene_100bp_padding.bed',
                              'hsp.gp20' => 'HSP_20151122.panel.bed'
                               );
@@ -107,6 +113,7 @@ our %panelBedFileFull         = ('exome.gp10' => '/hpf/largeprojects/pray/llau/p
                              'ai.gp18' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/AI_20150304.panel.bed',
                              'renal.gp17' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/RENAL_20150304.panel.bed',
                              'noonan.gp7' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/NOONAN_20150304.panel.bed',
+                             'nonf1.gp7' => '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.exon_10bp_padding.bed',
                              'cancer.gp19' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/CANCER_20151016.gene_100bp_padding.bed',
                              'hsp.gp20' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/HSP_20151122.panel.bed'
                               );
@@ -154,8 +161,8 @@ if ( $sampleID eq '' || $postprocID eq '' || $fastqDir eq '' || $genePanel eq ''
 $pipeline_lst{$pipeline}('0','1');
 
 sub exome {
-    $bed4chr   = '/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.bed';
-    $depthct   = ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500';
+    $bed4chr   = $fastqDir !~ /0000000/ ? '/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.bed' : '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.exon_10bp_padding.bed';
+    $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 50 -ct 100 --start 1 --stop 3000';
     my @jobID_and_Pfolder;
     my @jobID_and_Pfolder1;
     my @jobID_and_Pfolder2;
@@ -221,9 +228,8 @@ sub exome {
 
 sub exome_newGP {
     my @jobID_and_Pfolder = ('',"gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam");
-    #my @jobID_and_Pfolder3 = ('',"gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf");
-    $bed4chr   = '/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.bed';
-    $depthct   = ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500';
+    $bed4chr   = $fastqDir !~ /0000000/ ? '/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.bed' : '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.exon_10bp_padding.bed';
+    $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 50 -ct 100 --start 1 --stop 3000';
     calAF:                                            &calAF(@jobID_and_Pfolder);
     gatkCovCalGP:                                      &gatkCovCalGP(@jobID_and_Pfolder);
     annovar_newGP:             @jobID_and_Pfolder   =  &annovar_newGP(@jobID_and_Pfolder);
@@ -448,6 +454,7 @@ sub bwa_mem {
     my $file_prefix = `ls $fastqDir/*_R1_1.fastq.gz`;
     chomp($file_prefix);
     $file_prefix =~ s/_R1_1.fastq.gz$//;
+    my $short_prefix = (split(/\//,$file_prefix))[-1];
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
@@ -455,8 +462,10 @@ sub bwa_mem {
         . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . 'mkdir $TMPDIR/bwa-mem && ' . " \\\n"
-        . 'bwa mem -R "@RG\tID:' . $sampleID . '\tSM:' . $sampleID . '\tLB:' . $sampleID . '\tPL:illumina"' .  " -t 4 $reference $file_prefix\_R1_" . '$PBS_ARRAYID.fastq.gz' . " $file_prefix\_R2_" . '$PBS_ARRAYID.fastq.gz ' . "|" . " \\\n"
-        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx4G $PICARD/SortSam.jar INPUT=/dev/stdin OUTPUT=' . $runfolder  . '/bwaAlign/picard.$PBS_ARRAYID.sorted.bam VALIDATION_STRINGENCY=SILENT SORT_ORDER=coordinate TMP_DIR=$TMPDIR/;' . " \\\n"
+        . "cp $file_prefix\_R1_" . '$PBS_ARRAYID.fastq.gz' . " $file_prefix\_R2_" . '$PBS_ARRAYID.fastq.gz $TMPDIR/bwa-mem' . " \\\n"
+        . 'bwa mem -R "@RG\tID:' . $sampleID . '\tSM:' . $sampleID . '\tLB:' . $sampleID . '\tPL:illumina"' .  " -t 4 $reference \$TMPDIR/bwa-mem/$short_prefix\_R1_" . '$PBS_ARRAYID.fastq.gz' . " \$TMPDIR/bwa-mem/$short_prefix\_R2_" . '$PBS_ARRAYID.fastq.gz ' . "|" . " \\\n"
+        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx4G $PICARD/SortSam.jar INPUT=/dev/stdin OUTPUT=$TMPDIR/bwa-mem/picard.$PBS_ARRAYID.sorted.bam VALIDATION_STRINGENCY=SILENT SORT_ORDER=coordinate TMP_DIR=$TMPDIR &&' . " \\\n"
+        . 'cp $TMPDIR/bwa-mem/picard.$PBS_ARRAYID.sorted.bam ' . " $runfolder/bwaAlign/ && \\\n"
         . 'rm -rf $TMPDIR/bwa-mem;'
         . "\'| jsub -j bwaAlign -b $runfolder  -nm 32000 --te $filenum -np 4 -nn 1 -nw 03:00:00 -ng localhd:100 $depend" ;
     print "\n\n************\nbwaAlign:\n $cmd\n************\n\n";
@@ -484,7 +493,17 @@ sub picardMarkDup {
     for (1..$filenum) {
         $inputfiles .= " INPUT=$runfolder/$Pfolder/picard.$_.sorted.bam";
     }
-    my $cmd = 'echo \''
+    my $cmd = "";
+    if ($fastqDir =~ /0000000/) {
+        my $cmd = 'echo \''
+        . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
+        . "\\\n"
+        . 'ln -f ' . $inputfiles . " $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam  &&" . " \\\n"
+        . "sleep 30 && \\\n"
+        . "\'| jsub -j picardMarkDup -b $runfolder  -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
+    }
+    else {
+        my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
         . 'module load ' . $PICARDTOOLS . ' ' . $PERL . ' && ' . " \\\n"
@@ -493,6 +512,7 @@ sub picardMarkDup {
         . "ln -f $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $BACKUP_BASEDIR/matrics/ ; \\\n"
         . "perl $SCRIPTDIR/calculate_qual_rmdup.pl $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $sampleID $postprocID > $runfolder/picardMarkDup/$sampleID.$postprocID.rmdup.sql \\\n"
         . "\'| jsub -j picardMarkDup -b $runfolder  -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
+    }
     print "\n\n************\npicardMarkDup:\n $cmd\n************\n\n";
     my $cmdOut = `$cmd`;
     print "============\n$cmdOut============\n\n";
@@ -716,7 +736,7 @@ sub gatkLocalRealign {
         . 'module load ' . $SAMTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T RealignerTargetCreator' . " -I $runfolder/$Pfolder -o $runfolder/gatkLocalRealign/forRealigner.intervals -R $reference -l INFO &&" . " \\\n"
-        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T IndelRealigner' . " -I $runfolder/$Pfolder -o $runfolder/gatkLocalRealign/$sampleID.$postprocID.realigned.rmduped.mapq.bam -R $reference -l INFO -targetIntervals  $runfolder/gatkLocalRealign/forRealigner.intervals -compress 0 &&" . " \\\n"
+        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T IndelRealigner' . " -I $runfolder/$Pfolder -o $runfolder/gatkLocalRealign/$sampleID.$postprocID.realigned.rmduped.mapq.bam -R $reference -l INFO -targetIntervals  $runfolder/gatkLocalRealign/forRealigner.intervals -compress 0 $maxReadsForRealignment &&" . " \\\n"
         . 'samtools index' . " $runfolder/gatkLocalRealign/$sampleID.$postprocID.realigned.rmduped.mapq.bam ; " 
         . "\'| jsub -j gatkLocalRealign -b $runfolder  -nm 32000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:100 $depend";
     print "\n\n************\ngatkLocalRealign:\n$cmd\n************\n\n";
@@ -803,7 +823,7 @@ sub gatkGenoTyper {
         . 'module load ' . $TABIX . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T UnifiedGenotyper --output_mode EMIT_ALL_CONFIDENT_SITES -rf BadCigar --min_indel_count_for_genotyping 5 ' . " \\\n"
-        . '-stand_call_conf 30 --min_base_quality_score 20 --max_deletion_fraction 0.50 -stand_emit_conf 10 -glm BOTH'. " \\\n" 
+        . "-stand_call_conf 30 --min_base_quality_score 20 $max_deletion_fraction -stand_emit_conf 10 -glm BOTH". " \\\n" 
         . "-L $bed4chr -I $runfolder/$Pfolder -o $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf -R $reference --dbsnp $dbSNP &&" . " \\\n"
         . "bgzip $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf &&" . " \\\n"
         . "tabix -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf.gz -p vcf &&" . " \\\n" 
@@ -812,7 +832,7 @@ sub gatkGenoTyper {
         . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.all.vcf.idx $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.all.vcf.idx &&" . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T UnifiedGenotyper --output_mode EMIT_ALL_CONFIDENT_SITES -rf BadCigar --min_indel_count_for_genotyping 5 ' . " \\\n"
-        . '-stand_call_conf 30 --min_base_quality_score 20 --max_deletion_fraction 0.50 -stand_emit_conf 10 -glm SNP'. " \\\n" 
+        . "-stand_call_conf 30 --min_base_quality_score 20 $max_deletion_fraction -stand_emit_conf 10 -glm SNP". " \\\n" 
         . "-L $bed4chr -I $runfolder/$Pfolder -o $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf -R $reference --dbsnp $dbSNP &&" . " \\\n"
         . "bgzip $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf &&" . " \\\n"
         . "tabix -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf.gz -p vcf &&" . " \\\n" 
@@ -821,7 +841,7 @@ sub gatkGenoTyper {
         . "ln -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.snp.vcf.idx $BACKUP_BASEDIR/region_vcf/$sampleID.$postprocID.$genePanel.genotyper.snp.vcf.idx &&" . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T UnifiedGenotyper --output_mode EMIT_ALL_CONFIDENT_SITES -rf BadCigar --min_indel_count_for_genotyping 5 ' . " \\\n"
-        . '-stand_call_conf 30 --min_base_quality_score 20 --max_deletion_fraction 0.50 -stand_emit_conf 10 -glm INDEL'. " \\\n" 
+        . "-stand_call_conf 30 --min_base_quality_score 20 $max_deletion_fraction -stand_emit_conf 10 -glm INDEL". " \\\n" 
         . "-L $bed4chr -I $runfolder/$Pfolder -o $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf -R $reference --dbsnp $dbSNP &&" . " \\\n"
         . "bgzip $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf &&" . " \\\n"
         . "tabix -f $runfolder/gatkGenoTyper/$sampleID.$postprocID.genotyper.indel.vcf.gz -p vcf &&" . " \\\n" 
@@ -852,7 +872,7 @@ sub gatkCovCalExomeTargets {
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
         . 'module load ' . $GATK . ' && ' . " \\\n"
-        . 'module load ' . $PERL . ' && \\\n'
+        . 'module load ' . $PERL . " && \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T DepthOfCoverage --printBaseCounts --includeRefNSites ' . $depthct 
         . " -L $bed4chr -I $runfolder/$Pfolder -o $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.exome.dp -R $reference ;" . " \\\n"
@@ -923,7 +943,7 @@ sub gatkRawVariantsCall {
         . '    chr=M; fi;'
         . " \\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T UnifiedGenotyper -rf BadCigar --min_indel_count_for_genotyping 5 ' . " \\\n"
-        . '-stand_call_conf 30 --min_base_quality_score 20 --max_deletion_fraction 0.50 -stand_emit_conf 10 -glm BOTH'. " \\\n" 
+        . "-stand_call_conf 30 --min_base_quality_score 20 $max_deletion_fraction -stand_emit_conf 10 -glm BOTH". " \\\n" 
         . '-L ${chr}' . " \\\n"
         . "-I $runfolder/$Pfolder -o $runfolder/gatkRawVariantsCall/$sampleID.$postprocID" . '.raw_variants.chr${chr}.vcf' . " -R $reference --dbsnp $dbSNP &&" . " \\\n"
         . "\\\n"
