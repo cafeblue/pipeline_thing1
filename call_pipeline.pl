@@ -498,7 +498,7 @@ sub picardMarkDup {
         $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
-        . 'ln -f ' . $inputfiles . " $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam  &&" . " \\\n"
+        . "ln -f $runfolder/$Pfolder/picard.1.sorted.bam  $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam  &&" . " \\\n"
         . "sleep 30 && \\\n"
         . "\'| jsub -j picardMarkDup -b $runfolder  -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
     }
