@@ -56,7 +56,7 @@ foreach my $idpair (@$idpair_ref) {
         print $update_CS,"\n";
         my $sthQNS = $dbh->prepare($update_CS) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
-        my $msg = "There are jobs idled over 30 hours of sampleID: " . $$idpair[0] . " postprocID: " . $$idpair[1] . " currentStatus is set to 0, Please delete the running folder on HPF.\n";
+        my $msg = "There are jobs failed to be submitted or idled over 30 hours of sampleID: " . $$idpair[0] . " postprocID: " . $$idpair[1] . " currentStatus is set to 0, Please delete the running folder on HPF.\n";
         print STDERR $msg;
         &email_error($msg);
     }
@@ -78,7 +78,7 @@ sub check_unfinished_sample {
 sub update_hpfJobStatus {
     my $sampleID = shift;
     my $postprocID = shift;
-    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobID IS NULL AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP AND TIMESTAMPADD(HOUR,3,time)>CURRENT_TIMESTAMP";
+    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobID IS NULL AND TIMESTAMPADD(HOUR,1,time)<CURRENT_TIMESTAMP AND TIMESTAMPADD(HOUR,2,time)>CURRENT_TIMESTAMP";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
@@ -118,8 +118,18 @@ sub check_all_jobs {
 sub check_idle_jobs {
     my $sampleID = shift;
     my $postprocID = shift;
-    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
+
+    #There are some jobs not been submitted after 2 hours.
+    my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobID IS NULL AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP";
     my $sthQUF = $dbh->prepare($query_nonjobID);
+    $sthQUF->execute();
+    if ($sthQUF->rows() != 0) {
+        return 1;
+    }
+
+    # There are some jobs idle over 24 hours.
+    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
+    $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
         return 1;
