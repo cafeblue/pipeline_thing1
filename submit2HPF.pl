@@ -61,6 +61,8 @@ sub main {
         }
         elsif ($sampleType eq 'T' || $sampleType eq 't' || $sampleType eq 'tumor' || $sampleType eq 'tumour') {
             &insert_jobstatus($sampleID,$postprocID,"cancerT");
+            print "$sshdat \"mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
+            `$sshdat "mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
             print "$sshdat \"mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
             `$sshdat "mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
@@ -117,6 +119,8 @@ sub main {
         }
         else {
             &insert_jobstatus($sampleID,$postprocID,"cancerN");
+            print "$sshdat \"mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
+            `$sshdat "mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
             print "$sshdat \"mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
             `$sshdat "mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
@@ -171,6 +175,8 @@ sub main {
         ### no previous run found                                    ####
         else {
             &insert_jobstatus($sampleID,$postprocID,"exome");
+            print "$sshdat \"mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
+            `$sshdat "mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
             print "$sshdat \"mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
             `$sshdat "mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
