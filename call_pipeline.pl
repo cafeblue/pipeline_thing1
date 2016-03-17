@@ -462,7 +462,7 @@ sub bwa_mem {
         . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . 'mkdir $TMPDIR/bwa-mem && ' . " \\\n"
-        . "cp $file_prefix\_R1_" . '$PBS_ARRAYID.fastq.gz' . " $file_prefix\_R2_" . '$PBS_ARRAYID.fastq.gz $TMPDIR/bwa-mem' . " \\\n"
+        . "cp $file_prefix\_R1_" . '$PBS_ARRAYID.fastq.gz' . " $file_prefix\_R2_" . '$PBS_ARRAYID.fastq.gz $TMPDIR/bwa-mem &&' . " \\\n"
         . 'bwa mem -R "@RG\tID:' . $sampleID . '\tSM:' . $sampleID . '\tLB:' . $sampleID . '\tPL:illumina"' .  " -t 4 $reference \$TMPDIR/bwa-mem/$short_prefix\_R1_" . '$PBS_ARRAYID.fastq.gz' . " \$TMPDIR/bwa-mem/$short_prefix\_R2_" . '$PBS_ARRAYID.fastq.gz ' . "|" . " \\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx4G $PICARD/SortSam.jar INPUT=/dev/stdin OUTPUT=$TMPDIR/bwa-mem/picard.$PBS_ARRAYID.sorted.bam VALIDATION_STRINGENCY=SILENT SORT_ORDER=coordinate TMP_DIR=$TMPDIR &&' . " \\\n"
         . 'cp $TMPDIR/bwa-mem/picard.$PBS_ARRAYID.sorted.bam ' . " $runfolder/bwaAlign/ && \\\n"
