@@ -8,8 +8,9 @@ use Time::Piece;
 use Mail::Sender;
 $|++;
 
+my $allerr = "";
 # open the accessDB file to retrieve the database name, host name, user name and password
-open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
+open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") or $allerr = "Can't access login credentials";
 my $host = <ACCESS_INFO>;
 my $port = <ACCESS_INFO>;
 my $user = <ACCESS_INFO>;
@@ -18,7 +19,7 @@ my $db = <ACCESS_INFO>;
 close(ACCESS_INFO);
 chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
-                       $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
+                       $user, $pass, { RaiseError => 1 } ) or $allerr .= ( "Couldn't connect to database: " . DBI->errstr );
 
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
@@ -33,7 +34,6 @@ my $backup_bam  = '/hpf/largeprojects/pray/llau/clinical/backup_files/bam';
 my $sample_ref = &get_sample_list;
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
 
-my $allerr = "";
 foreach my $ref (@$sample_ref) {
     my $retval = time();
     my $localTime = localtime( $retval );
@@ -54,6 +54,7 @@ sub main {
     my $sampleType = shift;
     my $config_ref = shift;
     my $msg = '';
+    my $command = '';
 
     if ($genePanelVer =~ /cancer/) {
         if (($sampleType eq 'T' || $sampleType eq 't' || $sampleType eq 'tumor' || $sampleType eq 'tumour') && $pairID !~ /\d/) {
@@ -108,7 +109,8 @@ sub main {
                 }
             }
 
-            print "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam\" \n";
+            $command = "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam\" \n";
+            print $command;
             `$sshhpf "$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam "`;
             if ( $? != 0 ) {
                 $msg .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
@@ -129,7 +131,8 @@ sub main {
                 print STDERR $msg,"\n";
                 return(1);
             }
-            print "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN\" \n";
+            $command = "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN\" \n";
+            print $command; 
             `$sshhpf "$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN "`;
             if ( $? != 0 ) {
                 $msg .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
@@ -143,7 +146,7 @@ sub main {
         ### Check if sampleID and flowcellID is unique in sampleInfo ####
         ### If not, it is a re-run sample on new genePanel           ####
         my $query = "SELECT postprocID,genePanelVer FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID' and currentStatus = '1'";
-        my $sthQNS = $dbh->prepare($query) or die "Can't query database: " . $dbh->errstr() . "\n";
+        my $sthQNS = $dbh->prepare($query) or $allerr .= "Can't query database: " . $dbh->errstr() . "\n";
         if ($sthQNS->rows() == 1) {
             &insert_jobstatus($sampleID,$postprocID,"newGP");
             my @data_ref = $sthQNS->fetchrow_array ;
@@ -157,7 +160,8 @@ sub main {
                 print STDERR $msg,"\n";
                 return(1);
             }
-            print "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome_newGP \"\n";
+            $command = "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome_newGP \"\n";
+            print $command; 
             `$sshhpf "$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome_newGP "`;
             if ( $? != 0 ) {
                 $msg .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
@@ -185,7 +189,8 @@ sub main {
                 print STDERR $msg,"\n";
                 return(1);
             }
-            print "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome \"\n";
+            $command = "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome \"\n";
+            print $command; 
             `$sshhpf "$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome "`;
             if ( $? != 0 ) {
                 $msg .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code:$?\n";
@@ -195,6 +200,9 @@ sub main {
             }
         }
     }
+    my $insert_command  = "INSERT INTO hpfCommand (sampleID, postprocID, command) VALUES ('$sampleID', '$postprocID', '$command')";
+    my $sthCMD = $dbh->prepare($insert_command) or $allerr .= "Can't insert into database for new hpf jobs: ". $dbh->errstr() . "\n";
+    $sthCMD->execute() or $allerr .=  "Can't excute insert for new hpf jobs: " . $dbh->errstr() . "\n";
     return(0);
 }
 
@@ -206,8 +214,8 @@ sub update_submit_status {
 
     $code = $code == 0 ? "2" : "3";
     my $db_update = "UPDATE sampleInfo set currentStatus = '$code' where sampleID = '$sampleID' and postprocID = '$postprocID'";
-    my $sth = $dbh->prepare($db_update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
-    $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
+    my $sth = $dbh->prepare($db_update) or $allerr .= "Can't prepare update: ". $dbh->errstr() . "\n";
+    $sth->execute() or $allerr .= "Can't execute update: " . $dbh->errstr() . "\n";
 }
 
 sub insert_jobstatus {
@@ -215,14 +223,14 @@ sub insert_jobstatus {
 
     # delete the old record if exists.
     my $check_old = "SELECT * FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
-    my $sth_chk = $dbh->prepare($check_old) or die "Can't query database for old hpf jobs: ". $dbh->errstr() . "\n";
-    $sth_chk->execute() or die "Can't execute query for old hpf jobs: " . $dbh->errstr() . "\n";
+    my $sth_chk = $dbh->prepare($check_old) or $allerr .= "Can't query database for old hpf jobs: ". $dbh->errstr() . "\n";
+    $sth_chk->execute() or $allerr .= "Can't execute query for old hpf jobs: " . $dbh->errstr() . "\n";
     if ($sth_chk->rows() != 0) {
         my $errorMsg = "job list already exists in the hpfJobStatus table for $sampleID postprocID $postprocID, deleting...\n";
         email_error($errorMsg);
         my $rm_old = "DELETE FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
-        my $sth_rm = $dbh->prepare($rm_old) or die "Can't delete from database for old hpf jobs: ". $dbh->errstr() . "\n";
-        $sth_rm->execute() or die "Can't execute delete for old samples: " . $dbh->errstr() . "\n";
+        my $sth_rm = $dbh->prepare($rm_old) or $allerr .= "Can't delete from database for old hpf jobs: ". $dbh->errstr() . "\n";
+        $sth_rm->execute() or $allerr .= "Can't execute delete for old samples: " . $dbh->errstr() . "\n";
     }
 
     my %joblist = ('exome' => ["calAF", "bwaAlign", "picardMarkDup", "picardMarkDupIdx", "picardMeanQualityByCycle", "CollectAlignmentSummaryMetrics", "picardCollectGcBiasMetrics",
@@ -239,15 +247,15 @@ sub insert_jobstatus {
                    'newGP' => [ "calAF", "gatkCovCalGP", "annovar", "snpEff"]);
     foreach my $jobName (@{$joblist{$pipeline}}) {
         my $insert_sql = "INSERT INTO hpfJobStatus (sampleID, postprocID, jobName) VALUES ('$sampleID', '$postprocID', '$jobName')";
-        my $sth = $dbh->prepare($insert_sql) or die "Can't insert into database for new hpf jobs: ". $dbh->errstr() . "\n";
-        $sth->execute() or die "Can't excute insert for new hpf jobs: " . $dbh->errstr() . "\n";
+        my $sth = $dbh->prepare($insert_sql) or $allerr .= "Can't insert into database for new hpf jobs: ". $dbh->errstr() . "\n";
+        $sth->execute() or $allerr .= "Can't excute insert for new hpf jobs: " . $dbh->errstr() . "\n";
     }
 }
 
 sub get_sample_list {
     my $db_query = 'SELECT sampleID,flowcellID,postprocID,genePanelVer,pairID,sampleType from sampleInfo where currentStatus = "0"';
-    my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-    $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+    my $sthQNS = $dbh->prepare($db_query) or $allerr .= "Can't query database for new samples: ". $dbh->errstr() . "\n";
+    $sthQNS->execute() or $allerr .= "Can't execute query for new samples: " . $dbh->errstr() . "\n";
     if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
         my $data_ref = $sthQNS->fetchall_arrayref;
         return ($data_ref);
