@@ -495,7 +495,7 @@ sub picardMarkDup {
     }
     my $cmd = "";
     if ($fastqDir =~ /0000000/) {
-        my $cmd = 'echo \''
+        $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
         . 'ln -f ' . $inputfiles . " $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam  &&" . " \\\n"
@@ -503,7 +503,7 @@ sub picardMarkDup {
         . "\'| jsub -j picardMarkDup -b $runfolder  -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
     }
     else {
-        my $cmd = 'echo \''
+        $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
         . 'module load ' . $PICARDTOOLS . ' ' . $PERL . ' && ' . " \\\n"
