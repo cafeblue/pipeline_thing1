@@ -42,8 +42,8 @@ our $hgmdAS                  = '/hpf/largeprojects/pray/llau/internal_databases/
 our $hapmap_vcf              = '/hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/hapmap_3.3.b37.vcf';
 our $bed4chr                 = ''; 
 our $depthct                 = '';
-our $maxGaussians_SNP        = $fastqDir !~ /000000000/ ? '--maxGaussians 8' : '--maxGaussians 0';
-our $maxGaussians_INDEL      = $fastqDir !~ /000000000/ ? '--maxGaussians 1' : '--maxGaussians 0';
+our $maxGaussians_SNP        = $fastqDir !~ /000000000/ ? '--maxGaussians 8' : '--maxGaussians 1';
+our $maxGaussians_INDEL      = '--maxGaussians 1';
 our $maxReadsForRealignment  = $fastqDir !~ /000000000/ ? '' : '--maxReadsForRealignment 3000';
 our $max_deletion_fraction   = $fastqDir !~ /000000000/ ? '--max_deletion_fraction 0.5' : '--max_deletion_fraction 0.3';
 our %pipeID               = ('exome.gp10' => 'ilmn.cr.p2',
