@@ -1315,8 +1315,6 @@ close(FILE);
 
 %rareVar = %variant;
 
-print STDERR %rareVar + "\n";
-
 my $icounter = 0;
 foreach my $onedatatoprint (@datatoprint) {
   # my @splitonedatatoprint = split(/\t/,$onedatatoprint);
