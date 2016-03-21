@@ -433,7 +433,8 @@ sub code_genotype {
     elsif ($zygosity eq 'het-alt') {
         return 3;
     }
-    return "$zygosity can't be coded into number, please check the output file cafefully:\n";
+    return 0;
+    #return "$zygosity can't be coded into number, please check the output file cafefully:\n";
 }
 
 sub code_effect {
@@ -565,7 +566,8 @@ sub code_effect {
         return 42;
     } 
     else {
-        return "$effect can't be coded into number. please check the output file carefully:\n";
+        return 0;
+        #return "$effect can't be coded into number. please check the output file carefully:\n";
     }
 }
 
