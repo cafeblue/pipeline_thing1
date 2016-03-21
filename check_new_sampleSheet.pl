@@ -8,7 +8,7 @@ use Time::Piece;
 use Mail::Sender;
 
 #### constant variables for HPF ############
-my $SAMPLE_INFO = '/localhd/sample_info/done';
+my $SAMPLE_INFO = '/localhd/sample_info';
 
 #### Database connection ###################
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -33,7 +33,7 @@ while (<DATA>) {
 close(DATA);
 
 #### Get the new file list #################
-my @new_fl = `find $SAMPLE_INFO/*.txt -mmin -20`;
+my @new_fl = `find $SAMPLE_INFO/*.txt $SAMPLE_INFO/done/*.txt -mmin -10`;
 chomp(@new_fl);
 if ($#new_fl == -1) {
     exit(0);
