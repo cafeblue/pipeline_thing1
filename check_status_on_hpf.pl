@@ -27,9 +27,11 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
 
 my $idpair_ref = &check_unfinished_sample;
 my ($today, $yesterday) = &print_time_stamp();
+
+&check_idle_bwa($idpair_ref);
+
 foreach my $idpair (@$idpair_ref) {
     &update_hpfJobStatus(@$idpair);
-    &check_idle_bwa(@$idpair);
 
     # All jobs finished successfully
     if (&check_all_jobs(@$idpair) == 1) {
@@ -151,18 +153,25 @@ sub check_idle_jobs {
 }
 
 sub check_idle_bwa {
-    my ($sampleID, $postprocID) = @_;
-    my $query_idle = "SELECT jobID,TIMESTAMPDIFF(SECOND, time, CURRENT_TIMESTAMP) from hpfJobStatus where sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = 'bwaAlign' and exitcode IS NULL AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
-    my $sthQIB = $dbh->prepare($query_idle);
-    $sthQIB->execute();
-    my @jobID = $sthQIB->fetchrow_array;
-    if ($jobID[0]) {
-        my $hours = int($jobID[1]/3600);
-        if ($hours % 6 == 0 && $jobID[1] - $hours*3600 <= 605) {
-            my $msg = "bwaAlign jobID " . $jobID[0] . " for sampleID: $sampleID postprocID: $postprocID has been waiting in the Queue over $hours hours...\n";
-            &email_error($msg);
-            return;
+    my $pairs = shift;
+    my $msg = '';
+    foreach my $pairid (@$pairs) {
+        my ($sampleID, $postprocID) = @$pairid;
+        my $query_idle = "SELECT jobID,TIMESTAMPDIFF(SECOND, time, CURRENT_TIMESTAMP) from hpfJobStatus where sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = 'bwaAlign' and exitcode IS NULL AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
+        my $sthQIB = $dbh->prepare($query_idle);
+        $sthQIB->execute();
+        my @jobID = $sthQIB->fetchrow_array;
+        if ($jobID[0]) {
+            my $hours = int($jobID[1]/3600);
+            if ($hours % 6 == 0 && $jobID[1] - $hours*3600 <= 605) {
+                $msg .= "bwaAlign jobID " . $jobID[0] . " for sampleID: $sampleID postprocID: $postprocID has been waiting in the Queue over $hours hours...\n";
+            }
         }
+    }
+
+    if ($msg ne '') {
+        print STDERR $msg;
+        &email_error($msg);
     }
 }
 
