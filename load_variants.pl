@@ -84,7 +84,7 @@ sub updateDB {
     my ($exitcode, $sampleID, $postprocID, $genePanelVer, $flowcellID, $machine) = @_;
     my $msg = "";
     if ($exitcode == 0) {
-        my $update_sql = "UPDATE sampleInfo SET currentstatus = '10' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        my $update_sql = "UPDATE sampleInfo SET currentstatus = '8' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
         print $update_sql,"\n";
         my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
         $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
@@ -237,14 +237,16 @@ sub loadVariants2DB {
         push (@splitFilter, $lines_ref->{"Disease Gene Association"});
 
         my $selectCheck = "SELECT chrom FROM variants_sub WHERE postprocID = '" . $postprocID . "' AND interID != '-1'";
-        my $sthVarCheck = $dbh->prepare($selectCheck) or die "Can't prepare variants check to ensure interpretation variants have not been inputted already: ". $dbh->errstr() . "\n";
-        $sthVarCheck->execute() or die "Can't execute variants check to ensure interpretation variants have not been inputted already : " . $dbh->errstr() . "\n";
+        my $sthVarCheck = $dbh->prepare($selectCheck) or $msg .=  "Can't prepare variants check to ensure interpretation variants have not been inputted already: " . $dbh->errstr() . "\n";
+        $sthVarCheck->execute() or $msg .= "Can't execute variants check to ensure interpretation variants have not been inputted already : " . $dbh->errstr() . "\n";
         if ($sthVarCheck->rows() != 0) {
-            my $msg = "This postprocID=$postprocID has already have interpretation variants inserted into the table\n";
+            my $msg .= "This postprocID=$postprocID has already have interpretation variants inserted into the table\n";
             email_error($msg);
             return 1;
         }
 
+        ## UPDATE the interpretation according to the known unterpretation.
+        ($splitFilter[2],$splitFilter[3]) = &interpretation_note($lines_ref->{'Chrom'}, $lines_ref->{'Position'}, $gEnd, $typeVer, $lines_ref->{'Transcript ID'});
 
         my $insert = "INSERT INTO interpretation (time, reporter, interpretation, note, history, clinVarAcc, hgmdDbn, polyphen, sift, mutTaster, cgAF, espAF, thouGAF, internalAFSNP, internalAFINDEL, segdup, homology, lowCvgExon, espAFAA, espAFEA, thouGAFAFR, thouGAFAMR, thouGAFEASN, thouGAFSASN, thouGAFEUR, clinVarIndelWindow, hgmdIndelWindow, genePanelSnpsAF, genePanelIndelsAF, cgdInherit, variantPerGene, omimDisease, wellderly, mutAss, cadd, perCdsAff, perTxAff, acmgGene, exacALL, exacAFR, exacAMR, exacEAS, exacFIN, exacNFE, exacOTH, exacSAS, diseaseAs) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         my $sth = $dbh->prepare($insert) or die "Can't prepare insert: ". $dbh->errstr() . "\n";
@@ -271,6 +273,31 @@ sub loadVariants2DB {
     else {
         return 0;
     }
+}
+
+sub interpretation_note {
+    my ($chr, $gStart, $gEnd, $typeVer, $transcriptID) = @_;
+    my $variantQuery = "SELECT interID FROM variants WHERE chrom = '" . $chr ."' && genomicStart = '" . $gStart . "' && genomicEnd = '" . $gEnd . "' && variantType = '" . $typeVer . "' && transcriptID = '" . $transcriptID . "'";
+    my $sthVQ = $dbh->prepare($variantQuery) or die "Can't query database for variant : ". $dbh->errstr() . "\n";
+    $sthVQ->execute() or die "Can't execute query for variant: " . $dbh->errstr() . "\n";
+    if ($sthVQ->rows() != 0) {
+        my @allInterID = ();
+        my $dataInterID = $sthVQ->fetchall_arrayref();
+        foreach (@$dataInterID) {
+            push @allInterID, @$_;
+        }
+        my $interHistoryQuery = "SELECT interpretation FROM interpretation WHERE interID in ('" . join("', '", @allInterID) ."')";
+        my $sthInter = $dbh->prepare($interHistoryQuery) or die $dbh->errstr();
+        $sthInter->execute();
+        my %number_benign;
+        while (my @dataInterID = $sthInter->fetchrow_array()) {
+            $number_benign{$dataInterID[0]}++;
+        }
+        if ($number_benign{'6'} >= 10) {
+            return('6', '>= 10 Benign Interpretation');
+        }
+    }
+    return('0', '.');
 }
 
 sub code_polyphen_prediction {

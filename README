@@ -2,43 +2,67 @@ The working flow is like below:
 
 check_new_sampleSheet.pl: check the /localhd/sample_info/done folder
 for new file modified in recent 24 hours. run independantly.
+INPUT:  folder /localhd/sample_info/ /localhd/sample_info/done/
+OUTPUT: create new rows in table clinicalA.sampleSheet
 
 detect_new_runfolder_on_sequencer.pl: find the new running folder on
 sequencer and create a row in table thing1JobStatus. run indenpantly.
+INPUT:  the following three folders 
+        /localhd/data/sequencers/hiseq2500_?/flowcell?/ 
+        /localhd/data/sequencers/miseqdx_?/Illumina/MiSeqOutput/ 
+        /localhd/data/sequencers/nextseq500_?/
+OUTPUT: create a new row in table clinicalA.thing1JobStatus.
 
 rsyncIlmnRunDir.pl: rsync the sequencer running folders to thing1 if
 the sequencing status is 2 in table thing1JobStaus.
+INPUT:  run folder on sequencer. 
+OUTPUT: run folder on thing1.
 
 run_demultiplex.pl: check the folder of sequencing=2, if finished,
 change sequencing=1 and demultiplex=2, generate the samplesheet for
 demultiplex, run demultiplex.
+INPUT:  info in table clinicalA.sampleSheet
+OUTPUT: samplesheet file
+        fastq files
 
 chksum_fastq.pl: check the status of demultiplex if the demultplex=2.
 if OK, set demultiplex=1, chksum=2,run checksum, rename, rsync to HPF.
 if not, email error. set demultiplex=3
+INPUT:  folder of fastq file.
+OUTPUT: fastq files on HPF.
 
 sequencing_stat.pl: start if chksum=2. parse the demultiplex status and
 load into the database, create new rows for each sampleID, set the
 sample currentStatus=0;
+INPUT:  demultiplex statitic folder
+OUTPUT: new rows in table clinicalA.sampleInfo.
 
 submit2HPF.pl: start if currentStatus=0, submit to HPF
 create rows for each job in table hpfJobStatus.
 if submission is OK, set currentStatus=2
 if not OK, set currentStatus=3
+INPUT:  NA
+OUTPUT: new rows in clinicalA.hpfJobStatus
 
 check_status_on_hpf.pl: start if currentStatus=2,
 check all the job ID and exitcode and update the table hpfJobStatus
 if all the jobs finished with exitcode 0, set currentStatus=4
 if not, set currentStatus=5, send email.
+INPUT:  *.status on HPF
+OUTPUT: update table clinicalA.hpfJobStatus
 
 check_qual_metrics.pl: start if currentStatus=4,
 check all the possible sql files and run the sql command.
 check all the numbers in the sql file and match with the filter
 if pass the filter, set currentStatus=6
 if not, set currentStatus=7, send email.
+INPUT:  *.sql files from the pipeline on HPF.
+OUTPUT: update table clinicalA.sampleInfo
 
 load_variants.pl: start if currentStatus=6,
 load the variants into the database, and set currentStatus=8.
+INPUT:  *.filtered.var.tsv
+OUTPUT: new rows in table clinicalA.interpretation, clinicalA.variants_sub
 
 ##############
 2016-01-27:  Change form https to ssh
