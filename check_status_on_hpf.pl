@@ -19,11 +19,7 @@ my $DEL_RUNDIR = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.si
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
 # assign the values in the accessDB file to the variables
-my $host = <ACCESS_INFO>;
-my $port = <ACCESS_INFO>;
-my $user = <ACCESS_INFO>;
-my $pass = <ACCESS_INFO>;
-my $db = <ACCESS_INFO>;
+my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
 close(ACCESS_INFO);
 chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
@@ -33,6 +29,7 @@ my $idpair_ref = &check_unfinished_sample;
 my ($today, $yesterday) = &print_time_stamp();
 foreach my $idpair (@$idpair_ref) {
     &update_hpfJobStatus(@$idpair);
+    &check_idle_bwa(@$idpair);
 
     # All jobs finished successfully
     if (&check_all_jobs(@$idpair) == 1) {
@@ -76,8 +73,7 @@ sub check_unfinished_sample {
 }
 
 sub update_hpfJobStatus {
-    my $sampleID = shift;
-    my $postprocID = shift;
+    my ($sampleID, $postprocID) = @_;
     my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobID IS NULL AND TIMESTAMPADD(HOUR,1,time)<CURRENT_TIMESTAMP AND TIMESTAMPADD(HOUR,2,time)>CURRENT_TIMESTAMP";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
@@ -96,8 +92,7 @@ sub update_hpfJobStatus {
 }
 
 sub check_all_jobs {
-    my $sampleID = shift;
-    my $postprocID = shift;
+    my ($sampleID, $postprocID) = @_;
     my $query_nonjobID = "SELECT jobID,exitcode FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName != 'gatkGenoTyper'";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
@@ -116,8 +111,7 @@ sub check_all_jobs {
 }
 
 sub check_idle_jobs {
-    my $sampleID = shift;
-    my $postprocID = shift;
+    my ($sampleID, $postprocID) = @_;
 
     #There are some jobs not been submitted after 2 hours.
     my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobID IS NULL AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP";
@@ -156,10 +150,24 @@ sub check_idle_jobs {
     }
 }
 
+sub check_idle_bwa {
+    my ($sampleID, $postprocID) = @_;
+    my $query_idle = "SELECT jobID,TIMESTAMPDIFF(SECOND, time, CURRENT_TIMESTAMP) from hpfJobStatus where sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = 'bwaAlign' and exitcode IS NULL AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
+    my $sthQIB = $dbh->prepare($query_idle);
+    $sthQIB->execute();
+    my @jobID = $sthQIB->fetchrow_array;
+    if ($jobID[0]) {
+        my $hours = int($jobID[1]/3600);
+        if ($hours % 6 == 0 && $jobID[1] - $hours*3600 <= 605) {
+            my $msg = "bwaAlign jobID " . $jobID[0] . " for sampleID: $sampleID postprocID: $postprocID has been waiting in the Queue over $hours hours...\n";
+            &email_error($msg);
+            return;
+        }
+    }
+}
+
 sub update_jobID {
-    my $sampleID = shift;
-    my $postprocID = shift;
-    my $data_ref = shift;
+    my ($sampleID, $postprocID, $data_ref) = @_;
     my @joblst = ();
     my $msg = "";
 
@@ -192,9 +200,7 @@ sub update_jobID {
 }
 
 sub update_jobStatus {
-    my $sampleID = shift;
-    my $postprocID = shift;
-    my $data_ref = shift;
+    my ($sampleID, $postprocID, $data_ref) = @_;
     my @joblst = ();
 
     foreach my $tmp_ref (@$data_ref) {
@@ -230,8 +236,6 @@ sub email_error {
     my $errorMsg = shift;
     $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
     print STDERR $errorMsg;
-    my $sampleID = shift;
-    my $postprocID = shift;
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
