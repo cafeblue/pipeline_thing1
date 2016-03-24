@@ -277,7 +277,7 @@ sub loadVariants2DB {
 
 sub interpretation_note {
     my ($chr, $gStart, $gEnd, $typeVer, $transcriptID) = @_;
-    my $variantQuery = "SELECT interID FROM variants WHERE chrom = '" . $chr ."' && genomicStart = '" . $gStart . "' && genomicEnd = '" . $gEnd . "' && variantType = '" . $typeVer . "' && transcriptID = '" . $transcriptID . "'";
+    my $variantQuery = "SELECT interID FROM variants_sub WHERE chrom = '" . $chr ."' && genomicStart = '" . $gStart . "' && genomicEnd = '" . $gEnd . "' && variantType = '" . $typeVer . "' && transcriptID = '" . $transcriptID . "'";
     my $sthVQ = $dbh->prepare($variantQuery) or die "Can't query database for variant : ". $dbh->errstr() . "\n";
     $sthVQ->execute() or die "Can't execute query for variant: " . $dbh->errstr() . "\n";
     if ($sthVQ->rows() != 0) {
