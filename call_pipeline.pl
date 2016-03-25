@@ -509,7 +509,7 @@ sub bwa_mem_s {
     print "\n\n************\nbwaAlign:\n $cmd\n************\n\n";
     my $cmdOut = `$cmd`;
     print "============\n$cmdOut============\n\n";
-    if ($cmdOut =~ /^(\d+\[\])\n/) {
+    if ($cmdOut =~ /^(\d+)\n/) {
         $jobID = "$1";
         return($jobID,"bwaAlign");
     }
