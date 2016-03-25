@@ -182,7 +182,7 @@ sub exome {
     #faidx:                                             &faidx(@jobID_and_Pfolder);
     #calAF:                    @jobID_and_Pfolder3  =  &calAF(@jobID_and_Pfolder);
     calAF:                                             &calAF(@jobID_and_Pfolder);
-    bwaAlign:                  @jobID_and_Pfolder   =  &bwa_mem(@jobID_and_Pfolder); 
+    bwaAlign:                  @jobID_and_Pfolder   =  &bwa_mem_s(@jobID_and_Pfolder); 
     sleep 1;
     picardMarkDup:             @jobID_and_Pfolder   =  &picardMarkDup(@jobID_and_Pfolder);
     sleep 1;
@@ -261,7 +261,7 @@ sub cancerN {
     #faidx:                                              &faidx(@jobID_and_Pfolder);
     #calAF:                    @jobID_and_Pfolder3   =  &calAF(@jobID_and_Pfolder);
     calAF:                                              &calAF(@jobID_and_Pfolder);
-    bwaAlign:                  @jobID_and_Pfolder    =  &bwa_mem(@jobID_and_Pfolder); 
+    bwaAlign:                  @jobID_and_Pfolder    =  &bwa_mem_s(@jobID_and_Pfolder); 
     sleep 1;
     picardMarkDup:             @jobID_and_Pfolder    =  &picardMarkDup(@jobID_and_Pfolder);
     sleep 1;
@@ -320,7 +320,7 @@ sub cancerT {
     NEW:                       @jobID_and_Pfolder = &chk_sum;
     #faidx:                                          &faidx(@jobID_and_Pfolder);
     #calAF:                                         &calAF(@jobID_and_Pfolder);
-    bwaAlign:                  @jobID_and_Pfolder = &bwa_mem(@jobID_and_Pfolder); 
+    bwaAlign:                  @jobID_and_Pfolder = &bwa_mem_s(@jobID_and_Pfolder); 
     picardMarkDup:             @jobID_and_Pfolder = &picardMarkDup(@jobID_and_Pfolder);
     picardMarkDupIdx:          @jobID_and_Pfolder = &picardMarkDupIdx(@jobID_and_Pfolder);
     picardMeanQualityByCycle:                       &picardMeanQualityByCycle(@jobID_and_Pfolder);
@@ -468,6 +468,44 @@ sub bwa_mem {
         . 'cp $TMPDIR/bwa-mem/picard.$PBS_ARRAYID.sorted.bam ' . " $runfolder/bwaAlign/ && \\\n"
         . 'rm -rf $TMPDIR/bwa-mem;'
         . "\'| jsub -j bwaAlign -b $runfolder  -nm 32000 --te $filenum -np 4 -nn 1 -nw 03:00:00 -ng localhd:100 $depend" ;
+    print "\n\n************\nbwaAlign:\n $cmd\n************\n\n";
+    my $cmdOut = `$cmd`;
+    print "============\n$cmdOut============\n\n";
+    if ($cmdOut =~ /^(\d+\[\])\n/) {
+        $jobID = "$1";
+        return($jobID,"bwaAlign");
+    }
+    else {
+        die "bwaAlign for $runfolder failed to be submitted!\n";
+    }
+}
+
+sub bwa_mem_s {
+    my ($jobID, $Pfolder) = @_;
+    my $depend = $jobID eq '' ? "" : " -aft afterok -o $jobID";
+    if ( -d "$runfolder/bwaAlign") {
+        print "Jsub folder already exists, removing...\nrm -rf $runfolder/bwaAlign\n";
+        `rm -rf $runfolder/bwaAlign`;
+    }
+    my $filenum = `ls $fastqDir/*_R1_*.fastq.gz |wc -l`;
+    chomp($filenum);
+    my $file_prefix = `ls $fastqDir/*_R1_1.fastq.gz`;
+    chomp($file_prefix);
+    $file_prefix =~ s/_R1_1.fastq.gz$//;
+    my $short_prefix = (split(/\//,$file_prefix))[-1];
+    my $bwa_all = "";
+    for (1..$filenum) {
+        $bwa_all .=  'bwa mem -R "@RG\tID:' . $sampleID . '\tSM:' . $sampleID . '\tLB:' . $sampleID . '\tPL:illumina"' .  " -t 16 $reference $file_prefix\_R1_$_.fastq.gz $short_prefix\_R2_$_.fastq.gz | \\\n"
+         . "/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=\$TMPDIR -Xmx4G \$PICARD/SortSam.jar INPUT=/dev/stdin OUTPUT=$runfolder/bwaAlign/picard.$_.sorted.bam VALIDATION_STRINGENCY=SILENT SORT_ORDER=coordinate TMP_DIR=\$TMPDIR && \\\n";
+    }
+    my $cmd = 'echo \''
+        . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
+        . "\\\n"
+        . 'module load ' . $BWA . ' && ' . " \\\n"
+        . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
+        . "\\\n"
+        . $bwa_all
+        . "\'| jsub -j bwaAlign -b $runfolder  -nm 32000 -np 16 -nn 1 -nw 02:00:00 -ng localhd:100 $depend" ;
     print "\n\n************\nbwaAlign:\n $cmd\n************\n\n";
     my $cmdOut = `$cmd`;
     print "============\n$cmdOut============\n\n";
