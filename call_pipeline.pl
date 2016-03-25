@@ -182,7 +182,7 @@ sub exome {
     #faidx:                                             &faidx(@jobID_and_Pfolder);
     #calAF:                    @jobID_and_Pfolder3  =  &calAF(@jobID_and_Pfolder);
     calAF:                                             &calAF(@jobID_and_Pfolder);
-    bwaAlign:                  @jobID_and_Pfolder   =  &bwa_mem_s(@jobID_and_Pfolder); 
+    bwaAlign:                  @jobID_and_Pfolder   =  &bwa_mem(@jobID_and_Pfolder); 
     sleep 1;
     picardMarkDup:             @jobID_and_Pfolder   =  &picardMarkDup(@jobID_and_Pfolder);
     sleep 1;
@@ -261,7 +261,7 @@ sub cancerN {
     #faidx:                                              &faidx(@jobID_and_Pfolder);
     #calAF:                    @jobID_and_Pfolder3   =  &calAF(@jobID_and_Pfolder);
     calAF:                                              &calAF(@jobID_and_Pfolder);
-    bwaAlign:                  @jobID_and_Pfolder    =  &bwa_mem_s(@jobID_and_Pfolder); 
+    bwaAlign:                  @jobID_and_Pfolder    =  &bwa_mem(@jobID_and_Pfolder); 
     sleep 1;
     picardMarkDup:             @jobID_and_Pfolder    =  &picardMarkDup(@jobID_and_Pfolder);
     sleep 1;
@@ -320,7 +320,7 @@ sub cancerT {
     NEW:                       @jobID_and_Pfolder = &chk_sum;
     #faidx:                                          &faidx(@jobID_and_Pfolder);
     #calAF:                                         &calAF(@jobID_and_Pfolder);
-    bwaAlign:                  @jobID_and_Pfolder = &bwa_mem_s(@jobID_and_Pfolder); 
+    bwaAlign:                  @jobID_and_Pfolder = &bwa_mem(@jobID_and_Pfolder); 
     picardMarkDup:             @jobID_and_Pfolder = &picardMarkDup(@jobID_and_Pfolder);
     picardMarkDupIdx:          @jobID_and_Pfolder = &picardMarkDupIdx(@jobID_and_Pfolder);
     picardMeanQualityByCycle:                       &picardMeanQualityByCycle(@jobID_and_Pfolder);
