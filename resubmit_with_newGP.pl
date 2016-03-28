@@ -35,7 +35,7 @@ my $allerr = "";
 
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
 # Query the info from table sampleInfo:
-my $query = "SELECT yieldMB,numReads,perQ30Bases,specimen,sampleType,testType,priority,pipeThing1Ver,pipeHPFVer,webVer from sampleInfo where sampleID = '$sampleID' AND postprocID = '$oldppID' AND flowcellID = '$flowcellID';";
+my $query = "SELECT yieldMB,numReads,perQ30Bases,specimen,sampleType,testType,priority,pipeThing1Ver,pipeHPFVer,webVer,genePanelVer from sampleInfo where sampleID = '$sampleID' AND postprocID = '$oldppID' AND flowcellID = '$flowcellID';";
 my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
 $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
 if ($sthQNS->rows() == 1) {  
@@ -66,12 +66,11 @@ sub update_table {
     my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer, webVer) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $genePanelVer . "','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $info . "')"; 
     my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    return($sthQNS->{'mysql_insertid'});
+    return($sthQNS->{'mysql_insertid'}, $dataS[10]);
 }
 
 sub submit_newGP {
-    my ($oldAID, $postprocID) = @_;
-    my $oldGP = "exome.gp10";
+    my ($oldAID, $postprocID, $oldGP) = @_;
     &insert_jobstatus($sampleID,$postprocID,"newGP");
     print "$sshdat \"$newGP_sh $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37 $sampleID $oldAID $postprocID $oldGP\"\n";
     `$sshdat "$newGP_sh $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37 $sampleID $oldAID $postprocID $oldGP"`;
