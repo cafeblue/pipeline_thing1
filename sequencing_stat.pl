@@ -25,6 +25,7 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
 my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
 my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
+my $WEB_THING1_ROOT = '/web/www/html/index/clinic/ngsweb.com';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SSHDATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "';
 
@@ -57,18 +58,18 @@ sub update_table {
         my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
         if ($sthQNS->rows() == 1) {  
-            my ($pipething1ver, $pipehpfver) = &get_pipelinever;
+            my ($pipething1ver, $pipehpfver, $webver) = &get_pipelinever;
             while (my @data_ref = $sthQNS->fetchrow_array) {
                 my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype) = @data_ref;
                 my $key = $gp . "\t" . $ck;
                 if (defined $ps) {
                     $ps = &get_pairID($ps, $sampleID);
-                    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer ) VALUES ('" . $sampleID . "','$flowcellID','$ps','$gp','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','$specimen', '$sampletype', '$tt','$pt', '0', '$pipething1ver', '$pipehpfver')"; 
+                    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer ) VALUES ('" . $sampleID . "','$flowcellID','$ps','$gp','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','$specimen', '$sampletype', '$tt','$pt', '0', '$pipething1ver', '$pipehpfver', '$webver')"; 
                     my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
                     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
                 }
                 else {
-                    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer ) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $gp . "','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','" . $specimen . "', '" . $sampletype . "', '" . $tt . "','$pt', '0', '$pipething1ver', '$pipehpfver')"; 
+                    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer ) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $gp . "','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','" . $specimen . "', '" . $sampletype . "', '" . $tt . "','$pt', '0', '$pipething1ver', '$pipehpfver', '$weber')"; 
                     my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
                     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
                 }
@@ -85,6 +86,7 @@ sub update_table {
 
 sub get_pipelinever {
     my $msg = "";
+
     my $cmd = $SSHDATA . "cd $PIPELINE_HPF_ROOT ; git tag | head -1 ; git log -1 |head -1 |cut -b 8-14\" 2>/dev/null";
     my @commit_tag = `$cmd`;
     if ($? != 0) {
@@ -92,6 +94,7 @@ sub get_pipelinever {
     }
     chomp(@commit_tag);
     my $hpf_ver = join('(',@commit_tag) . ")";
+
     $cmd = "cd $PIPELINE_THING1_ROOT ; git tag | head -1 ; git log -1 | head -1 |cut -b 8-14";
     @commit_tag = `$cmd`;
     if ($? != 0) {
@@ -99,7 +102,15 @@ sub get_pipelinever {
     }
     chomp(@commit_tag);
     my $thing1_ver = join('(',@commit_tag) . ")";
-    return($thing1_ver, $hpf_ver);
+
+    $cmd = "cd $WEB_THING1_ROOT ; git tag | head -1 ; git log -1 | head -1 |cut -b 8-14";
+    @commit_tag = `$cmd`;
+    if ($? != 0) {
+        $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
+    }
+    my $web_ver = join('(',@commit_tag) . ")";
+
+    return($thing1_ver, $hpf_ver, $web_ver);
 }
 
 sub get_pairID {

@@ -60,9 +60,9 @@ sub update_table {
     my @dataS = @_;
     my $config_ref = pop(@dataS);
     my $key = $genePanelVer . "\tCR";
-    my $info = join("', '", @dataS[0-6]);
+    my $info = join("', '", @dataS[0..6]);
     $info .= "', '2', '";
-    $info .= join("', '",@dataS[7-9]);
+    $info .= join("', '",@dataS[7..9]);
     my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer, webVer) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $genePanelVer . "','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $info . "')"; 
     my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
