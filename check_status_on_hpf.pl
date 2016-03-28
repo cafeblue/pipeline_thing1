@@ -123,15 +123,15 @@ sub check_idle_jobs {
         return 1;
     }
 
-    # There are some jobs idle over 24 hours.
-    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
+    # There are some jobs idle over 12 hours.
+    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP";
     $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
         return 1;
     }
 
-    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,24,time)<CURRENT_TIMESTAMP";
+    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,10,time)<CURRENT_TIMESTAMP";
     $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
@@ -141,7 +141,7 @@ sub check_idle_jobs {
             my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = '" . $dataS[0] . "'";
             my $sthSetFlag = $dbh->prepare($seq_flag);
             $sthSetFlag->execute();
-            $msg .= "\tjobName " . $dataS[0] . " idled over 24 hours...\n";
+            $msg .= "\tjobName " . $dataS[0] . " idled over 12 hours...\n";
         }
         print STDERR $msg;
         &email_error($msg);
@@ -163,7 +163,7 @@ sub check_idle_bwa {
         my @jobID = $sthQIB->fetchrow_array;
         if ($jobID[0]) {
             my $hours = int($jobID[1]/3600);
-            if ($hours % 6 == 0 && $jobID[1] - $hours*3600 <= 605) {
+            if ($hours % 2 == 0 && $jobID[1] - $hours*3600 <= 605) {
                 $msg .= "bwaAlign jobID " . $jobID[0] . " for sampleID: $sampleID postprocID: $postprocID has been waiting in the Queue over $hours hours...\n";
             }
         }
