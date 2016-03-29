@@ -14,6 +14,8 @@ use Mail::Sender;
 my $RSYNCCMD = "rsync -Lav -e 'ssh -i /home/pipeline/.ssh/id_sra_thing1' ";
 my $HPF_BACKUP_FOLDER = '/hpf/largeprojects/pray/llau/clinical/backup_files/variants';
 my $THING1_BACKUP_DIR = '/localhd/data/thing1/variants';
+my %interpretationHistory = ( '0' => 'Not yet viewed: ', '1' => 'Select: ', '2' => 'Pathogenic: ', '3' => 'Likely Pathogenic: ', '4' => 'VUS: ', '5' => 'Likely Benign: ', '6' => 'Benign: ', '7' => 'Unknown: ');
+
 
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -246,9 +248,9 @@ sub loadVariants2DB {
         }
 
         ## UPDATE the interpretation according to the known unterpretation.
-        ($splitFilter[2],$splitFilter[3]) = &interpretation_note($lines_ref->{'Chrom'}, $lines_ref->{'Position'}, $gEnd, $typeVer, $lines_ref->{'Transcript ID'});
+        ($splitFilter[2],$splitFilter[3],$splitFilter[4]) = &interpretation_note($lines_ref->{'Chrom'}, $lines_ref->{'Position'}, $gEnd, $typeVer, $lines_ref->{'Transcript ID'});
 
-        my $insert = "INSERT INTO interpretation (time, reporter, interpretation, note, history, clinVarAcc, hgmdDbn, polyphen, sift, mutTaster, cgAF, espAF, thouGAF, internalAFSNP, internalAFINDEL, segdup, homology, lowCvgExon, espAFAA, espAFEA, thouGAFAFR, thouGAFAMR, thouGAFEASN, thouGAFSASN, thouGAFEUR, clinVarIndelWindow, hgmdIndelWindow, genePanelSnpsAF, genePanelIndelsAF, cgdInherit, variantPerGene, omimDisease, wellderly, mutAss, cadd, perCdsAff, perTxAff, acmgGene, exacALL, exacAFR, exacAMR, exacEAS, exacFIN, exacNFE, exacOTH, exacSAS, diseaseAs) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        my $insert = "INSERT INTO interpretation (time, reporter, interpretation, note, historyInter, clinVarAcc, hgmdDbn, polyphen, sift, mutTaster, cgAF, espAF, thouGAF, internalAFSNP, internalAFINDEL, segdup, homology, lowCvgExon, espAFAA, espAFEA, thouGAFAFR, thouGAFAMR, thouGAFEASN, thouGAFSASN, thouGAFEUR, clinVarIndelWindow, hgmdIndelWindow, genePanelSnpsAF, genePanelIndelsAF, cgdInherit, variantPerGene, omimDisease, wellderly, mutAss, cadd, perCdsAff, perTxAff, acmgGene, exacALL, exacAFR, exacAMR, exacEAS, exacFIN, exacNFE, exacOTH, exacSAS, diseaseAs) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         my $sth = $dbh->prepare($insert) or die "Can't prepare insert: ". $dbh->errstr() . "\n";
         $sth->execute(@splitFilter) or die "Can't execute insert: " . $dbh->errstr() . "\n";
         $interID = $sth->{'mysql_insertid'}; #LAST_INSERT_ID(); or try $dbh->{'mysql_insertid'}
@@ -293,11 +295,20 @@ sub interpretation_note {
         while (my @dataInterID = $sthInter->fetchrow_array()) {
             $number_benign{$dataInterID[0]}++;
         }
+        my @interHist = ();
+        foreach (keys %number_benign) {
+            next if ($_ eq '0' || $_ eq '1');
+            push @interHist, "$interpretationHistory{$_} $number_benign{$_}";
+        }
+        my $interHist = $#interHist >= 0 ? join(" | ", @interHist) : '.';
         if ($number_benign{'6'} >= 10) {
-            return('6', '>= 10 Benign Interpretation');
+            return('6', '>= 10 Benign Interpretation', $interHist);
+        }
+        else {
+            return('0', '.', $interHist);
         }
     }
-    return('0', '.');
+    return('0', '.', '.');
 }
 
 sub code_polyphen_prediction {
