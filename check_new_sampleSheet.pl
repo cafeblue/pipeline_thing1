@@ -147,7 +147,10 @@ foreach my $file  (@new_fl) {
 
     if ($errorMsg eq "") {
         if ($machine =~ /hiseq/) {
-            write_samplesheet(@file_content);
+            write_samplesheet($machine, @file_content);
+        }
+        elsif ($machine =~ /miseq/) {
+            write_samplesheet_miseq($machine, @file_content);
         }
 
         my $delete_sql = "DELETE FROM sampleSheet WHERE flowcell_ID = '$flowcellID'";
@@ -169,14 +172,37 @@ foreach my $file  (@new_fl) {
 
 sub write_samplesheet {
     my $output = "FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject\r\n";
-    my @cont_tmp = @_;
+    my ($machine, @cont_tmp) = @_;
+    my $flowcellID;
     foreach my $line (@cont_tmp) {
         foreach my $lane (split(/,/, $line->{'lane'})) {
             $output .= $line->{'flowcell_ID'} . ",$lane," . $line->{'sampleID'} . ",b37," . $ilmnBarcodes{$line->{'barcode'}} . "," . $line->{'capture_kit'} . "_" . $line->{'sample_type'} . ",N,R1," . $line->{'ran_by'} . "," . $line->{'machine'} . "_" . $line->{'flowcell_ID'} . "\r\n";
+            $flowcellID = $line->{'flowcell_ID'};
         }
     }
+    my $file = "/localhd/data/sequencers/$machine/$machine\_desktop/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
+    print $file,"\n";
     print $output;
-    #print /localhd/data/sequencers/hiseq2500_1/hiseq2500_1_desktop/$today_$line->{'flowcell_ID'}.sample_sheet.csv
+    #OPEN (CSV, ">$file") or die "failed to open file $file\n"; 
+    #print CSV $output;
+    #close(CSV);
+}
+
+sub write_samplesheet_miseq {
+    my ($machine,@cont_tmp) = @_;
+    my $flowcellID;
+    my $output =  "[Header]\nIEMFileVersion,4\nDate,$today\nWorkflow,GenerateFASTQ\nApplication,MiSeq FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n151\n151\n\n[Settings]\nAdapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA\nAdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT\n\n[Data]\n\n[Data]\nSample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Descriptio\n";
+    
+    foreach my $line (@cont_tmp) {
+        $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes{$line->{'barcode'}} . ",,\n";
+        $flowcellID = $line->{'flowcell_ID'};
+    }
+    my $file = "/localhd/data/sequencers/$machine/$machine\_desktop/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
+    print $file,"\n";
+    print $output;
+    #OPEN (CSV, ">$file") or die "failed to open file $file\n"; 
+    #print CSV $output;
+    #close(CSV);
 }
 
 sub write_database {

@@ -45,7 +45,8 @@ foreach my $ref (@$machine_flowcellID_cycles_ref) {
     my ($flowcellID, $machine, $folder, $cycles) = @$ref;
     print join("\t",@$ref),"\n";
 
-    my $finalcycles = &get_cycle_num($folder);
+    my ($cycle1, $cycleI, $cycle2) = &get_cycle_num($folder);
+    my $finalcycles = $cycle1 + $cycleI + $cycle2;
     if ($cycles != $finalcycles) {
         my $update = "UPDATE thing1JobStatus SET sequencing = '0' where destinationDir = '" . $folder . "'";;
         print "sequencing failed: $update\n"; 
@@ -59,13 +60,13 @@ foreach my $ref (@$machine_flowcellID_cycles_ref) {
         &email_error("Sequencing finished successfully, demultiplexing is starting...\n", $flowcellID, $machine);
         my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
         $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
-        &demultiplex($folder, $machine, $flowcellID, $cycles);
+        &demultiplex($folder, $machine, $flowcellID, $cycle1, $cycle2);
     }
 }
 
 sub demultiplex {
-    my ($folder, $machine, $flowcellID, $cycles) = @_;
-    my $samplesheet = &create_sample_sheet($machine, $flowcellID, $cycles);
+    my ($folder, $machine, $flowcellID, $cycle1, $cycle2) = @_;
+    my $samplesheet = &create_sample_sheet($machine, $flowcellID, $cycle1, $cycle2);
     my $outputfastqDir = $FASTQ_FOLDER . '/' . $machine . "_" . $flowcellID;
     my $demultiplexCmd = "bcl2fastq -R $folder -o $outputfastqDir --sample-sheet $samplesheet";
     my $jobDir = "demultiplex_" . $machine . '_' . $flowcellID . "_" . $currentTime;
@@ -95,7 +96,7 @@ sub demultiplex {
 }
 
 sub create_sample_sheet {
-    my ($machine, $flowcellID, $cycle) = @_;
+    my ($machine, $flowcellID, $cycle1, $cycle2) = @_;
     my $machineType = "";
     my $errlog = "";
     my @old_samplesheet = ();
@@ -176,12 +177,7 @@ sub create_sample_sheet {
     }
 
     open (CSV, ">$filename") or die "failed to open file $filename";
-    if ($machineType eq 'HiSeq' || $machineType eq 'NextSeq') {
-        print CSV "[Header]\nIEMFileVersion,4\nDate,$currentDate\nWorkflow,GenerateFASTQ\nApplication,$machineType FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n$cycle\n$cycle\n\n[Settings]\nAdapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA\nAdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT\n\n[Data]\n";
-    }
-    elsif ($machineType eq 'MiSeq') {
-        print CSV "[Header]\nIEMFileVersion,4\nDate,$currentDate\nWorkflow,GenerateFASTQ\nApplication,$machineType FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n$cycle\n$cycle\n\n[Settings]\nVariantFilterQualityCutoff,30\noutputgenomevcf,FALSE\n\n[Data]\n";
-    }
+    print CSV "[Header]\nIEMFileVersion,4\nDate,$currentDate\nWorkflow,GenerateFASTQ\nApplication,$machineType FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n$cycle1\n$cycle2\n\n[Settings]\nAdapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA\nAdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT\n\n[Data]\n";
     print CSV $csvlines;
 
     ########    HiSeq2500 samplesheet  #######
@@ -291,18 +287,18 @@ sub check_status {
 
 sub get_cycle_num {
     my $folder = shift;
+    my @cycles = ();
     if (-e "$folder/RunInfo.xml") {
         my @lines = ` grep "NumCycles=" $folder/RunInfo.xml`;
-        my $cycles = 0;
         foreach (@lines) {
             if (/NumCycles="(\d+)"/) {
-                $cycles += $1;
+                push @cycles, $1;
             }
         }
-        return($cycles);
+        return(@cycles);
     }
     else {
-        return(0);
+        return(0,0,0);
     }
 }
 
