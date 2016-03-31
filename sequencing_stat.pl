@@ -8,6 +8,7 @@ use Time::localtime;
 use Time::ParseDate;
 use Time::Piece;
 use Mail::Sender;
+use Data::Dumper;
 $|++;
 
 # open the accessDB file to retrieve the database name, host name, user name and password
@@ -52,10 +53,20 @@ sub update_table {
 
     foreach my $sampleID (keys %$table_ref) {
         #delete the possible exists recoreds
-        my $delete_sql = "DELETE FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";
-        $dbh->do($delete_sql);
+        my $check_exists = "SELECT * FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";
+        my $sthQNS = $dbh->prepare($check_exists) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+        $sthQNS->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+        if ($sthQNS->rows() > 0) {
+            my $msg = "sampleID $sampleID on flowcellID $flowcellID already exists in table sampleInfo, the following rows will be deleted!!!\n";
+            my $hash = $sthQNS->fetchall_hashref();
+            $msg .= Dumper($hash);
+            email_error($msg);
+            my $delete_sql = "DELETE FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";
+            $dbh->do($delete_sql);
+        }
+
         my $query = "SELECT gene_panel,capture_kit,testType,priority,pairedSampleID,specimen,sample_type from sampleSheet where flowcell_ID = '$flowcellID' and sampleID = '$sampleID'";
-        my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+        $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
         if ($sthQNS->rows() == 1) {  
             my ($pipething1ver, $pipehpfver, $webver) = &get_pipelinever;
