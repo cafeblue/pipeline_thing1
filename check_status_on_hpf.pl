@@ -127,7 +127,7 @@ sub check_idle_jobs {
     $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP";
     $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
-    if ($sthQUF->rows() != 0) {
+    if ($sthQUF->rows() >= 16) {
         return 1;
     }
 
