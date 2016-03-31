@@ -162,7 +162,7 @@ $pipeline_lst{$pipeline}('0','1');
 
 sub exome {
     $bed4chr   = $fastqDir !~ /0000000/ ? '/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.bed' : '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.exon_10bp_padding.bed';
-    $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 50 -ct 100 --start 1 --stop 3000';
+    $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 3000';
     my @jobID_and_Pfolder;
     my @jobID_and_Pfolder1;
     my @jobID_and_Pfolder2;
@@ -229,7 +229,7 @@ sub exome {
 sub exome_newGP {
     my @jobID_and_Pfolder = ('',"gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam");
     $bed4chr   = $fastqDir !~ /0000000/ ? '/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.bed' : '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.exon_10bp_padding.bed';
-    $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 50 -ct 100 --start 1 --stop 3000';
+    $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 3000';
     calAF:                                            &calAF(@jobID_and_Pfolder);
     gatkCovCalGP:                                      &gatkCovCalGP(@jobID_and_Pfolder);
     annovar_newGP:             @jobID_and_Pfolder   =  &annovar_newGP(@jobID_and_Pfolder);
@@ -532,15 +532,15 @@ sub picardMarkDup {
         $inputfiles .= " INPUT=$runfolder/$Pfolder/picard.$_.sorted.bam";
     }
     my $cmd = "";
-    if ($fastqDir =~ /0000000/) {
-        $cmd = 'echo \''
-        . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
-        . "\\\n"
-        . "ln -f $runfolder/$Pfolder/picard.1.sorted.bam  $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam  &&" . " \\\n"
-        . "sleep 30 && \\\n"
-        . "\'| jsub -j picardMarkDup -b $runfolder  -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
-    }
-    else {
+#    if ($fastqDir =~ /0000000/) {
+#        $cmd = 'echo \''
+#        . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
+#        . "\\\n"
+#        . "ln -f $runfolder/$Pfolder/picard.1.sorted.bam  $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam  &&" . " \\\n"
+#        . "sleep 30 && \\\n"
+#        . "\'| jsub -j picardMarkDup -b $runfolder  -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
+#    }
+#    else {
         $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
@@ -550,7 +550,7 @@ sub picardMarkDup {
         . "ln -f $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $BACKUP_BASEDIR/matrics/ ; \\\n"
         . "perl $SCRIPTDIR/calculate_qual_rmdup.pl $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $sampleID $postprocID > $runfolder/picardMarkDup/$sampleID.$postprocID.rmdup.sql \\\n"
         . "\'| jsub -j picardMarkDup -b $runfolder  -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
-    }
+#    }
     print "\n\n************\npicardMarkDup:\n $cmd\n************\n\n";
     my $cmdOut = `$cmd`;
     print "============\n$cmdOut============\n\n";
