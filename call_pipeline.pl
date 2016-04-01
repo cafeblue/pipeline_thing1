@@ -55,7 +55,8 @@ our %pipeID               = ('exome.gp10' => 'ilmn.cr.p2',
                              'renal.gp17' => 'ilmn.cr.p2',
                              'noonan.gp7' => 'ilmn.cr.p2',
                              'cancer.gp19' => 'ilmn.cr.p2',
-                             'hsp.gp20' => 'ilmn.cr.p2'
+                             'hsp.gp20' => 'ilmn.cr.p2',
+                             'hsp.gp21' => 'ilmn.cr.p2'
                               );
 our %gene_panel_text      = ('exome.gp10' => '/hpf/largeprojects/pray/llau/gene_panels/EXOMES_20140723/refSeqLongest_ICCG_20140922.isoforms.txt',
                              'hsp.gp4' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20141002/HSP_20141002.txt',
@@ -67,7 +68,8 @@ our %gene_panel_text      = ('exome.gp10' => '/hpf/largeprojects/pray/llau/gene_
                              'noonan.gp7' => '/hpf/largeprojects/pray/llau/gene_panels/NOONAN_20150304/NOONAN_20150304.txt',
                              'nonf1.gp21' => '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.txt',
                              'cancer.gp19' => '/hpf/largeprojects/pray/llau/gene_panels/CANCER_20151016/CANCER_20151016.txt',
-                             'hsp.gp20' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20151122/HSP_20151122.txt'
+                             'hsp.gp20' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20151122/HSP_20151122.txt',
+                             'hsp.gp21' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20160319/HSP_20160319.txt'
                               );
 our %panelExon10bpPadFull    = ('exome.gp10' => '/hpf/largeprojects/pray/llau/gene_panels/EXOMES_20140723/refSeqLongest_exICCG_CR.ICCG_include_nonCRtargets.exons_10bp_padding.sort.merged.bed',
                              'hsp.gp4' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20141002/HSP_20141002.exon_10bp_padding.bed',
@@ -79,7 +81,8 @@ our %panelExon10bpPadFull    = ('exome.gp10' => '/hpf/largeprojects/pray/llau/ge
                              'noonan.gp7' => '/hpf/largeprojects/pray/llau/gene_panels/NOONAN_20150304/NOONAN_20150304.exon_10bp_padding.bed',
                              'nonf1.gp21' => '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.exon_10bp_padding.bed',
                              'cancer.gp19' => '/hpf/largeprojects/pray/llau/gene_panels/CANCER_20151016/CANCER_20151016.exon_10bp_padding.bed',
-                             'hsp.gp20' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20151122/HSP_20151122.exon_10bp_padding.bed'
+                             'hsp.gp20' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20151122/HSP_20151122.exon_10bp_padding.bed',
+                             'hsp.gp21' => '/hpf/largeprojects/pray/llau/gene_panels/HSP_20160319/HSP_20160319.exon_10bp_padding.bed'
                               );
 our %panelExon10bpPadBedFile  = ('exome.gp10' => 'refSeqLongest_exICCG_CR.ICCG_include_nonCRtargets.exons_10bp_padding.sort.merged.bed',
                              'hsp.gp4' => 'HSP_20141002.exon_10bp_padding.bed',
@@ -91,7 +94,8 @@ our %panelExon10bpPadBedFile  = ('exome.gp10' => 'refSeqLongest_exICCG_CR.ICCG_i
                              'noonan.gp7' => 'NOONAN_20150304.exon_10bp_padding.bed',
                              'nonf1.gp21' => 'NOONAN_NF1.exon_10bp_padding.bed',
                              'cancer.gp19' => 'CANCER_20151016.exon_10bp_padding.bed',
-                             'hsp.gp20' => 'HSP_20151122.exon_10bp_padding.bed'
+                             'hsp.gp20' => 'HSP_20151122.exon_10bp_padding.bed',
+                             'hsp.gp21' => 'HSP_20160319.exon_10bp_padding.bed'
                               );
 our %panelBedFile             = ('exome.gp10' => 'hg19wUnassembled_RefSeqGenes_refGene.Jan312014.exons_no_padding.sort.merge.blat.sort.bed',
                              'hsp.gp4' => 'HSP_20141002.panel.bed',
@@ -103,7 +107,8 @@ our %panelBedFile             = ('exome.gp10' => 'hg19wUnassembled_RefSeqGenes_r
                              'noonan.gp7' => 'NOONAN_20150304.panel.bed',
                              'nonf1.gp21' => 'NOONAN_NF1.exon_10bp_padding.bed',
                              'cancer.gp19' => 'CANCER_20151016.gene_100bp_padding.bed',
-                             'hsp.gp20' => 'HSP_20151122.panel.bed'
+                             'hsp.gp20' => 'HSP_20151122.panel.bed',
+                             'hsp.gp21' => 'HSP_20160319.panel.bed'
                               );
 our %panelBedFileFull         = ('exome.gp10' => '/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb/EXOMES_concate_gp_disease_association.bed',
                              'hsp.gp4' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/HSP_20141002.panel.bed',
@@ -115,7 +120,8 @@ our %panelBedFileFull         = ('exome.gp10' => '/hpf/largeprojects/pray/llau/p
                              'noonan.gp7' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/NOONAN_20150304.panel.bed',
                              'nonf1.gp7' => '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.exon_10bp_padding.bed',
                              'cancer.gp19' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/CANCER_20151016.gene_100bp_padding.bed',
-                             'hsp.gp20' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/HSP_20151122.panel.bed'
+                             'hsp.gp20' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/HSP_20151122.panel.bed',
+                             'hsp.gp21' => '/hpf/largeprojects/pray/llau/programs/annovar/2014jul14/annovar/humandb/HSP_20160319.panel.bed'
                               );
 
 our %pipeline_lst = ( 'cancerT' => \&cancerT, 'cancerN' => \&cancerN, 'exome' => \&exome, 'exome_newGP' => \&exome_newGP);
