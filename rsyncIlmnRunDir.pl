@@ -49,11 +49,12 @@ if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
 
 sub email_error {
     my $errorMsg = shift;
+    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'weiw.wang@sickkids.ca',
+        to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
         subject              => "error info of rsync sequencer folder",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,

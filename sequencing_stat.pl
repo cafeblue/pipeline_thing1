@@ -47,9 +47,7 @@ foreach my $ref (@$chksum_ref) {
 }
 
 sub update_table {
-    my $flowcellID = shift;
-    my $table_ref = shift;
-    my $config_ref = shift;
+    my ($flowcellID, $table_ref, $config_ref) = @_;
 
     foreach my $sampleID (keys %$table_ref) {
         #delete the possible exists recoreds
@@ -125,8 +123,7 @@ sub get_pipelinever {
 }
 
 sub get_pairID {
-    my $id1 = shift;
-    my $id2 = shift;
+    my ($id1, $id2) = @_;
     my @pairids = ();
     my $query = "SELECT distinct(pairID) from pairInfo where sampleID1 = '$id1' or sampleID2 = '$id1' or sampleID1 = '$id2' or sampleID2 = '$id2'";
     my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
@@ -294,11 +291,12 @@ sub get_chksum_list {
 
 sub email_error {
     my $errorMsg = shift;
+    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'weiw.wang@sickkids.ca',
+        to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
         subject              => "Job Status on thing1 for update sample info.",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,

@@ -50,8 +50,7 @@ sub check_finished_samples {
 }
 
 sub update_qualMetrics {
-    my $sampleID = shift;
-    my $postprocID = shift;
+    my ($sampleID,$postprocID) = @_;
     my $query = "SELECT jobName FROM hpfJobStatus WHERE jobName IN ($SQL_JOBLST) AND exitcode = '0' AND sampleID = '$sampleID' AND postprocID = '$postprocID' ";
     my $sthQUF = $dbh->prepare($query);
     $sthQUF->execute();
@@ -93,9 +92,7 @@ sub run_update {
 }
 
 sub check_qual {
-    my $sampleID = shift;
-    my $postprocID = shift;
-    my @querys = @_;
+    my ($sampleID, $postprocID, @querys) = @_;
     my %qualMetrics;
     my $msg = "";
     foreach (@querys) {
@@ -115,22 +112,22 @@ sub check_qual {
     }
     
     if ($msg ne '') {
-        email_error($msg);
+        email_error($msg, "quality");
         return 7;
     }
     return 6;
 }
 
 sub email_error {
-    my $errorMsg = shift;
+    my ($errorMsg, $quality) = @_;
     print STDERR $errorMsg;
-    my $sampleID = shift;
-    my $postprocID = shift;
+    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
+    my $email_list = $quality eq 'quality' ? 'crm@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca' : 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca';
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'weiw.wang@sickkids.ca',
+        to                   => $email_list, 
         subject              => "Job Status on HPF",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,

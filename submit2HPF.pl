@@ -47,13 +47,7 @@ if ($allerr ne "") {
 }
 
 sub main {
-    my $sampleID = shift;
-    my $flowcellID = shift;
-    my $postprocID = shift;
-    my $genePanelVer = shift;
-    my $pairID = shift;
-    my $sampleType = shift;
-    my $config_ref = shift;
+    my ($sampleID, $flowcellID, $postprocID, $genePanelVer, $pairID, $sampleType, $config_ref) = @_;
     my $command = '';
 
     if ($genePanelVer =~ /cancer/) {
@@ -174,10 +168,7 @@ sub insert_command {
 }
 
 sub update_submit_status {
-    my $code = shift;
-    my $sampleID = shift;
-    my $flowcellID = shift;
-    my $postprocID = shift;
+    my ($code, $sampleID, $flowcellID, $postprocID) = @_;
 
     $code = $code == 0 ? "2" : "3";
     my $db_update = "UPDATE sampleInfo set currentStatus = '$code' where sampleID = '$sampleID' and postprocID = '$postprocID'";
@@ -234,24 +225,21 @@ sub get_sample_list {
 
 sub email_error {
     my $errorMsg = shift;
+    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'weiw.wang@sickkids.ca',
-        #to                   => 'weiw.wang@sickkids.ca',
+        to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
         subject              => "Job Status on thing1 for submit2HPF.",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
         msg                  => $errorMsg 
     };
     my $ret =  $sender->MailMsg($mail);
-#    print $ret;
-#    print STDERR $_[0];
 }
 
 sub print_time_stamp {
-    # print the time:
     my $retval = time();
     my $yetval = $retval - 86400;
     $yetval = localtime($yetval);

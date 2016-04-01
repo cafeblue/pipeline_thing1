@@ -621,10 +621,7 @@ sub clinvar_sig {
 }
 
 sub code_type_of_mutation_gEnd {
-    my $t_mutation = shift;
-    my $refAllele = shift;
-    my $altAllele = shift;
-    my $gStart = shift;
+    my ($t_mutation, $refAllele, $altAllele, $gStart) = @_;
     if ($t_mutation eq 'snp') {
         return (3, $gStart);
     }
@@ -664,11 +661,12 @@ sub code_aa_change {
 sub email_error {
     my $errorMsg = shift;
     print STDERR $errorMsg;
+    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'weiw.wang@sickkids.ca',
+        to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
         subject              => "Variants loading status...",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,

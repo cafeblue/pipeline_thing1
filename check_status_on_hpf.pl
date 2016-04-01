@@ -249,7 +249,7 @@ sub email_error {
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'weiw.wang@sickkids.ca',
+        to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
         subject              => "Job Status on HPF",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,

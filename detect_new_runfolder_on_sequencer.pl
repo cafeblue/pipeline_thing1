@@ -63,14 +63,14 @@ print DETLST $print_parsed;
 close(DETLST);
 
 sub email_error {
-    my $flowcellID = shift;
-    my $errorMsg = shift;
+    my ($flowcellID, $errorMsg) = @_;
     if ($errorMsg eq '') {
+        $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
         my $sender = Mail::Sender->new();
         my $mail   = {
             smtp                 => 'localhost',
             from                 => 'notice@thing1.sickkids.ca',
-            to                   => 'weiw.wang@sickkids.ca',
+            to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
             subject              => "Sequencing folder for $flowcellID found.",
             ctype                => 'text/plain; charset=utf-8',
             skip_bad_recipients  => 1,
@@ -79,11 +79,12 @@ sub email_error {
         my $ret =  $sender->MailMsg($mail);
     }
     else {
+        $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
         my $sender = Mail::Sender->new();
         my $mail   = {
             smtp                 => 'localhost',
             from                 => 'notice@thing1.sickkids.ca',
-            to                   => 'weiw.wang@sickkids.ca',
+            to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
             subject              => "error loading into database for $flowcellID",
             ctype                => 'text/plain; charset=utf-8',
             skip_bad_recipients  => 1,
@@ -94,7 +95,7 @@ sub email_error {
 }
 
 sub get_cycleNum {
-    my $sourceFolder = $_;
+    my $sourceFolder = shift;
     my $cycleNum = 0;
     my @cycles = `grep "NumCycles" $sourceFolder/RunInfo.xml  `;
     my $flag = 1;

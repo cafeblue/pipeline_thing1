@@ -330,15 +330,14 @@ sub get_sequencing_list {
 }
 
 sub email_error {
-    my $errorMsg = shift;
-    my $flowcellID = shift;
-    my $machine = shift;
+    my ($errorMsg, $flowcellID, $machine) = @_;
     print STDERR $errorMsg ;
+    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'weiw.wang@sickkids.ca, marianne.eliou@sickkids.ca, jennifer.orr@sickkids.ca, cameron.ellahi@sickkids.ca',
+        to                   => 'marianne.eliou@sickkids.ca, jennifer.orr@sickkids.ca, cameron.ellahi@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
         subject              => "Status of flowcell $flowcellID on Sequencer $machine",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
