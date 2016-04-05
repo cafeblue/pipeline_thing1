@@ -149,6 +149,14 @@ our $help =  <<EOF;
                       -genePanel cancer.gp19 -runfolder /hpf/largeprojects/pray/llau/clinical/samples/illumina/123456-1234-20151212121212-b37 \
                       -startPoint gatk-recal -normalPair /hpf/largeprojects/pray/llau/clinical/bam_backup/123456-1235.realigned-recalibrated.bam
 
+              -s,-sampleID                sampleID
+              -a,-postprocID              postprocID
+              -f,-fastqDir                full path to fastq files.
+              -g,-genePanel               Gene Panel
+              -r,-runfolder               The folder for all jobs.
+              -i,-startPoint              the job name which you want to resume.
+              -n,-normalPair              The full path to the normal sample bam file which paired with a tumor sample
+
               pipeline list: cancerT, cancerN, exome, exome_newGP
               startPoint list: NEW, bwaAlign, picardMarkDup, picardMarkDupIdx, 
                                gatkLocalRealign, gatkQscoreRecalibration, gatkGenoTyper, gatkCovCalExomeTargets, 
