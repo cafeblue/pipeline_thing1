@@ -13,7 +13,7 @@ my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SSHDATA    = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
 my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
-my %FILTERS = ( "meanCvgExome" => ">= 90", "lowCovExonNum" => "<= 6000", "lowCovATRatio" => "<= 1", "perbasesAbove10XExome" => ">= 95", "perbasesAbove20XExome" => ">= 90", "offTargetRatioChr1" >= "<= 28", "perPCRdup" => "<= 15");
+my %FILTERS = ( "meanCvgExome" => ">= 80", "lowCovExonNum" => "<= 6000", "lowCovATRatio" => "<= 1", "perbasesAbove10XExome" => ">= 95", "perbasesAbove20XExome" => ">= 90", "offTargetRatioChr1" >= "<= 28", "perPCRdup" => "<= 15");
 
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
 # assign the values in the accessDB file to the variables

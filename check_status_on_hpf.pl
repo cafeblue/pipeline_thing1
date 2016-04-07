@@ -15,6 +15,11 @@ my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $GET_JSUBID = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_jsub_pl.sh ';
 my $GET_STATUS = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_status_pl.sh ';
 my $DEL_RUNDIR = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/del_rundir_pl.sh ';
+my %RESUME_LIST = ( 'bwaAlign' => 'bwaAlign', 'picardMardDup' => 'picardMarkDup', 'gatkLocalRealgin' => 'gatkLocalRealign', 'gatkQscoreRecalibration' => 'gatkQscoreRecalibration',
+                    'gatkRawVariantsCall' => 'gatkRawVariantsCall', 'gatkRawVariants' => 'gatkRawVariants', 'muTect' => 'muTect', 'mutectCombine' => 'mutectCombine',
+                    'annovarMutect' => 'annovarMutect', 'gatkFilteredRecalSNP' => 'gatkRawVariants', 'gatkdwFilteredRecalINDEL' => 'gatkRawVariants',
+                    'gatkFilteredRecalVariant' => 'gatkFilteredRecalVariant', 'windowBed' => 'gatkFilteredRecalVariant', 'annovar' => 'gatkFilteredRecalVariant',
+                    'snpEff' => 'snpEff');
 
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -40,8 +45,8 @@ foreach my $idpair (@$idpair_ref) {
         my $sthQNS = $dbh->prepare($update_CS) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
     }
-    # Check if there are some jobs idled over 1 day
-    elsif (&check_idle_jobs(@$idpair) == 1) {
+    # resubmit all the jobs if submission failed.
+    elsif (&check_failed_submission(@$idpair) == 1) {
         my $cmd = $DEL_RUNDIR . $HPF_RUNNING_FOLDER . " " . $$idpair[0] . "-" . $$idpair[1] . '"';
         print $cmd,"\n";
         `$cmd`;
@@ -55,9 +60,13 @@ foreach my $idpair (@$idpair_ref) {
         print $update_CS,"\n";
         my $sthQNS = $dbh->prepare($update_CS) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
         $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
-        my $msg = "There are jobs failed to be submitted or idled over 30 hours of sampleID: " . $$idpair[0] . " postprocID: " . $$idpair[1] . " currentStatus is set to 0, Please delete the running folder on HPF.\n";
+        my $msg = "Jobs failed to be submitted of sampleID: " . $$idpair[0] . " postprocID: " . $$idpair[1] . ". Re-submission will be running within 10 min.\n";
         print STDERR $msg;
         &email_error($msg);
+    }
+    # resume from the stuck job:
+    elsif (&check_idle_jobs(@$idpair) == 1) {
+        &resume_stuck_jobs(@$idpair);
     }
 }
 
@@ -84,7 +93,7 @@ sub update_hpfJobStatus {
         &update_jobID( $sampleID, $postprocID, $data_ref);
     }
 
-    my $query_noexitcode = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobID is not NULL and exitcode is NULL";
+    my $query_noexitcode = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobID IS NOT NULL AND exitcode IS NULL";
     $sthQUF = $dbh->prepare($query_noexitcode);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
@@ -98,23 +107,17 @@ sub check_all_jobs {
     my $query_nonjobID = "SELECT jobID,exitcode FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName != 'gatkGenoTyper'";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
-    if ($sthQUF->rows() != 0) {
-        my @dataS = ();
-        while (@dataS = $sthQUF->fetchrow_array) {
-            if ($dataS[0] !~ /\d+/ || $dataS[1] ne '0') {
-                return 0;
-            }
+    my @dataS = ();
+    while (@dataS = $sthQUF->fetchrow_array) {
+        if ($dataS[0] !~ /\d+/ || $dataS[1] ne '0') {
+            return 0;
         }
-        return 1;
     }
-    else {
-        return 0;
-    }
+    return 1;
 }
 
-sub check_idle_jobs {
+sub check_failed_submission {
     my ($sampleID, $postprocID) = @_;
-
     #There are some jobs not been submitted after 2 hours.
     my $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobID IS NULL AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP";
     my $sthQUF = $dbh->prepare($query_nonjobID);
@@ -122,34 +125,73 @@ sub check_idle_jobs {
     if ($sthQUF->rows() != 0) {
         return 1;
     }
+    return 0;
+}
 
-    # There are some jobs idle over 12 hours.
-    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP";
-    $sthQUF = $dbh->prepare($query_nonjobID);
-    $sthQUF->execute();
-    if ($sthQUF->rows() >= 16) {
-        return 1;
-    }
+sub check_idle_jobs {
+    my ($sampleID, $postprocID) = @_;
 
-    $query_nonjobID = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,10,time)<CURRENT_TIMESTAMP";
-    $sthQUF = $dbh->prepare($query_nonjobID);
+    # Check the jobs which have not finished within 4 hours.
+    my $query_jobName = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,4,time)<CURRENT_TIMESTAMP ORDER BY jobID;";
+    my $sthQUF = $dbh->prepare($query_jobName);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
-        my @dataS = ();
+        my @dataS = $sthQUF->fetchrow_array;
         my $msg = "sampleID $sampleID postprocID $postprocID \n";
-        while (@dataS = $sthQUF->fetchrow_array) {
-            my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = '" . $dataS[0] . "'";
-            my $sthSetFlag = $dbh->prepare($seq_flag);
-            $sthSetFlag->execute();
-            $msg .= "\tjobName " . $dataS[0] . " idled over 12 hours...\n";
-        }
+        my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = '" . $dataS[0] . "'";
+        my $sthSetFlag = $dbh->prepare($seq_flag);
+        $sthSetFlag->execute();
+        $msg .= "\tjobName " . $dataS[0] . " idled over 4 hours...\n";
+        $msg .= "\nIf this jobs can't be finished in 2 hours, this job together with the folloiwng joibs  will be re-submitted!!!\n";
         print STDERR $msg;
         &email_error($msg);
         return 0;
     }
+
+    $query_jobName = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP ORDER BY jobID;";
+    $sthQUF = $dbh->prepare($query_jobName);
+    $sthQUF->execute();
+    if ($sthQUF->rows() != 0) {
+        #Reset the jobID and time and  wait for the resubmission.
+        my $update = "UPDATE hpfJobStatus set jobID = NULL  WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        my $sthUQ = $dbh->prepare($update)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
+        $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
+        return 1;
+    }
     else {
         return 0;
     }
+}
+
+sub resume_stuck_jobs {
+    my ($sampleID, $postprocID) = @_;
+    my $query_jobName = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1';";
+    my $sthQUF = $dbh->prepare($query_jobName);
+    $sthQUF->execute();
+    my @dataS = $sthQUF->fetchrow_array;
+    my $msg;
+    if (exists $RESUME_LIST{$dataS[0]}) {
+        $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, resubmission is running\n";
+        my $query = "SELECT command FROM hpfCommand WHERE sampleID = '$sampleID' AND postprocID = '$postprocID';";
+        my $sthSQ = $dbh->prepare($query) or die "Can't query database for command" . $dbh->errstr() . "\n";
+        $sthSQ->execute() or die "Can't excute query for command " . $dbh->errstr() . "\n";
+        if ($sthSQ->rows() == 1) {
+            my @tmpS = $sthSQ->fetchrow_array;
+            my $command = $tmpS[0];
+            chomp($command);
+            $command =~ s/"$//;
+            $command =~ s/ -startPoint .+//;
+            $command .= " -startPoint " . $dataS[0] . '"';
+        }
+        else {
+            $msg .= "\nMultiple/No submission command(s) found for sample $sampleID postprocID $postprocID, please check the table hpfCommand\n";
+        }
+
+    }
+    else {
+        $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, but the resubmission is NOT going to run, please re-submit the job by manual!\n";
+    }
+    &email_error($msg);
 }
 
 sub check_idle_bwa {
@@ -157,7 +199,7 @@ sub check_idle_bwa {
     my $msg = '';
     foreach my $pairid (@$pairs) {
         my ($sampleID, $postprocID) = @$pairid;
-        my $query_idle = "SELECT jobID,TIMESTAMPDIFF(SECOND, time, CURRENT_TIMESTAMP) from hpfJobStatus where sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = 'bwaAlign' and exitcode IS NULL AND TIMESTAMPADD(HOUR,6,time)<CURRENT_TIMESTAMP";
+        my $query_idle = "SELECT jobID,TIMESTAMPDIFF(SECOND, time, CURRENT_TIMESTAMP) from hpfJobStatus where sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = 'bwaAlign' and exitcode IS NULL ";
         my $sthQIB = $dbh->prepare($query_idle);
         $sthQIB->execute();
         my @jobID = $sthQIB->fetchrow_array;
@@ -224,7 +266,7 @@ sub update_jobStatus {
             my $jobName = (split(/\//, $joblst[$i]))[9]; 
             my $jobID = '';
             if ($joblst[$i+1] =~ /EXIT STATUS: (.+)/) {
-                my $update_query = "UPDATE hpfJobStatus set exitcode = '$1'  WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName = '$jobName'";
+                my $update_query = "UPDATE hpfJobStatus set exitcode = '$1', flag = '0'  WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName = '$jobName'";
                 my $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                 $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
                 if ($1 ne '0') {
@@ -236,6 +278,10 @@ sub update_jobStatus {
                     $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
                     return;
                 }
+                # upate the time:
+                my $update_time = "UPDATE hpfJobStatus SET time = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND exitcode IS NULL";
+                my $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
+                $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
             }
         }
     }

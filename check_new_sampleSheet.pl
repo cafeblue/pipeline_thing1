@@ -98,9 +98,10 @@ foreach my $file  (@new_fl) {
         if ( ! defined $ilmnBarcodes{$lines_ref->{'barcode'}} ) {
             $errorMsg .= "ERROR: Ilumina Barcode doesn't exist in line $..\n";
         }
-        if ( $lines_ref->{'machine'} =~ "miseq" && (! defined $ilmnBarcodes{$lines_ref->{'barcode2'}})) {
-            $errorMsg .= "ERROR: Ilumina Barcode2 for miseq doesn't exist in line $..\n";
-        }
+        ##  Uncomment if double barcode required
+        #if ( $lines_ref->{'machine'} =~ "miseq" && (! defined $ilmnBarcodes{$lines_ref->{'barcode2'}})) {
+        #    $errorMsg .= "ERROR: Ilumina Barcode2 for miseq doesn't exist in line $..\n";
+        #}
         if ( $lines_ref->{'lane'} !~ /[1-8](,[1-8])*/ ) {
             $errorMsg .= "ERROR: lane is greater than 8 OR less than 0 in line $..\n";
         }
