@@ -198,7 +198,7 @@ sub write_samplesheet_miseq {
         $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes{$line->{'barcode'}} . ",,\n";
         $flowcellID = $line->{'flowcell_ID'};
     }
-    my $file = "/localhd/data/sequencers/$machine/$machine\_desktop/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
+    my $file = "/localhd/data/sequencers/$machine\_desktop/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
     print $file,"\n";
     print $output;
     #OPEN (CSV, ">$file") or die "failed to open file $file\n"; 
