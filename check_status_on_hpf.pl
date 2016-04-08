@@ -138,6 +138,13 @@ sub check_idle_jobs {
     if ($sthQUF->rows() != 0) {
         my @dataS = $sthQUF->fetchrow_array;
         my $msg = "sampleID $sampleID postprocID $postprocID \n";
+        # check if flag = 1 already exixst!
+        my $check_flag = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1'";
+        my $sthFCH = $dbh->prepare($check_flag) or die "flag check failed: " . $dbh->errstr() . "\n";
+        $sthFCH->execute();
+        if ($sthFCH->rows() == 1) {
+            return 0;
+        }
         my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = '" . $dataS[0] . "'";
         my $sthSetFlag = $dbh->prepare($seq_flag);
         $sthSetFlag->execute();
@@ -153,7 +160,7 @@ sub check_idle_jobs {
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
         #Reset the jobID and time and  wait for the resubmission.
-        my $update = "UPDATE hpfJobStatus set jobID = NULL  WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        my $update = "UPDATE hpfJobStatus set jobID = NULL, flag = NULL WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
         my $sthUQ = $dbh->prepare($update)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
         $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
         return 1;
@@ -182,6 +189,10 @@ sub resume_stuck_jobs {
             $command =~ s/"$//;
             $command =~ s/ -startPoint .+//;
             $command .= " -startPoint " . $dataS[0] . '"';
+            `$command`;
+            if ($? != 0) {
+                $msg .= "command \n\n $command \n\n failed with the error code $?, re-submission failed!!\n";
+            }
         }
         else {
             $msg .= "\nMultiple/No submission command(s) found for sample $sampleID postprocID $postprocID, please check the table hpfCommand\n";
@@ -205,6 +216,7 @@ sub check_idle_bwa {
         my @jobID = $sthQIB->fetchrow_array;
         if ($jobID[0]) {
             my $hours = int($jobID[1]/3600);
+            next if $hours == 0;
             if ($hours % 2 == 0 && $jobID[1] - $hours*3600 <= 605) {
                 $msg .= "bwaAlign jobID " . $jobID[0] . " for sampleID: $sampleID postprocID: $postprocID has been waiting in the Queue over $hours hours...\n";
             }
