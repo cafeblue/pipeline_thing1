@@ -142,17 +142,16 @@ sub check_idle_jobs {
         my $check_flag = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1'";
         my $sthFCH = $dbh->prepare($check_flag) or die "flag check failed: " . $dbh->errstr() . "\n";
         $sthFCH->execute();
-        if ($sthFCH->rows() == 1) {
+        if ($sthFCH->rows() == 0) {
+            my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = '" . $dataS[0] . "'";
+            my $sthSetFlag = $dbh->prepare($seq_flag);
+            $sthSetFlag->execute();
+            $msg .= "\tjobName " . $dataS[0] . " idled over 4 hours...\n";
+            $msg .= "\nIf this jobs can't be finished in 2 hours, this job together with the folloiwng joibs  will be re-submitted!!!\n";
+            print STDERR $msg;
+            &email_error($msg);
             return 0;
         }
-        my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = '" . $dataS[0] . "'";
-        my $sthSetFlag = $dbh->prepare($seq_flag);
-        $sthSetFlag->execute();
-        $msg .= "\tjobName " . $dataS[0] . " idled over 4 hours...\n";
-        $msg .= "\nIf this jobs can't be finished in 2 hours, this job together with the folloiwng joibs  will be re-submitted!!!\n";
-        print STDERR $msg;
-        &email_error($msg);
-        return 0;
     }
 
     $query_jobName = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP ORDER BY jobID;";
