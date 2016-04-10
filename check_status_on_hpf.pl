@@ -104,16 +104,16 @@ sub update_hpfJobStatus {
 
 sub check_all_jobs {
     my ($sampleID, $postprocID) = @_;
-    my $query_nonjobID = "SELECT jobID,exitcode FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName != 'gatkGenoTyper'";
+    my $query_nonjobID = "SELECT jobID,exitcode FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName = 'snpEff'";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
-    my @dataS = ();
-    while (@dataS = $sthQUF->fetchrow_array) {
-        if ($dataS[0] !~ /\d+/ || $dataS[1] ne '0') {
-            return 0;
-        }
+    my @dataS = $sthQUF->fetchrow_array;
+    if ($dataS[0] !~ /\d+/ || $dataS[1] ne '0') {
+        return 0;
     }
-    return 1;
+    else {
+        return 1;
+    }
 }
 
 sub check_failed_submission {
