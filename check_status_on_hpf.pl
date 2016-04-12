@@ -20,6 +20,9 @@ my %RESUME_LIST = ( 'bwaAlign' => 'bwaAlign', 'picardMardDup' => 'picardMarkDup'
                     'annovarMutect' => 'annovarMutect', 'gatkFilteredRecalSNP' => 'gatkRawVariants', 'gatkdwFilteredRecalINDEL' => 'gatkRawVariants',
                     'gatkFilteredRecalVariant' => 'gatkFilteredRecalVariant', 'windowBed' => 'gatkFilteredRecalVariant', 'annovar' => 'gatkFilteredRecalVariant',
                     'snpEff' => 'snpEff');
+my %TRUNK_LIST = ( 'bwaAlign' => 0, 'picardMardDup' => 0, 'picardMarkDupIdx' => 0, 'gatkLocalRealgin' => 0, 'gatkQscoreRecalibration' => 0,
+                    'gatkRawVariantsCall' => 0, 'gatkRawVariants' => 0, 'muTect' => 0, 'mutectCombine' => 0, 'annovarMutect' => 0, 'gatkFilteredRecalSNP' => 0, 
+                    'gatkdwFilteredRecalINDEL' => 0, 'gatkFilteredRecalVariant' => 0, 'windowBed' => 0, 'annovar' => 0, 'snpEff' => 0);
 
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -274,13 +277,13 @@ sub update_jobStatus {
     @joblst = `$cmd`;
     for (my $i = 0; $i<$#joblst; $i++) {
         if ($joblst[$i] =~ /^$HPF_RUNNING_FOLDER/) {
-            my $jobName = (split(/\//, $joblst[$i]))[9]; 
+            my $jobName = (split(/\//, $joblst[$i]))[-3]; 
             my $jobID = '';
             if ($joblst[$i+1] =~ /EXIT STATUS: (.+)/) {
                 my $update_query = "UPDATE hpfJobStatus set exitcode = '$1', flag = '0'  WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName = '$jobName'";
                 my $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                 $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
-                if ($1 ne '0') {
+                if ($1 ne '0' && exists $TRUNK_LIST{$jobName}) {
                     my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n";
                     print STDERR $msg;
                     email_error($msg);
@@ -288,6 +291,11 @@ sub update_jobStatus {
                     $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                     $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
                     return;
+                }
+                elsif ($1 ne '0') {
+                    my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n\n But it is not a trunk job, Please manually resubmit this job!\n";
+                    print STDERR $msg;
+                    email_error($msg);
                 }
                 # upate the time:
                 my $update_time = "UPDATE hpfJobStatus SET time = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND exitcode IS NULL";
