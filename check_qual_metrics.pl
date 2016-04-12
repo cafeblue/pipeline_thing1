@@ -78,7 +78,7 @@ sub update_qualMetrics {
     }
     else {
         my $msg = "No successful job generate sql file for sampleID $sampleID postprocID $postprocID ? it is impossible!!!!\n";
-        print $STDERR $msg;
+        print STDERR $msg;
         email_error($msg);
         return 2;
     }
