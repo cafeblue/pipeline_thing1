@@ -220,6 +220,7 @@ my $qdThreshold = 2.0;
 my $snpFS = 60.0;
 my $snpMQ = 40.0;
 my $snpHapScore = 13.0;
+my $HSlg13 = 0;
 my $snpMQRankSum = -12.5;
 my $snpReadPosRankSum = -8.0;
 my $indelFS = 200.0;
@@ -1189,10 +1190,12 @@ while ($data=<FILE>) {
             $qualFilter = 0;
             #print STDERR "SNP MQ filtered out\n";
           }
+
           if ($varHapScore > $snpHapScore) {
-            #$filter = 0;
-            $qualFilter = 0;
-            #print STDERR "SNP HapScore filtered out\n";
+          #############  Wei comment start ###############
+          #   $qualFilter = 0;
+              $HSlg13++;
+          #############  Wei comment stop  ###############
           }
           if (defined $varMQRankSum && $varMQRankSum ne "") {
             if ($varMQRankSum < $snpMQRankSum) {
