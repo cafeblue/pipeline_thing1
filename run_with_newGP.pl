@@ -22,12 +22,12 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
 
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
-my $SHH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
+my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
 my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
 my $CALL_SCREEN = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
 my $FASTQ_DIR    = '/hpf/largeprojects/pray/llau/clinical/fastq_pl/';
 my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/llau/clinical/samples/pl_illumina';
-my $SHH_DATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
+my $SSH_DATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
 my $NEWGP_MKDIR    = "$PIPELINE_HPF_ROOT/mkdir4newGP.sh";
 my %JOBLIST = ( 'newGP' => [ "calAF", "gatkCovCalGP", "annovar", "snpEff"]);
 my ($sampleID, $flowcellID, $oldpID, $oldGP, $newGP) = @ARGV;
@@ -67,7 +67,7 @@ my $newPID = $sth_INS->{'mysql_insertid'};
 my $retval = time();
 my $localTime = localtime( $retval );
 my $currentTime = $localTime->strftime('%Y%m%d%H%M%S');
-my $command = "$SHH_DATA \"$NEWGP_MKDIR $HPF_RUNNING_FOLDER/$sampleID-$newPID-$currentTime-$newGP-b37 $sampleID $oldpID $newPID $oldGP\"";
+my $command = "$SSH_DATA \"$NEWGP_MKDIR $HPF_RUNNING_FOLDER/$sampleID-$newPID-$currentTime-$newGP-b37 $sampleID $oldpID $newPID $oldGP\"";
 print $command,"\n";
 `$command`;
 
@@ -77,9 +77,9 @@ foreach my $jobName (@{$JOBLIST{'newGP'}}) {
     $sth->execute() or die "Can't excute insert for new hpf jobs: $insert_sql" . $dbh->errstr() . "\n";
 }
 
-$command = "$SHH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$newPID-$currentTime-$newGP-b37  -s $sampleID -a $newPID -f $FASTQ_DIR -g $newGP -p exome_newGP\"\n";
+$command = "$SSH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$newPID-$currentTime-$newGP-b37  -s $sampleID -a $newPID -f $FASTQ_DIR -g $newGP -p exome_newGP\"\n";
 print $command;
-`$SHH_HPF "$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$newPID-$currentTime-$newGP-b37  -s $sampleID -a $newPID -f $FASTQ_DIR -g $newGP -p exome_newGP"`;
+`$SSH_HPF "$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$newPID-$currentTime-$newGP-b37  -s $sampleID -a $newPID -f $FASTQ_DIR -g $newGP -p exome_newGP"`;
 &insert_command($sampleID, $newPID, $command);
 
 sub insert_command {

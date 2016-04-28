@@ -11,11 +11,7 @@ $|++;
 my $allerr = "";
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") or $allerr = "Can't access login credentials";
-my $host = <ACCESS_INFO>;
-my $port = <ACCESS_INFO>;
-my $user = <ACCESS_INFO>;
-my $pass = <ACCESS_INFO>;
-my $db = <ACCESS_INFO>;
+my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
 close(ACCESS_INFO);
 chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
@@ -23,13 +19,12 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
 
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
-my $sshdat = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
-my $sshhpf = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
-my $call_screen = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
-my $runfolder   = '/hpf/largeprojects/pray/llau/clinical/samples/pl_illumina';
-my $fastqdir    = '/hpf/largeprojects/pray/llau/clinical/fastq_pl/';
-my $newGP_sh    = "$PIPELINE_HPF_ROOT/mkdir4newGP.sh";
-my $backup_bam  = '/hpf/largeprojects/pray/llau/clinical/backup_files/bam';
+my $SSH_DATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
+my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
+my $CALL_SCREEN = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
+my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/llau/clinical/samples/pl_illumina';
+my $FASTQ_DIR    = '/hpf/largeprojects/pray/llau/clinical/fastq_pl/';
+my $BACKUP_BAM  = '/hpf/largeprojects/pray/llau/clinical/backup_files/bam';
 
 my $sample_ref = &get_sample_list;
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
@@ -57,10 +52,10 @@ sub main {
         }
         elsif ($sampleType eq 'T' || $sampleType eq 't' || $sampleType eq 'tumor' || $sampleType eq 'tumour') {
             &insert_jobstatus($sampleID,$postprocID,"cancerT");
-            print "$sshdat \"mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
-            `$sshdat "mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
-            print "$sshdat \"mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
-            `$sshdat "mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
+            print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
+            `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
+            print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
+            `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
                 $allerr .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
                 return(1);
@@ -76,7 +71,7 @@ sub main {
                     my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedSampleID : " . $dbh->errstr() . "\n"; 
                     if ($sth_tmp->rows() == 1) {
                         my @data_ref = $sth_tmp->fetchrow_array ;
-                        $normal_bam = "$backup_bam/$pairedSampleID." . $data_ref[0] . ".realigned-recalibrated.bam";
+                        $normal_bam = "$BACKUP_BAM/$pairedSampleID." . $data_ref[0] . ".realigned-recalibrated.bam";
                     }
                     else {
                         $allerr .= "multiple/no postprocID found for paired sampleID $pairedSampleID with sampleID $sampleID\n";
@@ -89,7 +84,7 @@ sub main {
                     my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedSampleID : " . $dbh->errstr() . "\n"; 
                     if ($sth_tmp->rows() == 1) {
                         my @data_ref = $sth_tmp->fetchrow_array ;
-                        $normal_bam = "$backup_bam/$pairedSampleID." . $data_ref[0] . ".realigned-recalibrated.bam";
+                        $normal_bam = "$BACKUP_BAM/$pairedSampleID." . $data_ref[0] . ".realigned-recalibrated.bam";
                     }
                     else {
                         $allerr .= "multiple/no postprocID found for paired sampleID $pairedSampleID with sampleID $sampleID\n";
@@ -98,9 +93,9 @@ sub main {
                 }
             }
 
-            $command = "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam\" \n";
+            $command = "$SSH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam\" \n";
             print $command;
-            `$sshhpf "$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam "`;
+            `$SSH_HPF "$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam "`;
             if ( $? != 0 ) {
                 $allerr .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
                 return(1);
@@ -108,17 +103,17 @@ sub main {
         }
         else {
             &insert_jobstatus($sampleID,$postprocID,"cancerN");
-            print "$sshdat \"mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
-            `$sshdat "mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
-            print "$sshdat \"mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
-            `$sshdat "mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
+            print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
+            `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
+            print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
+            `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
                 $allerr .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
                 return(1);
             }
-            $command = "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN\" \n";
+            $command = "$SSH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN\" \n";
             print $command; 
-            `$sshhpf "$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN "`;
+            `$SSH_HPF "$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN "`;
             if ( $? != 0 ) {
                 $allerr .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
                 return(1);
@@ -127,17 +122,17 @@ sub main {
     }
     else {
        &insert_jobstatus($sampleID,$postprocID,"exome");
-       print "$sshdat \"mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
-       `$sshdat "mv $runfolder/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
-       print "$sshdat \"mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
-       `$sshdat "mkdir $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
+       print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
+       `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
+       print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
+       `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
        if ( $? != 0 ) {
            $allerr .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
            return(1);
        }
-       $command = "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome \"\n";
+       $command = "$SSH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome \"\n";
        print $command; 
-       `$sshhpf "$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome "`;
+       `$SSH_HPF "$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome "`;
        if ( $? != 0 ) {
            $allerr .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code:$?\n";
            return(1);

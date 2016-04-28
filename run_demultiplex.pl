@@ -13,16 +13,11 @@ my $SEQUENCERDIR = '/localhd/data/thing1/runs';
 my $SEQUENCERDIR = '/localhd/data/sequencers';
 my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
 my $SAMPLE_SHEET = '/localhd/data/sample_sheets_pl';
-my $jsubDir = "/localhd/data/thing1/jsub_log/"; #were all the jsub and the run information is kept
+my $JSUB_LOG_FOLDER = "/localhd/data/thing1/jsub_log/"; #were all the jsub and the run information is kept
 
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
-# assign the values in the accessDB file to the variables
-my $host = <ACCESS_INFO>;
-my $port = <ACCESS_INFO>;
-my $user = <ACCESS_INFO>;
-my $pass = <ACCESS_INFO>;
-my $db = <ACCESS_INFO>;
+my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
 close(ACCESS_INFO);
 chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
@@ -71,7 +66,7 @@ sub demultiplex {
     my $demultiplexCmd = "bcl2fastq -R $folder -o $outputfastqDir --sample-sheet $samplesheet";
     my $jobDir = "demultiplex_" . $machine . '_' . $flowcellID . "_" . $currentTime;
     # check jsub log
-    my $jsubChkCmd = "ls -d $jsubDir/demultiplex_$machine\_$flowcellID\_* 2>/dev/null";
+    my $jsubChkCmd = "ls -d $JSUB_LOG_FOLDER/demultiplex_$machine\_$flowcellID\_* 2>/dev/null";
     my @jsub_exists_folders = `$jsubChkCmd`;
     if ($#jsub_exists_folders >= 0) {
         my $msg = "folder:\n" . join("", @jsub_exists_folders) . "already exist. These folders will be deleted.\n\n";
@@ -81,10 +76,10 @@ sub demultiplex {
         }
         email_error($msg, $flowcellID, $machine);
     }
-    my $demultiplexJobID = `echo "$demultiplexCmd" | /localhd/tools/jsub/jsub-5/jsub -b  $jsubDir -j $jobDir -nn 1 -nm 72000`;
-    print "echo $demultiplexCmd | /localhd/tools/jsub/jsub-5/jsub -b  $jsubDir -j $jobDir -nn 1 -nm 72000\n";
+    my $demultiplexJobID = `echo "$demultiplexCmd" | /localhd/tools/jsub/jsub-5/jsub -b  $JSUB_LOG_FOLDER -j $jobDir -nn 1 -nm 72000`;
+    print "echo $demultiplexCmd | /localhd/tools/jsub/jsub-5/jsub -b  $JSUB_LOG_FOLDER -j $jobDir -nn 1 -nm 72000\n";
     if ($demultiplexJobID =~ /(\d+).thing1.sickkids.ca/) {
-        my $jlogFolder = $jsubDir . '/' . $jobDir;
+        my $jlogFolder = $JSUB_LOG_FOLDER . '/' . $jobDir;
         my $update = "UPDATE thing1JobStatus SET demultiplexJobID = '" . $1 . "' , demultiplex = '2' , demultiplexJfolder = '" . $jlogFolder . "' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'"; 
         print "Demultiplex is starting: $update\n";
         my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";

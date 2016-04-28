@@ -9,7 +9,7 @@ use Time::Piece;
 use Mail::Sender;
 $|++;
 
-my $jsubDir = "/localhd/data/thing1/jsub_log/"; #were all the jsub and the run information is kept
+my $JSUB_LOG_FOLDER = "/localhd/data/thing1/jsub_log/"; #were all the jsub and the run information is kept
 my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
 my $FASTQ_HPF = '/hpf/largeprojects/pray/llau/clinical/fastq_pl';
 my $SSHCMD = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
@@ -24,11 +24,7 @@ if ( -e "/dev/shm/chksumrunning" ) {
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
 # assign the values in the accessDB file to the variables
-my $host = <ACCESS_INFO>;
-my $port = <ACCESS_INFO>;
-my $user = <ACCESS_INFO>;
-my $pass = <ACCESS_INFO>;
-my $db = <ACCESS_INFO>;
+my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
 close(ACCESS_INFO);
 chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
@@ -40,21 +36,21 @@ my ($today, $currentTime, $currentDate) = &print_time_stamp;
 
 my $allerr = "";
 foreach my $ref (@$demultiplex_ref) {
-    my ($flowcellID, $machine, $jsubDir) = @$ref;
+    my ($flowcellID, $machine, $JSUB_LOG_FOLDER) = @$ref;
 
-    my @status_files = `ls $jsubDir/status/*.thing1.sickkids.ca.status`;
+    my @status_files = `ls $JSUB_LOG_FOLDER/status/*.thing1.sickkids.ca.status`;
     if ($#status_files == -1) {
         $allerr .= "no demultiplex status file found for $flowcellID of $machine, if this happens again, the demultiplex steps may have failed!\n";
         next;
     }
 
-    my @exitcode = `grep "EXIT STATUS:" $jsubDir/status/*.thing1.sickkids.ca.status | awk '{print \$3}'`; 
+    my @exitcode = `grep "EXIT STATUS:" $JSUB_LOG_FOLDER/status/*.thing1.sickkids.ca.status | awk '{print \$3}'`; 
     if ($#exitcode == -1) {
-        print "no exit code detected for $jsubDir/status/*.thing1.sickkids.ca.status. \n";
+        print "no exit code detected for $JSUB_LOG_FOLDER/status/*.thing1.sickkids.ca.status. \n";
         next;
     }
     elsif ($#exitcode > 0) {
-        $allerr .= "multiple exitcode detected in file $jsubDir/status/*.thing1.sickkids.ca.status, demultiplex for $machine $flowcellID may failed for some wierd reasons. Please check the demultiplex steps.\n\nChksum for fastqs aborted\n\n";
+        $allerr .= "multiple exitcode detected in file $JSUB_LOG_FOLDER/status/*.thing1.sickkids.ca.status, demultiplex for $machine $flowcellID may failed for some wierd reasons. Please check the demultiplex steps.\n\nChksum for fastqs aborted\n\n";
         next;
     }
     else {
