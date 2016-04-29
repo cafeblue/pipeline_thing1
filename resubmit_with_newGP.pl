@@ -23,7 +23,7 @@ close(ACCESS_INFO);
 chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or die "Couldn't connect to database\n" ;
 
-my $runfolder   = '/hpf/largeprojects/pray/llau/clinical/samples/pl_illumina';
+my $runfolder   = '/hpf/largeprojects/pray/clinical/samples/illumina';
 my $fastqdir    = '/hpf/largeprojects/pray/llau/clinical/fastq_pl/';
 my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';

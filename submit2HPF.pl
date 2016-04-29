@@ -22,7 +22,7 @@ my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SSH_DATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
 my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
 my $CALL_SCREEN = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
-my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/llau/clinical/samples/pl_illumina';
+my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/clinical/samples/illumina';
 my $FASTQ_DIR    = '/hpf/largeprojects/pray/llau/clinical/fastq_pl/';
 my $BACKUP_BAM  = '/hpf/largeprojects/pray/llau/clinical/backup_files/bam';
 

@@ -9,7 +9,7 @@ use Time::Piece;
 use Mail::Sender;
 
 #### constant variables for HPF ############
-my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/llau/clinical/samples/pl_illumina';
+my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/clinical/samples/illumina';
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $GET_JSUBID = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_jsub_pl.sh ';

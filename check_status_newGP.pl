@@ -17,7 +17,7 @@ chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
                        $user, $pass, { RaiseError => 1 } ) or $allerr .= "Couldn't connect to database";
 
-my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/llau/clinical/samples/pl_illumina';
+my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/clinical/samples/illumina';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $GET_JSUBID = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_jsub_pl.sh ';
 my $GET_STATUS = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_status_pl.sh ';
