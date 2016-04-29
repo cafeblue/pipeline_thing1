@@ -198,7 +198,7 @@ sub check_status {
     my ($folder, $cycles) = @_;
 
     if ($folder =~ /nextseq500_/) {
-        if (-e "$folder/Data/Intensities/BaseCalls/L004/0311.bcl.bgzf") {
+        if (-e "$folder/Data/Intensities/BaseCalls/L004/0158.bcl.bgzf") {
             my $retval = time();
             my $localTime = gmtime( $retval );
             my $filetimestamp;
