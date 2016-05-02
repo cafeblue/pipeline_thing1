@@ -80,7 +80,7 @@ sub demultiplex {
     print "echo $demultiplexCmd | /localhd/tools/jsub/jsub-5/jsub -b  $JSUB_LOG_FOLDER -j $jobDir -nn 1 -nm 72000\n";
     if ($demultiplexJobID =~ /(\d+).thing1.sickkids.ca/) {
         my $jlogFolder = $JSUB_LOG_FOLDER . '/' . $jobDir;
-        my $update = "UPDATE thing1JobStatus SET demultiplexJobID = '" . $1 . "' , demultiplex = '2' , demultiplexJfolder = '" . $jlogFolder . "' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'"; 
+        my $update = "UPDATE thing1JobStatus SET demultiplexJobID = '" . $1 . "' , demultiplex = '2' , seqFolderChksum = '2', demultiplexJfolder = '" . $jlogFolder . "' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'"; 
         print "Demultiplex is starting: $update\n";
         my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
         $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";

@@ -9,7 +9,6 @@ use Time::Piece;
 use Mail::Sender;
 $|++;
 
-my $JSUB_LOG_FOLDER = "/localhd/data/thing1/jsub_log/"; #were all the jsub and the run information is kept
 my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
 my $FASTQ_HPF = '/hpf/largeprojects/pray/llau/clinical/fastq_pl';
 my $SSHCMD = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
