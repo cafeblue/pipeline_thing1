@@ -11,10 +11,6 @@ $|++;
 
 my $CHKSUM_FOLDER = "/localhd/data/thing1/chksum/"; #were all the jsub and the run information is kept
 
-if ( -e "/dev/shm/chksumseqrunning" ) {
-    email_error( "chksum/rsync is still running, aborting...\n" );
-    exit(0);
-}
 
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -26,8 +22,8 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
                        $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
 
 my $demultiplex_ref = &get_sequencer_folder_list;
+&chksum_status('START');
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
-`touch /dev/shm/chksumseqrunning`;
 
 my $allerr = "";
 foreach my $ref (@$demultiplex_ref) {
@@ -69,7 +65,7 @@ foreach my $ref (@$demultiplex_ref) {
     }
 
 }
-`rm /dev/shm/chksumseqrunning`;
+&chksum_status('STOP');
 
 sub get_sequencer_folder_list {
     my $db_query = 'SELECT flowcellID,machine,runDir,destinationDir from thing1JobStatus where seqFolderChksum = "2"';
@@ -84,6 +80,37 @@ sub get_sequencer_folder_list {
     }
 }
 
+sub chksum_status {
+    my $status = shift;
+    if ($status eq 'START') {
+        my $status = 'SELECT chksum_sequencer FROM cronControlPanel limit 1';
+        my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
+        $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
+        my @status = $sthUDP->fetchrwo_array();
+        if ($status[0] eq '1') {
+            email_error( "rsync is still running, aborting...\n" );
+            exit;
+        }
+        elsif ($status[0] eq '0') {
+            my $update = 'UPDATE cronControlPanel SET chksum_sequencer = "1"';
+            my $sthUDP = $dbh->prepare($update) or die "Can't update database by $update: " . $dbh->errstr() . "\n";
+            $sthUDP->execute() or die "Can't execute update $update: " . $dbh->errstr() . "\n";
+            return;
+        }
+        else {
+            die "IMPOSSIBLE happened!! how could the status of chksum_sequencer be " . $status[0] . " in table cronControlPanel?\n";
+        }
+    }
+    elsif ($status eq 'STOP') {
+        my $status = 'UPDATE cronControlPanel SET chksum_sequencer = "0"';
+        my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
+        $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
+    }
+    else {
+        die "IMPOSSIBLE happend! the status should be START or STOP, how could " . $status . " be a status?\n";
+    }
+}
+    
 sub email_error {
     my $errorMsg = shift;
     $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";

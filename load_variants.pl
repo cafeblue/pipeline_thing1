@@ -28,13 +28,8 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
 ###########################################
 #######         Main                 ######
 ###########################################
-if ( -e "/dev/shm/loadvariantsrunning" ) {
-    email_error( "load variants is still running, aborting...\n" );
-    exit(0);
-}
-
 my $idpair_ref = &check_goodQuality_samples;
-`touch /dev/shm/loadvariantsrunning`;
+&loadvariants_status('START');
 my ($today, $todayDate, $yesterdayDate) = &print_time_stamp;
 foreach my $idpair (@$idpair_ref) {
     if (&rsync_files(@$idpair) != 0) {
@@ -43,7 +38,7 @@ foreach my $idpair (@$idpair_ref) {
     }
     &updateDB(&loadVariants2DB(@$idpair),@$idpair);
 }
-`rm /dev/shm/loadvariantsrunning`;
+&loadvariants_status('STOP');
 
 
 ###########################################
@@ -657,6 +652,37 @@ sub code_aa_change {
     return($aaChange,$cDNA);
 }
 
+sub loadvariants_status {
+    my $status = shift;
+    if ($status eq 'START') {
+        my $status = 'SELECT load_variants FROM cronControlPanel limit 1';
+        my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
+        $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
+        my @status = $sthUDP->fetchrwo_array();
+        if ($status[0] eq '1') {
+            email_error( "rsync is still running, aborting...\n" );
+            exit;
+        }
+        elsif ($status[0] eq '0') {
+            my $update = 'UPDATE cronControlPanel SET load_variants = "1"';
+            my $sthUDP = $dbh->prepare($update) or die "Can't update database by $update: " . $dbh->errstr() . "\n";
+            $sthUDP->execute() or die "Can't execute update $update: " . $dbh->errstr() . "\n";
+            return;
+        }
+        else {
+            die "IMPOSSIBLE happened!! how could the status of load_variants be " . $status[0] . " in table cronControlPanel?\n";
+        }
+    }
+    elsif ($status eq 'STOP') {
+        my $status = 'UPDATE cronControlPanel SET load_variants = "0"';
+        my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
+        $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
+    }
+    else {
+        die "IMPOSSIBLE happend! the status should be START or STOP, how could " . $status . " be a status?\n";
+    }
+}
+    
 
 sub email_error {
     my $errorMsg = shift;

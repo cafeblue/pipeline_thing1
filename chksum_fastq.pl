@@ -14,11 +14,6 @@ my $FASTQ_HPF = '/hpf/largeprojects/pray/clinical/fastq_v5';
 my $SSHCMD = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
 my $RSYNCCMD = "rsync -Lav -e 'ssh -i /home/pipeline/.ssh/id_sra_thing1'";
 
-if ( -e "/dev/shm/chksumrunning" ) {
-    email_error( "chksum/rsync is still running, aborting...\n" );
-    exit(0);
-}
-
 
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -30,8 +25,8 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
                        $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
 
 my $demultiplex_ref = &get_demultiplex_list;
+&chksum_status("START");
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
-`touch /dev/shm/chksumrunning`;
 
 my $allerr = "";
 foreach my $ref (@$demultiplex_ref) {
@@ -79,7 +74,7 @@ if ($allerr ne '') {
     print STDERR $allerr;
     email_error($allerr);
 }
-`rm /dev/shm/chksumrunning`;
+&chksum_status("STOP");
 
 sub checksum_fastq {
     my ($machine, $flowcellID) = @_;
@@ -109,7 +104,7 @@ sub checksum_fastq {
             else {
                 my $msg = "file $loca in error format, rename file aborted\n";
                 email_error($msg);
-                `rm /dev/shm/chksumrunning`;
+                &chksum_status("STOP");
                 die "$msg\n";
             }
         }
@@ -132,12 +127,12 @@ sub checksum_fastq {
         if (scalar(keys %sampleID_lst) != 0) {
             my $missed_samples = join(",", keys %sampleID_lst) . " missed in the table sampleSheet for $flowcellID \n " ;
             email_error($missed_samples);
-            `rm /dev/shm/chksumrunning`;
+            &chksum_status("STOP");
             die $missed_samples;
         }
         if ($msg ne "") {
             email_error($msg);
-            `rm /dev/shm/chksumrunning`;
+            &chksum_status("STOP");
             die $msg;
         }
     }
@@ -178,7 +173,7 @@ sub checksum_fastq {
         if ( $? != 0 ) {
             $msg .= "error rsync msg: $sampleID, $machine, $flowcellID, $?\n";
             email_error($msg);
-            `rm /dev/shm/chksumrunning`;
+            &chksum_status("STOP");
             die $msg,"\n";
         }
     }
@@ -219,6 +214,37 @@ sub get_demultiplex_list {
     }
 }
 
+sub chksum_status {
+    my $status = shift;
+    if ($status eq 'START') {
+        my $status = 'SELECT chksum_fastq FROM cronControlPanel limit 1';
+        my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
+        $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
+        my @status = $sthUDP->fetchrwo_array();
+        if ($status[0] eq '1') {
+            email_error( "rsync is still running, aborting...\n" );
+            exit;
+        }
+        elsif ($status[0] eq '0') {
+            my $update = 'UPDATE cronControlPanel SET chksum_fastq = "1"';
+            my $sthUDP = $dbh->prepare($update) or die "Can't update database by $update: " . $dbh->errstr() . "\n";
+            $sthUDP->execute() or die "Can't execute update $update: " . $dbh->errstr() . "\n";
+            return;
+        }
+        else {
+            die "IMPOSSIBLE happened!! how could the status of chksum_fastq be " . $status[0] . " in table cronControlPanel?\n";
+        }
+    }
+    elsif ($status eq 'STOP') {
+        my $status = 'UPDATE cronControlPanel SET chksum_fastq = "0"';
+        my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
+        $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
+    }
+    else {
+        die "IMPOSSIBLE happend! the status should be START or STOP, how could " . $status . " be a status?\n";
+    }
+}
+    
 sub email_error {
     my $errorMsg = shift;
     $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
