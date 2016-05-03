@@ -9,7 +9,6 @@ use Time::Piece;
 use Mail::Sender;
 $|++;
 
-&rsync_status("START");
 
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
 my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
@@ -20,6 +19,7 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
 my $sender = Mail::Sender->new();
 close(ACCESS_INFO);
 
+&rsync_status("START");
 &rsync_folders;
 &check_failed_flowcell;
 &rsync_status("STOP");
