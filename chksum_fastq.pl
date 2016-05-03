@@ -10,7 +10,7 @@ use Mail::Sender;
 $|++;
 
 my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
-my $FASTQ_HPF = '/hpf/largeprojects/pray/llau/clinical/fastq_pl';
+my $FASTQ_HPF = '/hpf/largeprojects/pray/clinical/fastq_v5';
 my $SSHCMD = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
 my $RSYNCCMD = "rsync -Lav -e 'ssh -i /home/pipeline/.ssh/id_sra_thing1'";
 

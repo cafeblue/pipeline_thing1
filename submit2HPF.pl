@@ -23,8 +23,9 @@ my $SSH_DATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sick
 my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
 my $CALL_SCREEN = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
 my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/clinical/samples/illumina';
-my $FASTQ_DIR    = '/hpf/largeprojects/pray/llau/clinical/fastq_pl/';
-my $BACKUP_BAM  = '/hpf/largeprojects/pray/llau/clinical/backup_files/bam';
+my $FASTQ_DIR    = '/hpf/largeprojects/pray/clinical/fastq_v5/';
+my $BACKUP_BAM  = '/hpf/largeprojects/pray/clinical/backup_files_v5/bam';
+my $RECYCLE_BIN = '/hpf/largeprojects/pray/recycle.bin/';
 
 my $sample_ref = &get_sample_list;
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
@@ -52,8 +53,8 @@ sub main {
         }
         elsif ($sampleType eq 'T' || $sampleType eq 't' || $sampleType eq 'tumor' || $sampleType eq 'tumour') {
             &insert_jobstatus($sampleID,$postprocID,"cancerT");
-            print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
-            `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
+            print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN\"\n";
+            `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN"`;
             print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
             `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
@@ -103,8 +104,8 @@ sub main {
         }
         else {
             &insert_jobstatus($sampleID,$postprocID,"cancerN");
-            print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
-            `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
+            print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN\"\n";
+            `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN"`;
             print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
             `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
             if ( $? != 0 ) {
@@ -122,8 +123,8 @@ sub main {
     }
     else {
        &insert_jobstatus($sampleID,$postprocID,"exome");
-       print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/\"\n";
-       `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 /hpf/largeprojects/pray/recycle.bin/"`;
+       print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN\"\n";
+       `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN"`;
        print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
        `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
        if ( $? != 0 ) {

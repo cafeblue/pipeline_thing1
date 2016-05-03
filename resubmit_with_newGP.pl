@@ -24,7 +24,7 @@ chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or die "Couldn't connect to database\n" ;
 
 my $runfolder   = '/hpf/largeprojects/pray/clinical/samples/illumina';
-my $fastqdir    = '/hpf/largeprojects/pray/llau/clinical/fastq_pl/';
+my $fastqdir    = '/hpf/largeprojects/pray/clinical/fastq_v5/';
 my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $sshdat = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
