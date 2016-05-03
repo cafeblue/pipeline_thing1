@@ -66,7 +66,7 @@ sub rsync_status {
         my $status = 'SELECT rsync_sequencer FROM cronControlPanel limit 1';
         my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
         $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
-        my @status = $sthUDP->fetchrwo_array();
+        my @status = $sthUDP->fetchrow_array();
         if ($status[0] eq '1') {
             email_error( "rsync is still running, aborting...\n" );
             exit;
