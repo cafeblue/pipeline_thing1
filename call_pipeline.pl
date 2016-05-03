@@ -10,7 +10,7 @@ use Time::Piece;
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 my  $SCRIPTDIR       = '/home/wei.wang/pipeline_hpf_v5';
 my  $ANNOVAR         = '/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/annotate_variation.pl';
-our $BACKUP_BASEDIR  = '/hpf/largeprojects/pray/llau/clinical/backup_files';
+our $BACKUP_BASEDIR  = '/hpf/largeprojects/pray/clinical/backup_files_v5';
 my  $GATK            = 'gatk/2.8.1';
 my  $BWA             = 'bwa/0.7.8';
 my  $PICARDTOOLS     = 'picard-tools/1.108';
