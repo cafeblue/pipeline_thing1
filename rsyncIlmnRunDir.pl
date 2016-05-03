@@ -67,4 +67,5 @@ sub print_time_stamp {
     my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
     my $timestring = "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  " . $timestamp . "\n_/ _/ _/ _/ _/ _/ _/ _/\n";
     print STDERR $timestring;
+    print $timestring;
 }
