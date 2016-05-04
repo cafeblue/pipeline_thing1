@@ -32,13 +32,13 @@ foreach my $ref (@$demultiplex_ref) {
 
     if ( -s "$CHKSUM_FOLDER/$machine.$flowcellID.sha256" ) {
         print "cd $runDir ; sha256sum -c $CHKSUM_FOLDER/$machine.$flowcellID.sha256 | grep -i failed\n";
-        $commandout = `cd $runDir ; sha256sum -c /tmp/$flowcellID.sha256 | grep -i failed`;
+        $commandout = `cd $runDir ; sha256sum -c $CHKSUM_FOLDER/$machine.$flowcellID.sha256 | grep -i failed`;
     }
     else {
         print "cd $destinationDir ; find . -type f -print0 | xargs -0 sha256sum > $CHKSUM_FOLDER/$machine.$flowcellID.sha256\n";
         `cd $destinationDir ; find . -type f -print0 | xargs -0 sha256sum > $CHKSUM_FOLDER/$machine.$flowcellID.sha256`;
         print "cd $runDir ; sha256sum -c $CHKSUM_FOLDER/$machine.$flowcellID.sha256 | grep -i failed\n";
-        $commandout = `cd $runDir ; sha256sum -c /tmp/$flowcellID.sha256 | grep -i failed`;
+        $commandout = `cd $runDir ; sha256sum -c $CHKSUM_FOLDER/$machine.$flowcellID.sha256 | grep -i failed`;
     }
     if ($? != 0) {
         my $msg = "chksum of machine $machine flowcellID $flowcellID failed. it may be caused by the sequencer restarted.\n\n";
