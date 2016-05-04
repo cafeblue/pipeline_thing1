@@ -68,7 +68,7 @@ sub rsync_status {
         $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
         my @status = $sthUDP->fetchrow_array();
         if ($status[0] eq '1') {
-            email_error( "rsync is still running, aborting...\n" );
+            email_error( "rsync_sequencer is still running, aborting...\n" );
             exit;
         }
         elsif ($status[0] eq '0') {
