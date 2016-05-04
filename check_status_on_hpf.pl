@@ -12,9 +12,10 @@ use Mail::Sender;
 my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/clinical/samples/illumina';
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
-my $GET_JSUBID = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_jsub_pl.sh ';
-my $GET_STATUS = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_status_pl.sh ';
-my $DEL_RUNDIR = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/del_rundir_pl.sh ';
+my $GET_JSUBID        = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_jsub_pl.sh ';
+my $GET_QSUB_STATUS   = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca '; 
+my $GET_EXIT_STATUS   = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_status_pl.sh ';
+my $DEL_RUNDIR        = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/del_rundir_pl.sh ';
 my %RESUME_LIST = ( 'bwaAlign' => 'bwaAlign', 'picardMardDup' => 'picardMarkDup', 'gatkLocalRealgin' => 'gatkLocalRealign', 'gatkQscoreRecalibration' => 'gatkQscoreRecalibration',
                     'gatkRawVariantsCall' => 'gatkRawVariantsCall', 'gatkRawVariants' => 'gatkRawVariants', 'muTect' => 'muTect', 'mutectCombine' => 'mutectCombine',
                     'annovarMutect' => 'annovarMutect', 'gatkFilteredRecalSNP' => 'gatkRawVariants', 'gatkdwFilteredRecalINDEL' => 'gatkRawVariants',
@@ -135,7 +136,7 @@ sub check_idle_jobs {
     my ($sampleID, $postprocID) = @_;
 
     # Check the jobs which have not finished within 4 hours.
-    my $query_jobName = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,4,time)<CURRENT_TIMESTAMP ORDER BY jobID;";
+    my $query_jobName = "SELECT jobName,jobID FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,4,time)<CURRENT_TIMESTAMP ORDER BY jobID;";
     my $sthQUF = $dbh->prepare($query_jobName);
     $sthQUF->execute();
     if ($sthQUF->rows() != 0) {
@@ -146,6 +147,7 @@ sub check_idle_jobs {
         my $sthFCH = $dbh->prepare($check_flag) or die "flag check failed: " . $dbh->errstr() . "\n";
         $sthFCH->execute();
         if ($sthFCH->rows() == 0) {
+            return 0 if (&hpf_queue_status($dataS[1]) eq 'R');
             my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = '" . $dataS[0] . "'";
             my $sthSetFlag = $dbh->prepare($seq_flag);
             $sthSetFlag->execute();
@@ -170,6 +172,14 @@ sub check_idle_jobs {
     else {
         return 0;
     }
+}
+
+sub hpf_queue_status {
+    my $qid = shift;
+    my $cmd = "$GET_QSUB_STATUS qstat -t $qid |tail -1";
+    my $status_line = `$cmd`;
+    $status_line = (split(/\s+/, $status_line))[4];
+    return($status_line);
 }
 
 sub resume_stuck_jobs {
@@ -272,7 +282,7 @@ sub update_jobStatus {
         push @joblst, @$tmp_ref;
     }
     my $joblst = join(" ", @joblst);
-    my $cmd = $GET_STATUS . $HPF_RUNNING_FOLDER . " " . $sampleID . "-" . $postprocID . " " . $joblst . ' 2>/dev/null"';
+    my $cmd = $GET_EXIT_STATUS . $HPF_RUNNING_FOLDER . " " . $sampleID . "-" . $postprocID . " " . $joblst . ' 2>/dev/null"';
     print $cmd,"\n";
     @joblst = `$cmd`;
     for (my $i = 0; $i<$#joblst; $i++) {
