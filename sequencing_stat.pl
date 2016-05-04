@@ -112,6 +112,7 @@ sub get_pipelinever {
     if ($? != 0) {
         $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
     }
+    chomp(@commit_tag);
     my $web_ver = join('(',@commit_tag) . ")";
 
     return($thing1_ver, $hpf_ver, $web_ver);
