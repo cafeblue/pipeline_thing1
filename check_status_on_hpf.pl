@@ -245,7 +245,7 @@ sub update_jobID {
     @joblst = `$cmd`;
     for (my $i = 0; $i<$#joblst; $i++) {
         if ($joblst[$i] =~ /^$HPF_RUNNING_FOLDER/) {
-            my $jobName = (split(/\//, $joblst[$i]))[9]; 
+            my $jobName = (split(/\//, $joblst[$i]))[-3]; 
             my $jobID = '';
             if ($joblst[$i+1] =~ /QUEUEING RESULT: (.+)/) {
                 $jobID = $1;
