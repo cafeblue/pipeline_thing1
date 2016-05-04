@@ -52,7 +52,7 @@ sub check_failed_flowcell {
         while (my @runs = $sthQNS->fetchrow_array()) {
             my ($flowcellID, $machine) = @runs;
             $msg = "flowcellID $flowcellID on machine $machine can't be finished in 36 hours on sequencer, it will be marked as failed.\n";
-            my $update = "UPDATE thing1JobStatus SET sequecning = '0' WHERE flowcellID = '$flowcellID' AND machine = '$machine'";
+            my $update = "UPDATE thing1JobStatus SET sequencing = '0' WHERE flowcellID = '$flowcellID' AND machine = '$machine'";
             my $sthUDP = $dbh->prepare($update) or die "Can't update database by $update: " . $dbh->errstr() . "\n";
             $sthUDP->execute() or die "Can't execute update $update: " . $dbh->errstr() . "\n";
         }
