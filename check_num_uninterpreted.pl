@@ -59,7 +59,7 @@ $sthQGPV->execute() or die "Can't execute query for gene panel version: " . $dbh
 $dataS = $sthQGPV->fetchall_arrayref;
 $datas = pop(@$dataS);
 $msg .= sprintf ('%-16s', "hsp.gp4:");
-$msg .= $$datas[0]."\n";
+$msg .= $$datas[0]."\n    ";
 $total += $$datas[0];
 my $msg1 = $msg;
 
