@@ -37,18 +37,18 @@ foreach my $ref (@$demultiplex_ref) {
     else {
         print "cd $destinationDir ; find . -type f \\( ! -iname \"IndexMetricsOut.bin\" ! -iname \"*omplete*\" \\) -print0 | xargs -0 sha256sum > $CHKSUM_FOLDER/$machine.$flowcellID.sha256\n";
         `cd $destinationDir ; find . -type f \\( ! -iname "IndexMetricsOut.bin"  ! -iname "*omplete*" \\) -print0 | xargs -0 sha256sum > $CHKSUM_FOLDER/$machine.$flowcellID.sha256`;
+        if ($? != 0) {
+            my $msg = "chksum of machine $machine flowcellID $flowcellID failed. it may be caused by the sequencer restarted.\n\n";
+            $msg .= "If you received this email multiple times, something weird happened!\n";
+            $msg .= "\n\nThis email is from thing1 pipelineV5.\n";
+            email_error($msg);
+            next;
+        }
         print "cd $runDir ; sha256sum -c $CHKSUM_FOLDER/$machine.$flowcellID.sha256 | grep -i failed\n";
         $commandout = `cd $runDir ; sha256sum -c $CHKSUM_FOLDER/$machine.$flowcellID.sha256 | grep -i failed`;
     }
-    if ($? != 0) {
-        my $msg = "chksum of machine $machine flowcellID $flowcellID failed. it may be caused by the sequencer restarted.\n\n";
-        $msg .= "If you received this email multiple times, something weird happened!\n;";
-        $msg .= "\n\nThis email is from thing1 pipelineV5.\n";
-        email_error($msg);
-    }
-    else {
-        my $msg = "";
-        if ($commandout =~ /FAILED/) {
+    my $msg = "";
+    if ($commandout =~ /FAILED/) {
             $msg .= "chksums of folder $runDir and folder $destinationDir are not identical!!!\n";
             $msg .= "\n\nThis email is from thing1 pipelineV5.\n";
             email_error($msg);
@@ -56,14 +56,12 @@ foreach my $ref (@$demultiplex_ref) {
             my $update = "UPDATE thing1JobStatus SET  seqFolderChksum = '0' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'"; 
             my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
             $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
-        }
-        else {
+    }
+    else {
             my $update = "UPDATE thing1JobStatus SET  seqFolderChksum = '1' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'"; 
             my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
             $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
-        }
     }
-
 }
 &chksum_status('STOP');
 
