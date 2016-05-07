@@ -35,8 +35,8 @@ foreach my $ref (@$demultiplex_ref) {
         $commandout = `cd $runDir ; sha256sum -c $CHKSUM_FOLDER/$machine.$flowcellID.sha256 | grep -i failed`;
     }
     else {
-        print "cd $destinationDir ; find . -type f \\( ! -iname \"IndexMetricsOut.bin\" \\) -print0 | xargs -0 sha256sum > $CHKSUM_FOLDER/$machine.$flowcellID.sha256\n";
-        `cd $destinationDir ; find . -type f \\( ! -iname "IndexMetricsOut.bin" \\) -print0 | xargs -0 sha256sum > $CHKSUM_FOLDER/$machine.$flowcellID.sha256`;
+        print "cd $destinationDir ; find . -type f \\( ! -iname \"IndexMetricsOut.bin\" ! -iname \"*omplete*\" \\) -print0 | xargs -0 sha256sum > $CHKSUM_FOLDER/$machine.$flowcellID.sha256\n";
+        `cd $destinationDir ; find . -type f \\( ! -iname "IndexMetricsOut.bin"  ! -iname "*omplete*" \\) -print0 | xargs -0 sha256sum > $CHKSUM_FOLDER/$machine.$flowcellID.sha256`;
         print "cd $runDir ; sha256sum -c $CHKSUM_FOLDER/$machine.$flowcellID.sha256 | grep -i failed\n";
         $commandout = `cd $runDir ; sha256sum -c $CHKSUM_FOLDER/$machine.$flowcellID.sha256 | grep -i failed`;
     }
