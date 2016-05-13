@@ -70,8 +70,8 @@ my $lt38_over_gt38_ratio = $gt38 == 0 ? 0 : sprintf('%5.2f', $lt38/$gt38);
 
 #figure out if it's XY, XX, XXY, X, etc. #put it into the metric file to add to the sql database
 my $meanAutoCvg = $totCvgAuto/$numBpAuto;
-my $meanXCvg = $totCvgX/$numBpX;
-my $meanYCvg = $totCvgY/$numBpY;
+my $meanXCvg = $numBpX == 0 ? 0 : $totCvgX/$numBpX;
+my $meanYCvg = $numBpY == 0 ? 0 : $totCvgY/$numBpY;
 
 my $normalCvgX = $meanXCvg/$meanAutoCvg;
 
