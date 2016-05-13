@@ -90,6 +90,7 @@ for (my $i=0; $i < $numX; $i++) {
 for (my $j=0; $j < $numY; $j++) {
     $predictedGender = $predictedGender . "Y";
 }
+$predictedGender = "NA" if ($predictedGender eq '');
 
 my $metricsFile = $updateDBDir . "/$sampleID.$postprocID.exomeCov.metrics.sql";
 
