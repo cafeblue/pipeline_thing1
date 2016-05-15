@@ -208,6 +208,10 @@ sub get_qual_stat {
 
         my $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $flowcellID, 1 ;
         my $demuxSummaryFile = "$FASTQ_FOLDER/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
+        if (! -e "$demuxSummaryFile") {
+            email_error("file $demuxSummaryFile does not exists! it can be caused by the failure of demultiplexing. please re-run the demultiplex\n");
+            die "file $demuxSummaryFile does not exists! it can be caused by the failure of demultiplexing. please re-run the demultiplex\n";
+        }
         print $demuxSummaryFile,"\n";
         my $te = HTML::TableExtract->new( depth => 0, count => 2 );
         $te->parse_file($demuxSummaryFile);
