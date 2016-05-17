@@ -100,9 +100,9 @@ our %panelExon10bpPadBedFile  = ('exome.gp10' => 'refSeqLongest_exICCG_CR.ICCG_i
                              'hsp.gp20' => 'HSP_20151122.exon_10bp_padding.bed',
                              'hsp.gp21' => 'HSP_20160319.exon_10bp_padding.bed'
                               );
-our %panelBedFile             = ('exome.gp10' => 'hg19wUnassembled_RefSeqGenes_refGene.Jan312014.exons_no_padding.sort.merge.blat.sort.bed',
+our %panelBedFile             = ('exome.gp10' => 'EXOMES_concate_gp_disease_association.bed',
                              'hsp.gp4' => 'HSP_20141002.panel.bed',
-                             'unknown.gp11' => 'hg19wUnassembled_RefSeqGenes_refGene.Jan312014.exons_no_padding.sort.merge.blat.sort.bed',
+                             'unknown.gp11' => 'EXOMES_concate_gp_disease_association.bed',
                              'hl.gp3' => 'HL_20141002.panel.bed',
                              'hl.gp22' => 'HL_20160504.panel.bed',
                              'ct.gp16' => 'CT_20150129.panel.bed',
