@@ -822,7 +822,7 @@ sub gatkQscoreRecalibration {
         . 'module load ' . $SAMTOOLS . ' && ' . " \\\n"
         . "\\\n"
         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T BaseRecalibrator' . " -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/recal_data.txt -R $reference -l INFO -knownSites $dbSNP -nct 4 &&" . " \\\n"
-        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T PrintReads' . " -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam -R $reference -l INFO -BQSR $runfolder/gatkQscoreRecalibration/recal_data.txt &&" . " \\\n"
+        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T PrintReads' . " -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam -R $reference -l INFO -BQSR $runfolder/gatkQscoreRecalibration/recal_data.txt -nct 4 &&" . " \\\n"
         . 'samtools index' . " $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam && " . " \\\n"
         . "ln -f $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.ba* $BACKUP_BASEDIR/bam/" . " \\\n"
         . "\'| jsub -j gatkQscoreRecalibration -b $runfolder  -nm 32000 -np 4 -nn 1 -nw 12:00:00 -ng localhd:100 $depend";
@@ -931,7 +931,7 @@ sub gatkCovCalExomeTargets {
         . 'module load ' . $GATK . ' && ' . " \\\n"
         . 'module load ' . $PERL . " && \\\n"
         . "\\\n"
-        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T DepthOfCoverage --printBaseCounts --includeRefNSites ' . $depthct 
+        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T DepthOfCoverage --printBaseCounts --includeRefNSites --minMappingQuality 20 --minBaseQuality 20 ' . $depthct 
         . " -L $bed4chr -I $runfolder/$Pfolder -o $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.exome.dp -R $reference ;" . " \\\n"
         . "ln -f $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.exome.dp* $BACKUP_BASEDIR/matrics/ && \\\n"
         . "perl $SCRIPTDIR/calculate_qual_cvg_exome.pl $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.exome.dp.sample_summary $sampleID $postprocID $runfolder/gatkCovCalExomeTargets/ > $runfolder/gatkCovCalExomeTargets/$sampleID.$postprocID.qualCvgExome.sql; \\\n"
