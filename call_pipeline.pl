@@ -962,7 +962,7 @@ sub gatkCovCalGP {
         . 'module load ' . $GATK . ' && ' . " \\\n"
         . "module load $PERL && \\\n"
         . "\\\n"
-        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T DepthOfCoverage --printBaseCounts --includeRefNSites ' . $depthct 
+        . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T DepthOfCoverage --printBaseCounts --includeRefNSites --minMappingQuality 20 --minBaseQuality 20 ' . $depthct 
         . " -L " . $panelExon10bpPadFull{$genePanel} . " -I $runfolder/$Pfolder -o $runfolder/gatkCovCalGP/$sampleID.$postprocID" . '.genepanel.dp' . " -R $reference &&" . " \\\n"
         . "ln -f $runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp* $BACKUP_BASEDIR/matrics/ && \\\n"
         . "perl $SCRIPTDIR/calculate_qual_cvg_gp.pl $runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp.sample_summary $sampleID $postprocID $runfolder/gatkCovCalGP/ $panelExon10bpPadFull{$genePanel} > $runfolder/gatkCovCalGP/$sampleID.$postprocID.qualCvgGP.sql; \\\n"
