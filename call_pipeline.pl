@@ -251,9 +251,9 @@ sub exome_newGP {
     $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 3000';
     calAF:                                            &calAF(@jobID_and_Pfolder);
     gatkCovCalGP:                                     &gatkCovCalGP(@jobID_and_Pfolder);
-                               $jobID_and_Pfolder[1] = "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snps.indel.vcf";
+                               $jobID_and_Pfolder[1] = "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf";
     annovar_newGP:             @jobID_and_Pfolder   =  &annovar_newGP(@jobID_and_Pfolder);
-                               push @jobID_and_Pfolder, ("gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snps.indel.vcf", 
+                               push @jobID_and_Pfolder, ("gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf", 
                                                          "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv", 
                                                          "windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv");
     snpEff_newGP:                                      &snpEff_newGP(@jobID_and_Pfolder);
