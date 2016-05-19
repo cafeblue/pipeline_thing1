@@ -250,7 +250,8 @@ sub exome_newGP {
     $bed4chr   = $fastqDir !~ /0000000/ ? '/hpf/largeprojects/pray/llau/internal_databases/baits/SS_clinical_research_exomes/S06588914/S06588914_Covered.sort.merged.bed' : '/hpf/largeprojects/pray/wei.wang/misc_files//NOONAN_NF1.exon_10bp_padding.bed';
     $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 3000';
     calAF:                                            &calAF(@jobID_and_Pfolder);
-    gatkCovCalGP:                                      &gatkCovCalGP(@jobID_and_Pfolder);
+    gatkCovCalGP:                                     &gatkCovCalGP(@jobID_and_Pfolder);
+                               $jobID_and_Pfolder[1] = "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snps.indel.vcf";
     annovar_newGP:             @jobID_and_Pfolder   =  &annovar_newGP(@jobID_and_Pfolder);
                                push @jobID_and_Pfolder, ("gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snps.indel.vcf", 
                                                          "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv", 
