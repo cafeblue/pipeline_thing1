@@ -1333,6 +1333,9 @@ sub annovar_newGP {
     my $cmd = 'echo \''
         . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
         . "\\\n"
+        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/convert2annovar.pl -format vcf4 \\\n"
+        . "$runfolder/$Pfolder > $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar &&" . " \\\n" 
+        . "\\\n"
         . "$ANNOVAR --regionanno -buildver hg19_gene_panel -dbtype bed --bedfile $panelExon10bpPadBedFile{$genePanel} \\\n" 
         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
         . "\\\n"
