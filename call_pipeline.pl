@@ -256,7 +256,7 @@ sub exome_newGP {
                                push @jobID_and_Pfolder, ("gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf", 
                                                          "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv", 
                                                          "windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv");
-    snpEff_newGP:                                      &snpEff_newGP(@jobID_and_Pfolder);
+    snpEff_newGP:                                      &snpEff(@jobID_and_Pfolder);
 }
 
 sub cancerN {
