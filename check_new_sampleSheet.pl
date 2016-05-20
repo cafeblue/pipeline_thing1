@@ -180,9 +180,9 @@ sub write_samplesheet {
     my $file = "/localhd/data/sequencers/$machine/$machine\_desktop/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
     print $file,"\n";
     print $output;
-    #open (CSV, ">$file") or die "failed to open file $file\n"; 
-    #print CSV $output;
-    #close(CSV);
+    open (CSV, ">$file") or die "failed to open file $file\n"; 
+    print CSV $output;
+    close(CSV);
 }
 
 sub write_samplesheet_miseq {
