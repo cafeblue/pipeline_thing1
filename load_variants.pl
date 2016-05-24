@@ -707,7 +707,7 @@ sub email_finished {
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
+        to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, marianne.eliou@sickkids.ca, crm@sickkids.ca, james.stavropoulos@sickkids.ca, raveen.basran@sickkids.ca, adam.shlien@sickkids.ca, peter.ray@sickkids.ca, leslie.steele@sickkids.ca, lianna.kyriakopoulou@sickkids.ca, rebekah.jobling@sickkids.ca, cameron.ellahi@sickkids.ca, weiw.wang@sickkids.ca',
         subject              => "$sampleID ($flowcellID $machine) completed analysis",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
