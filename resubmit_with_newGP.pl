@@ -23,14 +23,14 @@ close(ACCESS_INFO);
 chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or die "Couldn't connect to database\n" ;
 
-my $runfolder   = '/hpf/largeprojects/pray/clinical/samples/illumina';
-my $fastqdir    = '/hpf/largeprojects/pray/clinical/fastq_v5/';
+my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/clinical/samples/illumina';
+my $FASTQ_DIR    = '/hpf/largeprojects/pray/clinical/fastq_v5/';
 my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
-my $sshdat = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
-my $sshhpf = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
-my $call_screen = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
-my $newGP_sh    = "$PIPELINE_HPF_ROOT/mkdir4newGP.sh";
+my $CALL_SCREEN = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
+my $SSH_DATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
+my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
+my $RECYCLE_BIN = '/hpf/largeprojects/pray/recycle.bin/';
 my $allerr = "";
 
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
@@ -71,15 +71,17 @@ sub update_table {
 
 sub submit_newGP {
     my ($oldAID, $postprocID, $oldGP) = @_;
-    &insert_jobstatus($sampleID,$postprocID,"newGP");
-    print "$sshdat \"$newGP_sh $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37 $sampleID $oldAID $postprocID $oldGP\"\n";
-    `$sshdat "$newGP_sh $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37 $sampleID $oldAID $postprocID $oldGP"`;
+    &insert_jobstatus($sampleID,$postprocID,"exome");
+    print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN\"\n";
+    `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN"`;
+    print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
+    `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
     if ( $? != 0 ) {
         $allerr .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
         return;
     }
-    my $command = "$sshhpf \"$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome_newGP \"\n";
-    `$sshhpf "$call_screen -r $runfolder/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $fastqdir/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome_newGP "`;
+    my $command = "$SSH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome -i bwaAlign \"\n";
+    `$SSH_HPF "$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome -i bwaAlign "`;
     if ( $? != 0 ) {
         $allerr .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
         return;
