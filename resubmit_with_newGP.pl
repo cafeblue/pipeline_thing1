@@ -24,6 +24,8 @@ chomp($port, $host, $user, $pass, $db);
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or die "Couldn't connect to database\n" ;
 
 my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/clinical/samples/illumina';
+my $WEB_THING1_ROOT = '/web/www/html/index/clinic/ngsweb.com';
+my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $FASTQ_DIR    = '/hpf/largeprojects/pray/clinical/fastq_v5/';
 my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
@@ -61,8 +63,9 @@ sub update_table {
     my $config_ref = pop(@dataS);
     my $key = $genePanelVer . "\tCR";
     my $info = join("', '", @dataS[0..6]);
-    $info .= "', '2', '";
-    $info .= join("', '",@dataS[7..9]);
+    $info .= "', '2', '" . $dataS[7] . "', '";
+    my @versions = &get_pipelinever;
+    $info .= join("', '", @versions);
     my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer, webVer) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $genePanelVer . "','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $info . "')"; 
     my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
@@ -141,6 +144,28 @@ sub insert_command {
     #else {
     #    $allerr .= "multiple hpf submission commands found for sampleID: $sampleID, postprocID: $postprocID. it is impossible!!!\n";
     #}
+}
+
+sub get_pipelinever {
+    my $msg = "";
+
+    my $cmd = $SSH_DATA . "cd $PIPELINE_HPF_ROOT ; git tag | tail -1 ; git log -1 |head -1 |cut -b 8-14\" 2>/dev/null";
+    my @commit_tag = `$cmd`;
+    if ($? != 0) {
+        $msg .= "get the commit and tag failed from HPF with the errorcode $?\n";
+    }
+    chomp(@commit_tag);
+    my $hpf_ver = join('(',@commit_tag) . ")";
+
+    $cmd = "cd $WEB_THING1_ROOT ; git tag | tail -1 ; git log -1 | head -1 |cut -b 8-14";
+    @commit_tag = `$cmd`;
+    if ($? != 0) {
+        $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
+    }
+    chomp(@commit_tag);
+    my $web_ver = join('(',@commit_tag) . ")";
+
+    return($hpf_ver, $web_ver);
 }
 
 sub read_config {
