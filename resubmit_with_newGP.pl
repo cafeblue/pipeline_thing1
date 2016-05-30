@@ -149,7 +149,7 @@ sub insert_command {
 sub get_pipelinever {
     my $msg = "";
 
-    my $cmd = $SSH_DATA . "cd $PIPELINE_HPF_ROOT ; git tag | tail -1 ; git log -1 |head -1 |cut -b 8-14\" 2>/dev/null";
+    my $cmd = $SSH_DATA . " \"cd $PIPELINE_HPF_ROOT ; git tag | tail -1 ; git log -1 |head -1 |cut -b 8-14\" 2>/dev/null";
     my @commit_tag = `$cmd`;
     if ($? != 0) {
         $msg .= "get the commit and tag failed from HPF with the errorcode $?\n";
