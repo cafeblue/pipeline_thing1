@@ -12,6 +12,8 @@ use Mail::Sender;
 my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/clinical/samples/illumina';
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
+my $SQL_JOBLST        = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
+my $SSHDATA           = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
 my $GET_JSUBID        = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_jsub_pl.sh ';
 my $GET_QSUB_STATUS   = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca '; 
 my $GET_EXIT_STATUS   = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_status_pl.sh ';
@@ -300,6 +302,7 @@ sub update_jobStatus {
                     $update_query = "UPDATE sampleInfo set currentStatus = '5', analysisFinishedTime = NOW(), displayed_at = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
                     $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                     $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
+                    &update_qualMetrics($sampleID, $postprocID);
                     return;
                 }
                 elsif ($1 ne '0') {
@@ -313,6 +316,38 @@ sub update_jobStatus {
                 $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
             }
         }
+    }
+}
+
+sub update_qualMetrics {
+    my ($sampleID,$postprocID) = @_;
+    my $query = "SELECT jobName FROM hpfJobStatus WHERE jobName IN ($SQL_JOBLST) AND exitcode = '0' AND sampleID = '$sampleID' AND postprocID = '$postprocID' ";
+    my $sthQUF = $dbh->prepare($query);
+    $sthQUF->execute();
+    if ($sthQUF->rows() != 0) {
+        my @joblst = ();
+        my $data_ref = $sthQUF->fetchall_arrayref;
+        foreach my $tmp (@$data_ref) {
+            push @joblst, @$tmp;
+        }
+        my $joblst = join(" ", @joblst);
+        my $cmd = "$SSHDATA $HPF_RUNNING_FOLDER $sampleID-$postprocID $joblst\"";
+        my @updates = `$cmd`;
+        if ($? != 0) {
+            my $msg = "There is an error running the following command:\n\n$cmd\n";
+            print STDERR $msg;
+            email_error($msg);
+            return 2;
+        }
+
+        &run_update(@updates);
+    }
+}
+
+sub run_update {
+    foreach my $update_sql (@_) {
+        my $sthQUQ = $dbh->prepare($update_sql);
+        $sthQUQ->execute();
     }
 }
 

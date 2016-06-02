@@ -77,7 +77,9 @@ sub update_table {
                     my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
                     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
                 }
-                ###### submit2HPF is ready ####
+                if ($table_ref->{$sampleID}{'reads'} < 15000000) {
+                    email_lowyield($sampleID, $flowcellID);
+                }
             }
         }
         else {
@@ -190,7 +192,7 @@ sub read_config {
 }
 
 sub get_qual_stat {
-    my ($flowcellID, $machine) = @_;
+    my ($flowcellID, $machine, $destDir) = @_;
 
     my $query = "SELECT sampleID,barcode,barcode2 from sampleSheet where flowcell_ID = '" . $flowcellID . "' and machine = '" . $machine . "'";
     my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
@@ -206,7 +208,8 @@ sub get_qual_stat {
         }
         print "\n";
 
-        my $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $flowcellID, 1 ;
+        my $sub_flowcellID = (split(/_/,$destDir))[-1];
+        $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $sub_flowcellID, 1 ;
         my $demuxSummaryFile = "$FASTQ_FOLDER/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
         if (! -e "$demuxSummaryFile") {
             email_error("file $demuxSummaryFile does not exists! it can be caused by the failure of demultiplexing. please re-run the demultiplex\n");
@@ -270,7 +273,7 @@ sub get_qual_stat {
 }
 
 sub get_chksum_list {
-    my $db_query = 'SELECT flowcellID,machine from thing1JobStatus where chksum = "2"';
+    my $db_query = 'SELECT flowcellID,machine,destinationDir from thing1JobStatus where chksum = "2"';
     my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
     if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
@@ -278,8 +281,6 @@ sub get_chksum_list {
         foreach my $row_ref (@$data_ref) {
             my $que_set = "UPDATE thing1JobStatus SET chksum = '1' WHERE flowcellID = '$row_ref->[0]'";
             my $sth = $dbh->prepare($que_set) or die "Can't prepare update: ". $dbh->errstr() . "\n";
-            $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
-            $sth = $dbh->prepare($que_set) or die "Can't prepare update: ". $dbh->errstr() . "\n";
             $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
         }
         return ($data_ref);
@@ -298,6 +299,22 @@ sub email_error {
         from                 => 'notice@thing1.sickkids.ca',
         to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
         subject              => "Job Status on thing1 for update sample info.",
+        ctype                => 'text/plain; charset=utf-8',
+        skip_bad_recipients  => 1,
+        msg                  => $errorMsg 
+    };
+    my $ret =  $sender->MailMsg($mail);
+}
+
+sub email_lowyield {
+    my ($sampleID, $flowcellID) = @_;
+    my $errorMsg = "$sampleID on $flowcellID has finished demultiplexing. Unfortunately, it's read yield is < 30000000 and will probably fail coverage metrics & error on analysis.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca \n\nThis email is from thing1 pipelineV5.\n\nThanks,\nThing1\n";
+    my $sender = Mail::Sender->new();
+    my $mail   = {
+        smtp                 => 'localhost',
+        from                 => 'notice@thing1.sickkids.ca',
+        to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, crm@sickkids.ca, raveen.basran@sickkids.ca, marianne.eliou@sickkids.ca, weiw.wang@sickkids.ca',
+        subject              => "$sampleID low read yield",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
         msg                  => $errorMsg 

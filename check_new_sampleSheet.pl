@@ -162,7 +162,7 @@ foreach my $file  (@new_fl) {
     }
 
     if ($cancer_samples_msg ne '') {
-        email_error("2", $cancer_samples_msg, $machine, $today, $flowcellID, "weiw.wang\@sickkids.ca, adam.shlien\@sickkids.ca, bailey.gallinger\@sickkids.ca");
+        email_error("2", $cancer_samples_msg, $machine, $today, $flowcellID, "adam.shlien\@sickkids.ca, scott.davidson\@sickkids.ca, brittney.johnstone\@sickkids.ca, weiw.wang\@sickkids.ca");
     }
 }
 

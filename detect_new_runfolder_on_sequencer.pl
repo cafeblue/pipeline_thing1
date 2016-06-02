@@ -111,6 +111,7 @@ sub get_cycleNum {
 
 sub update_database {
     my ($sourceFolder, $flowcellID, $cycleNum) = @_;
+    $flowcellID = uc($flowcellID);
     my ($machine , $folder) = (split(/\//,$sourceFolder))[4,-1];
     my $destDir = '/localhd/data/thing1/runs/' . $machine . '_' . $folder;
     my $msg = "";

@@ -106,13 +106,14 @@ sub check_qual {
             my @tmmp = split(/=/);
             if (exists $FILTERS{$tmmp[0]}) {
                 if (not eval($tmmp[1] . $FILTERS{$tmmp[0]})) {
-                    $msg .= $tmmp[0] . " = ". $tmmp[1] . " of sampleID $sampleID postprocID $postprocID failed to pass the filter: " . $FILTERS{$tmmp[0]} . "\n";
+                    $msg .= "Failed to pass the filter: " . $tmmp[0] . $FILTERS{$tmmp[0]} . "(" . $tmmp[0] . " = " . $tmmp[1] . ")\n";
                 }
             }
         }
     }
     
     if ($msg ne '') {
+        $msg = "sampleID $sampleID postprocID $postprocID has finished analysis using gene panel, ai.gp18. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through. Please check the following linkage\nhttp://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary\n\n" . $msg;
         email_error($msg, "quality");
         return 7;
     }
@@ -123,13 +124,14 @@ sub email_error {
     my ($errorMsg, $quality) = @_;
     print STDERR $errorMsg;
     $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
-    my $email_list = $quality eq 'quality' ? 'crm@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca' : 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca';
+    my $email_list = $quality eq 'quality' ? 'crm@sickkids.ca, jennifer.orr@sickkids.ca, marianne.eliou@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca' : 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca';
+    my $title = $quality eq 'quality' ? 'Sample failed to pass the QC' : 'JobStatus on HPF';
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
         to                   => $email_list, 
-        subject              => "Job Status on HPF",
+        subject              => $title,
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
         msg                  => $errorMsg 
