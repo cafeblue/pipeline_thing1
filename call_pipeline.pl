@@ -312,7 +312,7 @@ sub cancerN {
                                $jobID_and_Pfolder[0] =  $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
                                $jobID_and_Pfolder[1] =  $jobID_and_Pfolder1[1] ;
                                $jobID_and_Pfolder[2] =  $jobID_and_Pfolder2[1] ;
-    gatkFilteredRecalVariant:  @jobID_and_Pfolder    =  &gatkFilteredRecalVariant(@jobID_and_Pfolder);
+    gatkFilteredRecalVariant:  @jobID_and_Pfolder1   =  &gatkFilteredRecalVariant(@jobID_and_Pfolder);
     sleep 1;
     windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder);
     annovar:                   @jobID_and_Pfolder    = &annovar(@jobID_and_Pfolder1);
@@ -361,7 +361,10 @@ sub cancerT {
 
 sub check_opts {
     my $errmsg = "";
-    my ($sampleid1, $analysisid1) = split(/-/, (split(/\//,$runfolder))[-1]);
+    my $id_combine_tmp = (split(/\//,$runfolder))[-1];
+    $id_combine_tmp =~ s/-\d{14}-(.+?)-(.+?)$//;
+    print $id_combine_tmp,"\n";
+    my ($sampleid1, $analysisid1) = split(/-([^-]+)$/, $id_combine_tmp);
     if ($sampleid1 ne $sampleID) {
         $errmsg .= "sampleID: $sampleid1 and $sampleID does not match.\n";
     }
