@@ -51,7 +51,7 @@ sub update_table {
         $sthQNS->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
         if ($sthQNS->rows() > 0) {
             my $msg = "sampleID $sampleID on flowcellID $flowcellID already exists in table sampleInfo, the following rows will be deleted!!!\n";
-            my $hash = $sthQNS->fetchall_hashref();
+            my $hash = $sthQNS->fetchall_hashref('sampleID');
             $msg .= Dumper($hash);
             email_error($msg);
             my $delete_sql = "DELETE FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";

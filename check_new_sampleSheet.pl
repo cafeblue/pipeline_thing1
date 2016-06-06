@@ -155,10 +155,10 @@ foreach my $file  (@new_fl) {
 
         write_database(@file_content);
         print LST $file,"\n";
-        email_error("1", "", $machine, $today, $flowcellID);
+        email_error("1", "", $machine, $today, $flowcellID, 'jennifer.orr@sickkids.ca, marianne.eliou@sickkids.ca, cameron.ellahi@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca');
     }
     else {
-        email_error("0", $errorMsg, $machine, $today, $flowcellID);
+        email_error("0", $errorMsg, $machine, $today, $flowcellID, 'jennifer.orr@sickkids.ca, marianne.eliou@sickkids.ca, cameron.ellahi@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca');
     }
 
     if ($cancer_samples_msg ne '') {

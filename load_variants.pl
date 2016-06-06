@@ -45,7 +45,7 @@ foreach my $idpair (@$idpair_ref) {
 ######          Subroutines          ######
 ###########################################
 sub check_goodQuality_samples {
-    my $query_running_sample = "SELECT i.sampleID,i.postprocID, i.genePanelVer,i.flowcellID,s.machine FROM sampleInfo AS i INNER JOIN sampleSheet AS s ON i.flowcellID = s.flowcell_ID AND i.sampleID = s.sampleID WHERE i.currentStatus = '6';";
+    my $query_running_sample = "SELECT i.sampleID,i.postprocID, i.genePanelVer,i.flowcellID,s.machine,i.testType FROM sampleInfo AS i INNER JOIN sampleSheet AS s ON i.flowcellID = s.flowcell_ID AND i.sampleID = s.sampleID WHERE i.currentStatus = '6';";
     my $sthQNS = $dbh->prepare($query_running_sample) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
     if ($sthQNS->rows() == 0) {  
@@ -80,10 +80,11 @@ sub rsync_files {
 }
 
 sub updateDB {
-    my ($exitcode, $sampleID, $postprocID, $genePanelVer, $flowcellID, $machine) = @_;
+    my ($exitcode, $sampleID, $postprocID, $genePanelVer, $flowcellID, $machine, $testType) = @_;
+    $testType = lc($testType);
     my $msg = "";
     if ($exitcode == 0) {
-        my $update_sql = "UPDATE sampleInfo SET currentstatus = '8' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        my $update_sql = $testType ne "validation" ? "UPDATE sampleInfo SET currentStatus = '8' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'" : "UPDATE sampleInfo SET currentStatus = '12' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'" ;
         print $update_sql,"\n";
         my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
         $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
@@ -91,11 +92,11 @@ sub updateDB {
             &email_finished($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine);
         }
         else {
-            email_error("Failed to update the currentStatus set to 10 for sampleID: $sampleID posrprocID: $postprocID\n\nError Message:\n$msg\n");
+            email_error("Failed to update the currentStatus set to 8 for sampleID: $sampleID posrprocID: $postprocID\n\nError Message:\n$msg\n");
         }
     }
     elsif ($exitcode == 1) {
-        my $update_sql = "UPDATE sampleInfo SET currentstatus = '9' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        my $update_sql = "UPDATE sampleInfo SET currentStatus = '9' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
         print $update_sql,"\n";
         my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
         $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
