@@ -6,8 +6,6 @@ use HPF::pipeline;
 use Time::localtime;
 use Time::Piece;
 
-###perl ./call_pipeline.pl -sampleID 202214 -postprocID 3149 -fastqDir /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G106N/Sample_202214 -genePanel noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-3149-20160606150604-noonan_nf1.gp23-b37 -p exome
-
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 
