@@ -9,6 +9,7 @@ use Mail::Sender;
 
 #### constant variables for HPF ############
 my $SAMPLE_INFO = '/localhd/sample_info';
+my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 
 #### Database connection ###################
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -155,14 +156,14 @@ foreach my $file  (@new_fl) {
 
         write_database(@file_content);
         print LST $file,"\n";
-        email_error("1", "", $machine, $today, $flowcellID, 'jennifer.orr@sickkids.ca, marianne.eliou@sickkids.ca, cameron.ellahi@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca');
+        email_error("1", "", $machine, $today, $flowcellID, $email_lst_ref->{"SAMPLESHEET"});
     }
     else {
-        email_error("0", $errorMsg, $machine, $today, $flowcellID, 'jennifer.orr@sickkids.ca, marianne.eliou@sickkids.ca, cameron.ellahi@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca');
+        email_error("0", $errorMsg, $machine, $today, $flowcellID, $email_lst_ref->{"SAMPLESHEET"});
     }
 
     if ($cancer_samples_msg ne '') {
-        email_error("2", $cancer_samples_msg, $machine, $today, $flowcellID, "adam.shlien\@sickkids.ca, scott.davidson\@sickkids.ca, brittney.johnstone\@sickkids.ca, weiw.wang\@sickkids.ca");
+        email_error("2", $cancer_samples_msg, $machine, $today, $flowcellID, $email_lst_ref->{"CANCERSAMPLE"});
     }
 }
 
@@ -220,9 +221,21 @@ sub write_database {
     }
 }
 
+sub email_list {
+    my $infile = shift;
+    my %email;
+    open (INF, "$infile") or die $!;
+    while (<INF>) {
+        chomp;
+        my ($type, $lst) = split(/\t/);
+        $email{$type} = $lst;
+    }
+    return(\%email);
+}
+
 sub email_error {
     my ($flag, $info, $machine, $today, $flowcellID, $mail_lst) = @_;
-    $mail_lst = defined($mail_lst) ? $mail_lst : 'weiw.wang@sickkids.ca';
+    $mail_lst = defined($mail_lst) ? $mail_lst : $email_lst_ref->{"WARNINGS"};
     if ($flag eq '1') {
         $info = "The sample sheet has been generated successfully and can be found: /" . $machine . "_desktop/"  . $today . ".flowcell_" . $flowcellID . ".sample_sheet.csv OR\n /localhd/data/sequencers/$machine/$machine\_desktop/" . $today     . ".flowcell_" . $flowcellID . ".sample_sheet.csv";
     }
