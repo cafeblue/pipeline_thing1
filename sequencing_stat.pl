@@ -171,7 +171,7 @@ sub update_table {
         }
         email_qc($sampleID, $flowcellID, $err, $value, $thres. $machine);
         if ($err ne "") {
-          
+
           my $updateLock = "UPDATE sampleInfo SET locked ='1' AND diagnosis = '".$errString."' currentStatus = '7' WHERE sampleID = '".$sampleID." AND flowcellID = '".$flowcellID."'';";
           my $sthUL = $dbh->prepare($updateLock) or die "Can't lock sample = $sampleID". $dbh->errstr() . "\n";
           $sthUL->execute()  or die "Can't execute lock for sample=$sampleID" . $dbh->errstr() . "\n";
@@ -180,463 +180,465 @@ sub update_table {
           my $getPPid = "SELECT postprocID WHERE sampleID = '".$sampleID."' AND flowcellID = '".$flowcellID."'";
           my $sthPP = $dbh->prepare($getPPid) or die "Can't query database for postprocID, sampleID = $sampleID and flowcellID = $flowcellID". $dbh->errstr() . "\n";
           $sthPP->execute()  or die "Can't execute query for postprocID, sampleID = $sampleID and flowcellID = $flowcellID" . $dbh->errstr() . "\n";
-
-          #insert lock log comment
-          my $insertLock = "INSERT INTO lock_log (postprocID, updated_by, updated_at, updated_to, lock_reason)VALUES (" . $ppID . ", Pipeline," . $timestamp . ",locked, ".$errString.");";
-          my $sthIL = $dbh->prepare($insertLock) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-          $sthIL->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-
-          #
+          my @dataPP = ();
+          while (@dataPP = $sthPP->fetchrow_array()) {
+            my $ppID = $dataPP[0];
+            #insert lock log comment
+            my $insertLock = "INSERT INTO lock_log (postprocID, updated_by, updated_at, updated_to, lock_reason)VALUES (" . $ppID . ", Pipeline," . $currentTime . ",locked, ".$errString.");";
+            my $sthIL = $dbh->prepare($insertLock) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+            $sthIL->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+          }
         }
-      } else {
-        my $msg = "No/multiple sampleID found for $sampleID:\n\n$query\n";
-        email_error($msg);
-        die $msg;
       }
-
+    } else {
+      my $msg = "No/multiple sampleID found for $sampleID:\n\n$query\n";
+      email_error($msg);
+      die $msg;
     }
+
   }
+}
 
-  sub get_pipelinever {
-    my $msg = "";
+sub get_pipelinever {
+  my $msg = "";
 
-    my $cmd = $SSHDATA . "cd $PIPELINE_HPF_ROOT ; git tag | tail -1 ; git log -1 |head -1 |cut -b 8-14\" 2>/dev/null";
-    my @commit_tag = `$cmd`;
-    if ($? != 0) {
-      $msg .= "get the commit and tag failed from HPF with the errorcode $?\n";
-    }
-    chomp(@commit_tag);
-    my $hpf_ver = join('(',@commit_tag) . ")";
-
-    $cmd = "cd $PIPELINE_THING1_ROOT ; git tag | tail -1 ; git log -1 | head -1 |cut -b 8-14";
-    @commit_tag = `$cmd`;
-    if ($? != 0) {
-      $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
-    }
-    chomp(@commit_tag);
-    my $thing1_ver = join('(',@commit_tag) . ")";
-
-    $cmd = "cd $WEB_THING1_ROOT ; git tag | tail -1 ; git log -1 | head -1 |cut -b 8-14";
-    @commit_tag = `$cmd`;
-    if ($? != 0) {
-      $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
-    }
-    chomp(@commit_tag);
-    my $web_ver = join('(',@commit_tag) . ")";
-
-    return($thing1_ver, $hpf_ver, $web_ver);
+  my $cmd = $SSHDATA . "cd $PIPELINE_HPF_ROOT ; git tag | tail -1 ; git log -1 |head -1 |cut -b 8-14\" 2>/dev/null";
+  my @commit_tag = `$cmd`;
+  if ($? != 0) {
+    $msg .= "get the commit and tag failed from HPF with the errorcode $?\n";
   }
+  chomp(@commit_tag);
+  my $hpf_ver = join('(',@commit_tag) . ")";
 
-  sub get_pairID {
-    my ($id1, $id2) = @_;
-    my @pairids = ();
-    my $query = "SELECT distinct(pairID) from pairInfo where sampleID1 = '$id1' or sampleID2 = '$id1' or sampleID1 = '$id2' or sampleID2 = '$id2'";
+  $cmd = "cd $PIPELINE_THING1_ROOT ; git tag | tail -1 ; git log -1 | head -1 |cut -b 8-14";
+  @commit_tag = `$cmd`;
+  if ($? != 0) {
+    $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
+  }
+  chomp(@commit_tag);
+  my $thing1_ver = join('(',@commit_tag) . ")";
+
+  $cmd = "cd $WEB_THING1_ROOT ; git tag | tail -1 ; git log -1 | head -1 |cut -b 8-14";
+  @commit_tag = `$cmd`;
+  if ($? != 0) {
+    $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
+  }
+  chomp(@commit_tag);
+  my $web_ver = join('(',@commit_tag) . ")";
+
+  return($thing1_ver, $hpf_ver, $web_ver);
+}
+
+sub get_pairID {
+  my ($id1, $id2) = @_;
+  my @pairids = ();
+  my $query = "SELECT distinct(pairID) from pairInfo where sampleID1 = '$id1' or sampleID2 = '$id1' or sampleID1 = '$id2' or sampleID2 = '$id2'";
+  my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+  $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+  if ($sthQNS->rows() == 1) { #no samples are being currently sequenced
+    my @data_ref = $sthQNS->fetchrow_array ;
+    my $pid = $data_ref[0];
+    $query = "SELECT distinct(pairID) from pairInfo where sampleID1 = '$id1' AND sampleID2 = '$id2' OR sampleID1 = '$id2' AND sampleID2 = '$id1'";
     my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() == 1) { #no samples are being currently sequenced
-      my @data_ref = $sthQNS->fetchrow_array ;
-      my $pid = $data_ref[0];
-      $query = "SELECT distinct(pairID) from pairInfo where sampleID1 = '$id1' AND sampleID2 = '$id2' OR sampleID1 = '$id2' AND sampleID2 = '$id1'";
-      my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-      $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-      if ($sthQNS->rows == 0) {
-        my $insert = "INSERT INTO pairInfo (pairID, sampleID1, sampleID2) VALUE ('$pid', '$id1', '$id2')";
-        my $sthQNS = $dbh->prepare($insert) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-        $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-      }
-      return($pid);
-    } elsif ($sthQNS->rows() == 0) {
-      $query = 'select pairID from pairInfo order by pairID desc limit 1';
-      my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-      $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-      my @data_ref = $sthQNS->fetchrow_array;
-      my $pid = $data_ref[0];
-      $pid++;
+    if ($sthQNS->rows == 0) {
       my $insert = "INSERT INTO pairInfo (pairID, sampleID1, sampleID2) VALUE ('$pid', '$id1', '$id2')";
-      $sthQNS = $dbh->prepare($insert) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+      my $sthQNS = $dbh->prepare($insert) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
       $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-      return($pid);
-    } else {
-      my $msg = "multiple pairID found for $id1 and $id2, it is impossible!!!\n\n $query\n";
-      email_error($msg);
-      die $msg;
     }
-  }
-
-  sub read_config {
-    my %configureHash = (); #stores the information from the configure file
-    my $data = "";
-    my $configVersionFile = $CONFIG_VERSION_FILE;
-    open (FILE, "< $configVersionFile") or die "Can't open $configVersionFile for read: $!\n";
-    $data=<FILE>;               #remove header
-    while ($data=<FILE>) {
-      chomp $data;
-      $data=~s/\"//gi;          #removes any quotations
-      $data=~s/\r//gi;          #removes excel return
-      my @splitTab = split(/\t/,$data);
-      my $platform = $splitTab[0];
-      my $gp = $splitTab[1];
-      my $capConfigKit = $splitTab[5];
-      my $pipeID = $splitTab[7];
-      my $annotationID = $splitTab[8];
-      my $filterID = $splitTab[9];
-      if (defined $gp) {
-        my $key = $gp . "\t" . $capConfigKit;
-        if (defined $configureHash{$key}) {
-          die "ERROR in $configVersionFile : Duplicate platform, genePanelID, and captureKit\n";
-        } else {
-          $configureHash{$key}{'pipeID'} = $pipeID;
-          $configureHash{$key}{'annotateID'} = $annotationID;
-          $configureHash{$key}{'filterID'} = $filterID;
-        }
-      }
-    }
-    close(FILE);
-    return(\%configureHash);
-  }
-
-  sub get_qual_stat {
-    my ($flowcellID, $machine, $destDir) = @_;
-
-    my $query = "SELECT sampleID,barcode,barcode2 from sampleSheet where flowcell_ID = '" . $flowcellID . "' and machine = '" . $machine . "'";
+    return($pid);
+  } elsif ($sthQNS->rows() == 0) {
+    $query = 'select pairID from pairInfo order by pairID desc limit 1';
     my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() != 0) { #no samples are being currently sequenced
-
-      my %sample_barcode;
-      while (my @data_ref = $sthQNS->fetchrow_array) {
-        $sample_barcode{$data_ref[0]} = $ilmnBarcodes{$data_ref[1]};
-        if ($data_ref[2]) {
-          $sample_barcode{$data_ref[0]} .= "+" . $ilmnBarcodes{$data_ref[2]};
-        }
-      }
-      print "\n";
-
-      my $sub_flowcellID = (split(/_/,$destDir))[-1];
-      $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $sub_flowcellID, 1 ;
-      my $demuxSummaryFile = "$FASTQ_FOLDER/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
-      if (! -e "$demuxSummaryFile") {
-        email_error("file $demuxSummaryFile does not exists! it can be caused by the failure of demultiplexing. please re-run the demultiplex\n");
-        die "file $demuxSummaryFile does not exists! it can be caused by the failure of demultiplexing. please re-run the demultiplex\n";
-      }
-      print $demuxSummaryFile,"\n";
-      my $te = HTML::TableExtract->new( depth => 0, count => 2 );
-      $te->parse_file($demuxSummaryFile);
-      my %table_pos;
-      my %sample_cont;
-      my %perQ30;
-      foreach my $ts ($te->tables) {
-        my @table_cont = @{$te->rows};
-        my $heads = shift(@table_cont);
-        for (0..$#$heads) {
-          $heads->[$_] =~ s/\n//;
-          if ($heads->[$_] eq 'Sample') {
-            $table_pos{'Sample'} = $_;
-          } elsif ($heads->[$_] eq 'Barcode sequence') {
-            $table_pos{'Barcode'} = $_;
-          } elsif ($heads->[$_] eq 'PF Clusters') {
-            $table_pos{'reads'} = $_;
-          } elsif ($heads->[$_] eq 'Yield (Mbases)') {
-            $table_pos{'Yield'} = $_;
-          } elsif ($heads->[$_] eq '% >= Q30bases') {
-            $table_pos{'perQ30'} = $_;
-          }
-        }
-        foreach my $row (@table_cont) {
-          next if ($$row[$table_pos{'Sample'}] eq 'Undetermined');
-          if ($$row[$table_pos{'Barcode'}] ne $sample_barcode{$$row[$table_pos{'Sample'}]}) {
-            my $msg = "barcode does not match for $machine of $flowcellID\nSampleID: \"" . $$row[$table_pos{'Sample'}] . "\"\t\"" . $$row[$table_pos{'Barcode'}] . "\"\t\"" . $sample_barcode{$$row[$table_pos{'Sample'}]} . "\"\n" . $table_pos{'Barcode'} . "\t" . $table_pos{'Sample'} . "\n";
-            email_error($msg);
-            die $msg,"\n";
-          }
-          $$row[$table_pos{'reads'}] =~ s/,//g;
-          $$row[$table_pos{'Yield'}] =~ s/,//g;
-          $sample_cont{$$row[$table_pos{'Sample'}]}{'reads'} += $$row[$table_pos{'reads'}];
-          $sample_cont{$$row[$table_pos{'Sample'}]}{'Yield'} += $$row[$table_pos{'Yield'}];
-          push @{$perQ30{$$row[$table_pos{'Sample'}]}}, $$row[$table_pos{'perQ30'}];
-        }
-        foreach my $sid (keys %perQ30) {
-          my $total30Q = 0;
-          foreach (@{$perQ30{$sid}}) {
-            $total30Q += $_;
-          }
-          $sample_cont{$sid}{'perQ30'} = $total30Q/scalar(@{$perQ30{$sid}});
-        }
-        return($flowcellID, \%sample_cont);
-      }
-    } else {
-      my $msg = "No sampleID found in table sampleSheet for $machine of $flowcellID\n\n Please check the table carefully \n $query";
-      email_error($msg);
-      die $msg;
-    }
-  }
-
-  sub get_chksum_list {
-    my $db_query = 'SELECT flowcellID,machine,destinationDir from thing1JobStatus where chksum = "2"';
-    my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+    my @data_ref = $sthQNS->fetchrow_array;
+    my $pid = $data_ref[0];
+    $pid++;
+    my $insert = "INSERT INTO pairInfo (pairID, sampleID1, sampleID2) VALUE ('$pid', '$id1', '$id2')";
+    $sthQNS = $dbh->prepare($insert) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() != 0) { #no samples are being currently sequenced
-      my $data_ref = $sthQNS->fetchall_arrayref;
-      foreach my $row_ref (@$data_ref) {
-        my $que_set = "UPDATE thing1JobStatus SET chksum = '1' WHERE flowcellID = '$row_ref->[0]'";
-        my $sth = $dbh->prepare($que_set) or die "Can't prepare update: ". $dbh->errstr() . "\n";
-        $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
+    return($pid);
+  } else {
+    my $msg = "multiple pairID found for $id1 and $id2, it is impossible!!!\n\n $query\n";
+    email_error($msg);
+    die $msg;
+  }
+}
+
+sub read_config {
+  my %configureHash = (); #stores the information from the configure file
+  my $data = "";
+  my $configVersionFile = $CONFIG_VERSION_FILE;
+  open (FILE, "< $configVersionFile") or die "Can't open $configVersionFile for read: $!\n";
+  $data=<FILE>;                 #remove header
+  while ($data=<FILE>) {
+    chomp $data;
+    $data=~s/\"//gi;            #removes any quotations
+    $data=~s/\r//gi;            #removes excel return
+    my @splitTab = split(/\t/,$data);
+    my $platform = $splitTab[0];
+    my $gp = $splitTab[1];
+    my $capConfigKit = $splitTab[5];
+    my $pipeID = $splitTab[7];
+    my $annotationID = $splitTab[8];
+    my $filterID = $splitTab[9];
+    if (defined $gp) {
+      my $key = $gp . "\t" . $capConfigKit;
+      if (defined $configureHash{$key}) {
+        die "ERROR in $configVersionFile : Duplicate platform, genePanelID, and captureKit\n";
+      } else {
+        $configureHash{$key}{'pipeID'} = $pipeID;
+        $configureHash{$key}{'annotateID'} = $annotationID;
+        $configureHash{$key}{'filterID'} = $filterID;
       }
-      return ($data_ref);
-    } else {
-      exit(0);
+    }
+  }
+  close(FILE);
+  return(\%configureHash);
+}
+
+sub get_qual_stat {
+  my ($flowcellID, $machine, $destDir) = @_;
+
+  my $query = "SELECT sampleID,barcode,barcode2 from sampleSheet where flowcell_ID = '" . $flowcellID . "' and machine = '" . $machine . "'";
+  my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+  $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+  if ($sthQNS->rows() != 0) { #no samples are being currently sequenced
+
+    my %sample_barcode;
+    while (my @data_ref = $sthQNS->fetchrow_array) {
+      $sample_barcode{$data_ref[0]} = $ilmnBarcodes{$data_ref[1]};
+      if ($data_ref[2]) {
+        $sample_barcode{$data_ref[0]} .= "+" . $ilmnBarcodes{$data_ref[2]};
+      }
+    }
+    print "\n";
+
+    my $sub_flowcellID = (split(/_/,$destDir))[-1];
+    $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $sub_flowcellID, 1 ;
+    my $demuxSummaryFile = "$FASTQ_FOLDER/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
+    if (! -e "$demuxSummaryFile") {
+      email_error("file $demuxSummaryFile does not exists! it can be caused by the failure of demultiplexing. please re-run the demultiplex\n");
+      die "file $demuxSummaryFile does not exists! it can be caused by the failure of demultiplexing. please re-run the demultiplex\n";
+    }
+    print $demuxSummaryFile,"\n";
+    my $te = HTML::TableExtract->new( depth => 0, count => 2 );
+    $te->parse_file($demuxSummaryFile);
+    my %table_pos;
+    my %sample_cont;
+    my %perQ30;
+    foreach my $ts ($te->tables) {
+      my @table_cont = @{$te->rows};
+      my $heads = shift(@table_cont);
+      for (0..$#$heads) {
+        $heads->[$_] =~ s/\n//;
+        if ($heads->[$_] eq 'Sample') {
+          $table_pos{'Sample'} = $_;
+        } elsif ($heads->[$_] eq 'Barcode sequence') {
+          $table_pos{'Barcode'} = $_;
+        } elsif ($heads->[$_] eq 'PF Clusters') {
+          $table_pos{'reads'} = $_;
+        } elsif ($heads->[$_] eq 'Yield (Mbases)') {
+          $table_pos{'Yield'} = $_;
+        } elsif ($heads->[$_] eq '% >= Q30bases') {
+          $table_pos{'perQ30'} = $_;
+        }
+      }
+      foreach my $row (@table_cont) {
+        next if ($$row[$table_pos{'Sample'}] eq 'Undetermined');
+        if ($$row[$table_pos{'Barcode'}] ne $sample_barcode{$$row[$table_pos{'Sample'}]}) {
+          my $msg = "barcode does not match for $machine of $flowcellID\nSampleID: \"" . $$row[$table_pos{'Sample'}] . "\"\t\"" . $$row[$table_pos{'Barcode'}] . "\"\t\"" . $sample_barcode{$$row[$table_pos{'Sample'}]} . "\"\n" . $table_pos{'Barcode'} . "\t" . $table_pos{'Sample'} . "\n";
+          email_error($msg);
+          die $msg,"\n";
+        }
+        $$row[$table_pos{'reads'}] =~ s/,//g;
+        $$row[$table_pos{'Yield'}] =~ s/,//g;
+        $sample_cont{$$row[$table_pos{'Sample'}]}{'reads'} += $$row[$table_pos{'reads'}];
+        $sample_cont{$$row[$table_pos{'Sample'}]}{'Yield'} += $$row[$table_pos{'Yield'}];
+        push @{$perQ30{$$row[$table_pos{'Sample'}]}}, $$row[$table_pos{'perQ30'}];
+      }
+      foreach my $sid (keys %perQ30) {
+        my $total30Q = 0;
+        foreach (@{$perQ30{$sid}}) {
+          $total30Q += $_;
+        }
+        $sample_cont{$sid}{'perQ30'} = $total30Q/scalar(@{$perQ30{$sid}});
+      }
+      return($flowcellID, \%sample_cont);
+    }
+  } else {
+    my $msg = "No sampleID found in table sampleSheet for $machine of $flowcellID\n\n Please check the table carefully \n $query";
+    email_error($msg);
+    die $msg;
+  }
+}
+
+sub get_chksum_list {
+  my $db_query = 'SELECT flowcellID,machine,destinationDir from thing1JobStatus where chksum = "2"';
+  my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+  $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+  if ($sthQNS->rows() != 0) { #no samples are being currently sequenced
+    my $data_ref = $sthQNS->fetchall_arrayref;
+    foreach my $row_ref (@$data_ref) {
+      my $que_set = "UPDATE thing1JobStatus SET chksum = '1' WHERE flowcellID = '$row_ref->[0]'";
+      my $sth = $dbh->prepare($que_set) or die "Can't prepare update: ". $dbh->errstr() . "\n";
+      $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
+    }
+    return ($data_ref);
+  } else {
+    exit(0);
+  }
+}
+
+sub email_error {
+  my $errorMsg = shift;
+  $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
+  my $sender = Mail::Sender->new();
+  my $mail   = {
+                smtp                 => 'localhost',
+                from                 => 'notice@thing1.sickkids.ca',
+                to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
+                subject              => $msg . "Job Status on thing1 for update sample info.",
+                ctype                => 'text/plain; charset=utf-8',
+                skip_bad_recipients  => 1,
+                msg                  => $msg . $errorMsg
+               };
+  my $ret =  $sender->MailMsg($mail);
+}
+
+sub email_qc {
+  #Error code: 1 = low yield, 2 = error on Q30, 3 = error on passing reads threshold
+
+  my ($sampleID, $flowcellID, $errorCode, $failingMetric, $threshold, $machine) = @_;
+  my $errorMsg = "$sampleID on $flowcellID has finished demultiplexing from $machine";
+  my $emailSub = "$sampleID";
+  my @splitCode = split(/\,/,$errorCode);
+  my @splitFM = split(/\,/,$errorCode);
+  my @splitThres = split(/\,/,$errorCode);
+  for (my $i = 0; $i < scalar(@splitCode); $i++) {
+    if ($splitCode[$i] == 1) {
+      $errorMsg = $errorMsg . " It's sequencing yield is $splitFM[$i] which is below our threshold of $splitThres[$i] and may fail coverage metrics & error on analysis. ";
+      $emailSub = $emailSub . " *low sequencing yield* ";
+
+    } elsif ($splitCode[$i] == 2) {
+      $errorMsg = $errorMsg . " It's Q30 is $splitFM[$i] which is below our threshold of $splitThres[$i]. ";
+      $emailSub = $emailSub . " *low Q30*";
+    } elsif ($splitCode[$2] == 3) {
+      $errorMsg = $errorMsg . "The number of passing reads is $splitFM[$i] which is below our threshold of $splitThres[$i] and may fail coverage metrics & error on analysis. ";
+      $emailSub = " *low passing reads* ";
     }
   }
 
-  sub email_error {
-    my $errorMsg = shift;
-    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
-    my $sender = Mail::Sender->new();
-    my $mail   = {
-                  smtp                 => 'localhost',
-                  from                 => 'notice@thing1.sickkids.ca',
-                  to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
-                  subject              => $msg . "Job Status on thing1 for update sample info.",
-                  ctype                => 'text/plain; charset=utf-8',
-                  skip_bad_recipients  => 1,
-                  msg                  => $msg . $errorMsg
-                 };
-    my $ret =  $sender->MailMsg($mail);
-  }
+  $errorMsg = $errorMsg . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThis email is from thing1 pipelineV5.\n\nThanks,\nThing1\n";
 
-  sub email_qc {
-    #Error code: 1 = low yield, 2 = error on Q30, 3 = error on passing reads threshold
+  my $sender = Mail::Sender->new();
+  my $mail   = {
+                smtp                 => 'localhost',
+                from                 => 'notice@thing1.sickkids.ca',
+                to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, crm@sickkids.ca, raveen.basran@sickkids.ca, marianne.eliou@sickkids.ca, weiw.wang@sickkids.ca',
+                subject              => $msg . $emailSub,
+                ctype                => 'text/plain; charset=utf-8',
+                skip_bad_recipients  => 1,
+                msg                  => $msg . $errorMsg
+               };
+  my $ret =  $sender->MailMsg($mail);
+}
 
-    my ($sampleID, $flowcellID, $errorCode, $failingMetric, $threshold, $machine) = @_;
-    my $errorMsg = "$sampleID on $flowcellID has finished demultiplexing from $machine";
-    my $emailSub = "$sampleID";
-    my @splitCode = split(/\,/,$errorCode);
-    my @splitFM = split(/\,/,$errorCode);
-    my @splitThres = split(/\,/,$errorCode);
-    for (my $i = 0; $i < scalar(@splitCode); $i++) {
-      if ($splitCode[$i] == 1) {
-        $errorMsg = $errorMsg . " It's sequencing yield is $splitFM[$i] which is below our threshold of $splitThres[$i] and may fail coverage metrics & error on analysis. ";
-        $emailSub = $emailSub . " *low sequencing yield* ";
+sub print_time_stamp {
+  my $retval = time();
+  my $yetval = $retval - 86400;
+  $yetval = localtime($yetval);
+  my $localTime = localtime( $retval );
+  my $time = Time::Piece->strptime($localTime, '%a %b %d %H:%M:%S %Y');
+  my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
+  my $timestring = "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  " . $timestamp . "\n_/ _/ _/ _/ _/ _/ _/ _/\n";
+  print $timestring;
+  print STDERR $timestring;
+  return ($localTime->strftime('%Y%m%d'), $localTime->strftime('%Y%m%d%H%M%S'), $localTime->strftime('%m/%d/%Y'));
+}
 
-      } elsif ($splitCode[$i] == 2) {
-        $errorMsg = $errorMsg . " It's Q30 is $splitFM[$i] which is below our threshold of $splitThres[$i]. ";
-        $emailSub = $emailSub . " *low Q30*";
-      } elsif ($splitCode[$2] == 3) {
-        $errorMsg = $errorMsg . "The number of passing reads is $splitFM[$i] which is below our threshold of $splitThres[$i] and may fail coverage metrics & error on analysis. ";
-        $emailSub = " *low passing reads* ";
-      }
+sub read_in_config {
+  #read in the pipeline configure file
+  #this filename will be passed from thing1 (from the database in the future)
+  my ($configFile) = @_;
+  my $data = "";
+  my ($FASTQ_FOLDERtmp, $CONFIG_VERSION_FILEtmp, $PIPELINE_THING1_ROOTtmp, $WEB_THING1_ROOTtmp, $PIPELINE_HPF_ROOTtmp, $SSHFDATAFILEtmp, $hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp);
+  my $msgtmp = "";
+  open (FILE, "< $configFile") or die "Can't open $configFile for read: $!\n";
+  while ($data=<FILE>) {
+    chomp $data;
+    my @splitTab = split(/ /,$data);
+    my $type = $splitTab[0];
+    my $value = $splitTab[1];
+    if ($type eq "SSHDATAFILE") {
+      $SSHFDATAFILE = $value;
+    } elsif ($type eq "FASTQ_FOLDER") {
+      $FASTQ_FOLDERtmp = $value;
+    } elsif ($type eq "CONFIG_VERSION_FILE") {
+      $CONFIG_VERSION_FILEtmp = $value;
+    } elsif ($type eq "PIPELINE_THING1_ROOT") {
+      $PIPELINE_THING1_ROOTtmp = $value;
+    } elsif ($type eq "WEB_THING1_ROOT") {
+      $WEB_THING1_ROOTtmp = $value;
+    } elsif ($type eq "PIPELINE_HPF_ROOT") {
+      $PIPELINE_HPF_ROOTtmp = $value;
+    } elsif ($type eq "HOST") {
+      $hosttmp = $value;
+    } elsif ($type eq "PORT") {
+      $porttmp = $value;
+    } elsif ($type eq "USER") {
+      $usertmp = $value;
+    } elsif ($type eq "PASSWORD") {
+      $passtmp = $value;
+    } elsif ($type eq "db") {
+      $dbtmp = $value;
+    } elsif ($type eq "msg") {
+      $msgtmp = $value;
     }
 
-    $errorMsg = $errorMsg . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThis email is from thing1 pipelineV5.\n\nThanks,\nThing1\n";
-
-    my $sender = Mail::Sender->new();
-    my $mail   = {
-                  smtp                 => 'localhost',
-                  from                 => 'notice@thing1.sickkids.ca',
-                  to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, crm@sickkids.ca, raveen.basran@sickkids.ca, marianne.eliou@sickkids.ca, weiw.wang@sickkids.ca',
-                  subject              => $msg . $emailSub,
-                  ctype                => 'text/plain; charset=utf-8',
-                  skip_bad_recipients  => 1,
-                  msg                  => $msg . $errorMsg
-                 };
-    my $ret =  $sender->MailMsg($mail);
   }
+  close(FILE);
+  return ($FASTQ_FOLDERtmp, $CONFIG_VERSION_FILEtmp, $PIPELINE_THING1_ROOTtmp, $WEB_THING1_ROOTtmp, $PIPELINE_HPF_ROOTtmp, $SSHFDATAFILEtmp, $hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp, $msgtmp);
+}
 
-  sub print_time_stamp {
-    my $retval = time();
-    my $yetval = $retval - 86400;
-    $yetval = localtime($yetval);
-    my $localTime = localtime( $retval );
-    my $time = Time::Piece->strptime($localTime, '%a %b %d %H:%M:%S %Y');
-    my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
-    my $timestring = "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  " . $timestamp . "\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-    print $timestring;
-    print STDERR $timestring;
-    return ($localTime->strftime('%Y%m%d'), $localTime->strftime('%Y%m%d%H%M%S'), $localTime->strftime('%m/%d/%Y'));
-  }
-
-  sub read_in_config {
-    #read in the pipeline configure file
-    #this filename will be passed from thing1 (from the database in the future)
-    my ($configFile) = @_;
-    my $data = "";
-    my ($FASTQ_FOLDERtmp, $CONFIG_VERSION_FILEtmp, $PIPELINE_THING1_ROOTtmp, $WEB_THING1_ROOTtmp, $PIPELINE_HPF_ROOTtmp, $SSHFDATAFILEtmp, $hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp);
-    my $msgtmp = "";
-    open (FILE, "< $configFile") or die "Can't open $configFile for read: $!\n";
-    while ($data=<FILE>) {
-      chomp $data;
-      my @splitTab = split(/ /,$data);
-      my $type = $splitTab[0];
-      my $value = $splitTab[1];
-      if ($type eq "SSHDATAFILE") {
-        $SSHFDATAFILE = $value;
-      } elsif ($type eq "FASTQ_FOLDER") {
-        $FASTQ_FOLDERtmp = $value;
-      } elsif ($type eq "CONFIG_VERSION_FILE") {
-        $CONFIG_VERSION_FILEtmp = $value;
-      } elsif ($type eq "PIPELINE_THING1_ROOT") {
-        $PIPELINE_THING1_ROOTtmp = $value;
-      } elsif ($type eq "WEB_THING1_ROOT") {
-        $WEB_THING1_ROOTtmp = $value;
-      } elsif ($type eq "PIPELINE_HPF_ROOT") {
-        $PIPELINE_HPF_ROOTtmp = $value;
-      } elsif ($type eq "HOST") {
-        $hosttmp = $value;
-      } elsif ($type eq "PORT") {
-        $porttmp = $value;
-      } elsif ($type eq "USER") {
-        $usertmp = $value;
-      } elsif ($type eq "PASSWORD") {
-        $passtmp = $value;
-      } elsif ($type eq "db") {
-        $dbtmp = $value;
-      } elsif ($type eq "msg") {
-        $msgtmp = $value;
-      }
-
-    }
-    close(FILE);
-    return ($FASTQ_FOLDERtmp, $CONFIG_VERSION_FILEtmp, $PIPELINE_THING1_ROOTtmp, $WEB_THING1_ROOTtmp, $PIPELINE_HPF_ROOTtmp, $SSHFDATAFILEtmp, $hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp, $msgtmp);
-  }
-
-  __DATA__
-    A01     ATGCCTAA
-      A04   AACTCACC
-        A07   ACGTATCA
-          A10   AATGTTGC
-            B01   GAATCTGA
-              B04   GCTAACGA
-                B07   GTCTGTCA
-                  B10   TGAAGAGA
-                    C01   AACGTGAT
-                      C04   CAGATCTG
-                        C07   CTAAGGTC
-                          C10   AGATCGCA
-                            D01   CACTTCGA
-                              D04   ATCCTGTA
-                                D07   CGACACAC
-                                  D10   AAGAGATC
-                                    E01   GCCAAGAC
-                                      E04   CTGTAGCC
-                                        E07   CCGTGAGA
-                                          E10   CAACCACA
-                                            F01   GACTAGTA
-                                              F04   GCTCGGTA
-                                                F07   GTGTTCTA
-                                                  F10   TGGAACAA
-                                                    G01   ATTGGCTC
-                                                      G04   ACACGACC
-                                                        G07   CAATGGAA
-                                                          G10   CCTCTATC
-                                                            H01   GATGAATC
-                                                              H04   AGTCACTA
-                                                                H07   AGCACCTC
-                                                                  H10   ACAGATTC
-                                                                    A02   AGCAGGAA
-                                                                      A05   AACGCTTA
-                                                                        A08   CAGCGTTA
-                                                                          A11   CCAGTTCA
-                                                                            B02   GAGCTGAA
-                                                                              B05   GGAGAACA
-                                                                                B08   TAGGATGA
-                                                                                  B11   TGGCTTCA
-                                                                                    C02   AAACATCG
-                                                                                      C05   CATCAAGT
-                                                                                        C08   AGTGGTCA
-                                                                                          C11   CGACTGGA
-                                                                                            D02   GAGTTAGC
-                                                                                              D05   AAGGTACA
-                                                                                                D08   ACAGCAGA
-                                                                                                  D11   CAAGACTA
-                                                                                                    E02   CGAACTTA
-                                                                                                      E05   CGCTGATC
-                                                                                                        E08   CATACCAA
-                                                                                                          E11   CCTCCTGA
-                                                                                                            F02   GATAGACA
-                                                                                                              F05   GGTGCGAA
-                                                                                                                F08   TATCAGCA
-                                                                                                                  F11   TGGTGGTA
-                                                                                                                    G02   AAGGACAC
-                                                                                                                      G05   CCTAATCC
-                                                                                                                        G08   ATAGCGAC
-                                                                                                                          G11   AACAACCA
-                                                                                                                            H02   GACAGTGC
-                                                                                                                              H05   CTGAGCCA
-                                                                                                                                H08   ACGCTCGA
-                                                                                                                                  H11   AATCCGTC
-                                                                                                                                    A03   ATCATTCC
-                                                                                                                                      A06   AGCCATGC
-                                                                                                                                        A09   CTCAATGA
-                                                                                                                                          A12   CAAGGAGC
-                                                                                                                                            B03   GCCACATA
-                                                                                                                                              B06   GTACGCAA
-                                                                                                                                                B09   TCCGTCTA
-                                                                                                                                                  B12   TTCACGCA
-                                                                                                                                                    C03   ACCACTGT
-                                                                                                                                                      C06   AGTACAAG
-                                                                                                                                                        C09   AGGCTAAC
-                                                                                                                                                          C12   CACCTTAC
-                                                                                                                                                            D03   CTGGCATA
-                                                                                                                                                              D06   ACATTGGC
-                                                                                                                                                                D09   CCATCCTC
-                                                                                                                                                                  D12   AAGACGGA
-                                                                                                                                                                    E03   ACCTCCAA
-                                                                                                                                                                      E06   ATTGAGGA
-                                                                                                                                                                        E09   AGATGTAC
-                                                                                                                                                                          E12   ACACAGAA
-                                                                                                                                                                            F03   GCGAGTAA
-                                                                                                                                                                              F06   GTCGTAGA
-                                                                                                                                                                                F09   TCTTCACA
-                                                                                                                                                                                  F12   GAACAGGC
-                                                                                                                                                                                    G03   ACTATGCA
-                                                                                                                                                                                      G06   AGAGTCAA
-                                                                                                                                                                                        G09   CCGAAGTA
-                                                                                                                                                                                          G12   AACCGAGA
-                                                                                                                                                                                            H03   CGGATTGC
-                                                                                                                                                                                              H06   CCGACAAC
-                                                                                                                                                                                                H09   CGCATACA
-                                                                                                                                                                                                  H12   ACAAGCTA
-                                                                                                                                                                                                    1     ATCACG
-                                                                                                                                                                                                      2     CGATGT
-                                                                                                                                                                                                        3     TTAGGC
-                                                                                                                                                                                                          4     TGACCA
-                                                                                                                                                                                                            5     ACAGTG
-                                                                                                                                                                                                              6     GCCAAT
-                                                                                                                                                                                                                7     CAGATC
-                                                                                                                                                                                                                  8     ACTTGA
-                                                                                                                                                                                                                    9     GATCAG
-                                                                                                                                                                                                                      10    TAGCTT
-                                                                                                                                                                                                                        11    GGCTAC
-                                                                                                                                                                                                                          12    CTTGTA
-                                                                                                                                                                                                                            13    AGTCAA
-                                                                                                                                                                                                                              14    AGTTCC
-                                                                                                                                                                                                                                15    ATGTCA
-                                                                                                                                                                                                                                  16    CCGTCC
-                                                                                                                                                                                                                                    18    GTCCGC
-                                                                                                                                                                                                                                      19    GTGAAA
-                                                                                                                                                                                                                                        20    GTGGCC
-                                                                                                                                                                                                                                          21    GTTTCG
-                                                                                                                                                                                                                                            22    CGTACG
-                                                                                                                                                                                                                                              23    GAGTGG
-                                                                                                                                                                                                                                                25    ACTGAT
-                                                                                                                                                                                                                                                  27    ATTCCT
-                                                                                                                                                                                                                                                    A501  TGAACCTT
-                                                                                                                                                                                                                                                      A502  TGCTAAGT
-                                                                                                                                                                                                                                                        A503  TGTTCTCT
-                                                                                                                                                                                                                                                          A504  TAAGACAC
-                                                                                                                                                                                                                                                            A505  CTAATCGA
-                                                                                                                                                                                                                                                              A506  CTAGAACA
-                                                                                                                                                                                                                                                                A507  TAAGTTCC
-                                                                                                                                                                                                                                                                  A508  TAGACCTA
-                                                                                                                                                                                                                                                                    A701  ATCACGAC
-                                                                                                                                                                                                                                                                      A702  ACAGTGGT
-                                                                                                                                                                                                                                                                        A703  CAGATCCA
-                                                                                                                                                                                                                                                                          A704  ACAAACGG
-                                                                                                                                                                                                                                                                            A705  ACCCAGCA
-                                                                                                                                                                                                                                                                              A706  AACCCCTC
-                                                                                                                                                                                                                                                                                A707  CCCAACCT
-                                                                                                                                                                                                                                                                                  A708  CACCACAC
-                                                                                                                                                                                                                                                                                    A709  GAAACCCA
-                                                                                                                                                                                                                                                                                      A710  TGTGACCA
-                                                                                                                                                                                                                                                                                        A711  AGGGTCAA
-                                                                                                                                                                                                                                                                                          A712  AGGAGTGG
+__DATA__
+A01     ATGCCTAA
+  A04   AACTCACC
+  A07   ACGTATCA
+  A10   AATGTTGC
+  B01   GAATCTGA
+  B04   GCTAACGA
+  B07   GTCTGTCA
+  B10   TGAAGAGA
+  C01   AACGTGAT
+  C04   CAGATCTG
+  C07   CTAAGGTC
+  C10   AGATCGCA
+  D01   CACTTCGA
+  D04   ATCCTGTA
+  D07   CGACACAC
+  D10   AAGAGATC
+  E01   GCCAAGAC
+  E04   CTGTAGCC
+  E07   CCGTGAGA
+  E10   CAACCACA
+  F01   GACTAGTA
+  F04   GCTCGGTA
+  F07   GTGTTCTA
+  F10   TGGAACAA
+  G01   ATTGGCTC
+  G04   ACACGACC
+  G07   CAATGGAA
+  G10   CCTCTATC
+  H01   GATGAATC
+  H04   AGTCACTA
+  H07   AGCACCTC
+  H10   ACAGATTC
+  A02   AGCAGGAA
+  A05   AACGCTTA
+  A08   CAGCGTTA
+  A11   CCAGTTCA
+  B02   GAGCTGAA
+  B05   GGAGAACA
+  B08   TAGGATGA
+  B11   TGGCTTCA
+  C02   AAACATCG
+  C05   CATCAAGT
+  C08   AGTGGTCA
+  C11   CGACTGGA
+  D02   GAGTTAGC
+  D05   AAGGTACA
+  D08   ACAGCAGA
+  D11   CAAGACTA
+  E02   CGAACTTA
+  E05   CGCTGATC
+  E08   CATACCAA
+  E11   CCTCCTGA
+  F02   GATAGACA
+  F05   GGTGCGAA
+  F08   TATCAGCA
+  F11   TGGTGGTA
+  G02   AAGGACAC
+  G05   CCTAATCC
+  G08   ATAGCGAC
+  G11   AACAACCA
+  H02   GACAGTGC
+  H05   CTGAGCCA
+  H08   ACGCTCGA
+  H11   AATCCGTC
+  A03   ATCATTCC
+  A06   AGCCATGC
+  A09   CTCAATGA
+  A12   CAAGGAGC
+  B03   GCCACATA
+  B06   GTACGCAA
+  B09   TCCGTCTA
+  B12   TTCACGCA
+  C03   ACCACTGT
+  C06   AGTACAAG
+  C09   AGGCTAAC
+  C12   CACCTTAC
+  D03   CTGGCATA
+  D06   ACATTGGC
+  D09   CCATCCTC
+  D12   AAGACGGA
+  E03   ACCTCCAA
+  E06   ATTGAGGA
+  E09   AGATGTAC
+  E12   ACACAGAA
+  F03   GCGAGTAA
+  F06   GTCGTAGA
+  F09   TCTTCACA
+  F12   GAACAGGC
+  G03   ACTATGCA
+  G06   AGAGTCAA
+  G09   CCGAAGTA
+  G12   AACCGAGA
+  H03   CGGATTGC
+  H06   CCGACAAC
+  H09   CGCATACA
+  H12   ACAAGCTA
+  1     ATCACG
+  2     CGATGT
+  3     TTAGGC
+  4     TGACCA
+  5     ACAGTG
+  6     GCCAAT
+  7     CAGATC
+  8     ACTTGA
+  9     GATCAG
+  10    TAGCTT
+  11    GGCTAC
+  12    CTTGTA
+  13    AGTCAA
+  14    AGTTCC
+  15    ATGTCA
+  16    CCGTCC
+  18    GTCCGC
+  19    GTGAAA
+  20    GTGGCC
+  21    GTTTCG
+  22    CGTACG
+  23    GAGTGG
+  25    ACTGAT
+  27    ATTCCT
+  A501  TGAACCTT
+  A502  TGCTAAGT
+  A503  TGTTCTCT
+  A504  TAAGACAC
+  A505  CTAATCGA
+  A506  CTAGAACA
+  A507  TAAGTTCC
+  A508  TAGACCTA
+  A701  ATCACGAC
+  A702  ACAGTGGT
+  A703  CAGATCCA
+  A704  ACAAACGG
+  A705  ACCCAGCA
+  A706  AACCCCTC
+  A707  CCCAACCT
+  A708  CACCACAC
+  A709  GAAACCCA
+  A710  TGTGACCA
+  A711  AGGGTCAA
+  A712  AGGAGTGG
