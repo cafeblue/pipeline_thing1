@@ -192,7 +192,7 @@ sub update_table {
         print STDERR "machine=$machine\n";
         if ($err ne "") {
 
-          email_qc($sampleID, $flowcellID, $err, $value, $thres. $machine);
+          email_qc($sampleID, $flowcellID, $err, $value, $thres, $machine);
 
           my $updateLock = "UPDATE sampleInfo SET locked ='1' AND diagnosis = '".$errString."' WHERE sampleID = '".$sampleID."' AND flowcellID = '".$flowcellID."';";
           print STDERR "updateLock=$updateLock\n";
