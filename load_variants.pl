@@ -21,6 +21,7 @@ my $RSYNCCMD = "rsync -Lav -e '" . $RSYNCFILE ."' ";
 # my $THING1_BACKUP_DIR = '/localhd/data/thing1/variants';
 # my $VARIANTS_EXCEL_DIR = '/localhd/sample_variants/filter_variants_excel_v5/';
 my %interpretationHistory = ( '0' => 'Not yet viewed: ', '1' => 'Select: ', '2' => 'Pathogenic: ', '3' => 'Likely Pathogenic: ', '4' => 'VUS: ', '5' => 'Likely Benign: ', '6' => 'Benign: ', '7' => 'Unknown: ');
+my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 
 
 # open the accessDB file to retrieve the database name, host name, user name and password
@@ -616,7 +617,7 @@ sub email_error {
   my $mail   = {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
-                to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
+                to                   => $email_lst_ref->{'WARNINGS'}, 
                 subject              => $msg . "Variants loading status...",
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
@@ -631,13 +632,25 @@ sub email_finished {
   my $mail   = {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
-                to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, marianne.eliou@sickkids.ca, crm@sickkids.ca, james.stavropoulos@sickkids.ca, raveen.basran@sickkids.ca, adam.shlien@sickkids.ca, peter.ray@sickkids.ca, leslie.steele@sickkids.ca, lianna.kyriakopoulou@sickkids.ca, rebekah.jobling@sickkids.ca, cameron.ellahi@sickkids.ca, weiw.wang@sickkids.ca',
+                to                   => $email_lst_ref->{'FINISHED'}, 
                 subject              => $msg . "$sampleID ($flowcellID $machine) completed analysis",
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
                 msg                  => $msg . "$sampleID ($flowcellID $machine) has finished analysis using gene panel $genePanelVer with no errors. The sample can be viewed through the website. http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary The filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$genePanelVer.$todayDate.sid_$sampleID.annotated.filter.pID_$postprocID.xlsx.\n\nPlease login to thing1 using your Samba account in order to view this file.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca\n\nThanks,\n\nThing1\n"
                };
   my $ret =  $sender->MailMsg($mail);
+}
+
+sub email_list {
+    my $infile = shift;
+    my %email;
+    open (INF, "$infile") or die $!;
+    while (<INF>) {
+        chomp;
+        my ($type, $lst) = split(/\t/);
+        $email{$type} = $lst;
+    }
+    return(\%email);
 }
 
 sub print_time_stamp {

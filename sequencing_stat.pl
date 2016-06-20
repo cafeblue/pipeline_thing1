@@ -14,6 +14,7 @@ $|++;
 #read in from a config file
 my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5_test.txt";
 my $barcodeFile = "/localhd/data/db_config_files/pipeline_thing1_config/barcodes.txt";
+my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 # open the accessDB file to retrieve the database name, host name, user name and password
 # open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
 # my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
@@ -421,7 +422,7 @@ sub email_error {
   my $mail   = {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
-                to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
+                to                   => $email_lst_ref->{'WARNINGS'}, 
                 subject              => $msg . "Job Status on thing1 for update sample info.",
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
@@ -465,13 +466,25 @@ sub email_qc {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
                 to                   => 'lynette.lau@sickkids.ca,',
-                #to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, crm@sickkids.ca, raveen.basran@sickkids.ca, marianne.eliou@sickkids.ca, weiw.wang@sickkids.ca',
+                #to                   => $email_lst_ref->{'QUALMETRICS'},  
                 subject              => $msg . $emailSub,
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
                 msg                  => $msg . $errorMsg
                };
   my $ret =  $sender->MailMsg($mail);
+}
+
+sub email_list {
+    my $infile = shift;
+    my %email;
+    open (INF, "$infile") or die $!;
+    while (<INF>) {
+        chomp;
+        my ($type, $lst) = split(/\t/);
+        $email{$type} = $lst;
+    }
+    return(\%email);
 }
 
 sub print_time_stamp {

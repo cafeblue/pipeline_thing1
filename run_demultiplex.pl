@@ -14,6 +14,7 @@ my $SEQUENCERDIR = '/localhd/data/sequencers';
 my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
 my $SAMPLE_SHEET = '/localhd/data/sample_sheets_pl';
 my $JSUB_LOG_FOLDER = "/localhd/data/thing1/jsub_log/"; #were all the jsub and the run information is kept
+my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 
 # open the accessDB file to retrieve the database name, host name, user name and password
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
@@ -24,14 +25,7 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
                        $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
 
 #### Read the barcodes #####################
-my %ilmnBarcodes;
-while (<DATA>) {
-    chomp;
-    my ($id, $code) = split(/\t/);
-    $ilmnBarcodes{$id} = $code;
-}
-close(DATA);
-
+my %ilmnBarcodes = &read_barcode("/localhd/data/db_config_files/pipeline_thing1_config/barcodes.txt");
 
 my $machine_flowcellID_cycles_ref = &get_sequencing_list;
 my ($today, $currentTime, $currentDate) = &print_time_stamp;
@@ -324,6 +318,30 @@ sub get_sequencing_list {
     }
 }
 
+sub read_barcode {
+    my $file = shift;
+    my %bc;
+    open (BARCODE, "$file") or die $!;
+    while (<BARCODE>) {
+        chomp;
+        my ($id, $bc) = split(/\t/);
+        $bc{$id} = $bc;
+    }
+    return(%bc);
+}
+
+sub email_list {
+    my $infile = shift;
+    my %email;
+    open (INF, "$infile") or die $!;
+    while (<INF>) {
+        chomp;
+        my ($type, $lst) = split(/\t/);
+        $email{$type} = $lst;
+    }
+    return(\%email);
+}
+
 sub email_error {
     my ($errorMsg, $flowcellID, $machine) = @_;
     print STDERR $errorMsg ;
@@ -332,7 +350,7 @@ sub email_error {
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'marianne.eliou@sickkids.ca, jennifer.orr@sickkids.ca, cameron.ellahi@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
+        to                   => $email_lst_ref->{'SAMPLESHEET'},  
         subject              => "Status of flowcell $flowcellID on Sequencer $machine",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
