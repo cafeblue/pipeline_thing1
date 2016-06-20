@@ -167,7 +167,7 @@ sub update_table {
             $err = $err . ",2";
             $thres = $thres . "," . $q30Thres;
             $value = $value . "," . $table_ref->{$sampleID}{'perQ30'};
-            $errString = $errString . ",Low Q30";
+            $errString = $errString . ", Low Q30";
           }
           #Lock this sample with comment of Q30 doesn't pass our thresholds
         }
@@ -178,7 +178,7 @@ sub update_table {
             $value = $table_ref->{$sampleID}{'Yield'};
             $errString = "Low Yield";
           } else {
-            $err = $err . "1";
+            $err = $err . ",1";
             $thres = $thres . "," . $yieldThres;
             $value = $value . "," . $table_ref->{$sampleID}{'Yield'};
             $errString = $errString . ",Low Yield";
@@ -458,6 +458,8 @@ sub email_qc {
 
   $errorMsg = $errorMsg . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThis email is from thing1 pipelineV5.\n\nThanks,\nThing1\n";
 
+  print STDERR "errorMsg=$errorMsg\n";
+  print STDERR "emailSub=$emailSub\n";
   my $sender = Mail::Sender->new();
   my $mail   = {
                 smtp                 => 'localhost',
