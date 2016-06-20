@@ -13,6 +13,7 @@ $|++;
 
 #read in from a config file
 my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5_test.txt";
+my $barcodeFile = "/localhd/data/db_config_files/pipeline_thing1_config/barcodes.txt";
 # open the accessDB file to retrieve the database name, host name, user name and password
 # open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
 # my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
@@ -45,12 +46,23 @@ my $miSeqQ30Thres = 80;   #Q30 >= 80
 my $miSeqPassReadThres = 70000; # 24Million reads / 16 samples -> 1500000 /2 (pairedend)
 
 my %ilmnBarcodes;
-while (<DATA>) {
-  chomp;
-  my ($id, $code) = split(/\t/);
-  $ilmnBarcodes{$id} = $code;
+my $data = "";
+open (FILE, "< $barcodeFile") or die "Can't open $barcodeFile for read: $!\n";
+while ($data=<FILE>) {
+  chomp $data;
+  my @splitTab = split(/\t/,$data);
+  my $id = $splitTab[0];
+  my $bc = $splitTab[1];
+  $ilmnBarcodes{$id} = $bc;
 }
-close(DATA);
+close(FILE);
+# while (<DATA>) {
+#   chomp;
+#   my ($id, $code) = split(/ /);
+
+#   $ilmnBarcodes{$id} = $code;
+# }
+# close(DATA);
 
 
 my $chksum_ref = &get_chksum_list;
@@ -83,7 +95,7 @@ sub update_table {
     if ($sthQNS->rows() == 1) {
       my ($pipething1ver, $pipehpfver, $webver) = &get_pipelinever;
       while (my @data_ref = $sthQNS->fetchrow_array) {
-        my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype, $machine) = @data_ref;
+        my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype,$machine) = @data_ref;
         my $key = $gp . "\t" . $ck;
         if (defined $ps) {
           $ps = &get_pairID($ps, $sampleID);
@@ -108,14 +120,17 @@ sub update_table {
           $readThres = $hiseqPassReadThres;
           $q30Thres = $hiseqQ30Thres;
           $yieldThres = $hiseqYieldThres;
+          print STDERR "hiseq\n";
         } elsif ($machine=~/miseq/) {
           $readThres = $miSeqPassReadThres;
           $q30Thres = $miSeqQ30Thres;
           $yieldThres = $miSeqYieldThres;
+          print STDERR "miseq\n";
         } elsif ($machine=~/nextseq/) {
           $readThres = $nextSeqPassReadThres;
           $q30Thres = $nextSeqQ30Thres;
           $yieldThres = $nextSeqYieldThres;
+          print STDERR "nextseq\n";
         } else {
           print STDERR "MISSING THIS MACHINE=$machine. NO QC METRICS WILL BE CHECKED!!!\n";
           $readThres = 0;
@@ -123,6 +138,9 @@ sub update_table {
           $yieldThres = 0;
 
         }
+        print STDERR "reads = " . $table_ref->{$sampleID}{'reads'} . "\n";
+        print STDERR "perQ30 = " . $table_ref->{$sampleID}{'perQ30'} . "\n";
+        print STDERR "Yield = " . $table_ref->{$sampleID}{'Yield'} . "\n";
 
         if ($table_ref->{$sampleID}{'reads'} < $readThres) {
           if ($err eq "") {
@@ -137,54 +155,61 @@ sub update_table {
             $errString = $errString . ",Low Reads";
           }
           #Lock this sample with comment of Q30 doesn't pass our thresholds
-
-
-          if ($table_ref->{$sampleID}{'perQ30'} < $q30Thres) {
-            if ($err eq "") {
-              $err = "2";
-              $thres = $q30Thres;
-              $value = $table_ref->{$sampleID}{'perQ30'};
-              $errString = "Low Q30";
-            } else {
-              $err = $err . ",2";
-              $thres = $thres . "," . $q30Thres;
-              $value = $value . "," . $table_ref->{$sampleID}{'perQ30'};
-              $errString = $errString . ",Low Q30";
-            }
-            #Lock this sample with comment of Q30 doesn't pass our thresholds
-
-          }
-          if ($table_ref->{$sampleID}{'Yield'} < $yieldThres) {
-            if ($err eq "") {
-              $err = "1";
-              $thres = $yieldThres;
-              $value = $table_ref->{$sampleID}{'Yield'};
-              $errString = "Low Yield";
-            } else {
-              $err = $err . "1";
-              $thres = $thres . "," . $yieldThres;
-              $value = $value . "," . $table_ref->{$sampleID}{'Yield'};
-              $errString = $errString . ",Low Yield";
-            }
-            #Lock this sample with comment of Q30 doesn't pass our thresholds
-          }
         }
-        email_qc($sampleID, $flowcellID, $err, $value, $thres. $machine);
+
+        if ($table_ref->{$sampleID}{'perQ30'} < $q30Thres) {
+          if ($err eq "") {
+            $err = "2";
+            $thres = $q30Thres;
+            $value = $table_ref->{$sampleID}{'perQ30'};
+            $errString = "Low Q30";
+          } else {
+            $err = $err . ",2";
+            $thres = $thres . "," . $q30Thres;
+            $value = $value . "," . $table_ref->{$sampleID}{'perQ30'};
+            $errString = $errString . ",Low Q30";
+          }
+          #Lock this sample with comment of Q30 doesn't pass our thresholds
+        }
+        if ($table_ref->{$sampleID}{'Yield'} < $yieldThres) {
+          if ($err eq "") {
+            $err = "1";
+            $thres = $yieldThres;
+            $value = $table_ref->{$sampleID}{'Yield'};
+            $errString = "Low Yield";
+          } else {
+            $err = $err . "1";
+            $thres = $thres . "," . $yieldThres;
+            $value = $value . "," . $table_ref->{$sampleID}{'Yield'};
+            $errString = $errString . ",Low Yield";
+          }
+          #Lock this sample with comment of Q30 doesn't pass our thresholds
+        }
+
+        print STDERR "err=$err\n";
+        print STDERR "value=$value\n";
+        print STDERR "thres=$thres\n";
+        print STDERR "machine=$machine\n";
         if ($err ne "") {
 
-          my $updateLock = "UPDATE sampleInfo SET locked ='1' AND diagnosis = '".$errString."' currentStatus = '7' WHERE sampleID = '".$sampleID." AND flowcellID = '".$flowcellID."'';";
+          email_qc($sampleID, $flowcellID, $err, $value, $thres. $machine);
+
+          my $updateLock = "UPDATE sampleInfo SET locked ='1' AND diagnosis = '".$errString."' WHERE sampleID = '".$sampleID."' AND flowcellID = '".$flowcellID."';";
+          print STDERR "updateLock=$updateLock\n";
           my $sthUL = $dbh->prepare($updateLock) or die "Can't lock sample = $sampleID". $dbh->errstr() . "\n";
           $sthUL->execute()  or die "Can't execute lock for sample=$sampleID" . $dbh->errstr() . "\n";
 
           #get the postprocID
-          my $getPPid = "SELECT postprocID WHERE sampleID = '".$sampleID."' AND flowcellID = '".$flowcellID."'";
+          my $getPPid = "SELECT postprocID FROM sampleInfo WHERE sampleID = '".$sampleID."' AND flowcellID = '". $flowcellID . "';";
+          print STDERR "getPPid=$getPPid\n";
           my $sthPP = $dbh->prepare($getPPid) or die "Can't query database for postprocID, sampleID = $sampleID and flowcellID = $flowcellID". $dbh->errstr() . "\n";
           $sthPP->execute()  or die "Can't execute query for postprocID, sampleID = $sampleID and flowcellID = $flowcellID" . $dbh->errstr() . "\n";
           my @dataPP = ();
           while (@dataPP = $sthPP->fetchrow_array()) {
             my $ppID = $dataPP[0];
             #insert lock log comment
-            my $insertLock = "INSERT INTO lock_log (postprocID, updated_by, updated_at, updated_to, lock_reason)VALUES (" . $ppID . ", Pipeline," . $currentTime . ",locked, ".$errString.");";
+            my $insertLock = "INSERT INTO lock_log (postprocID, updated_by, updated_at, updated_to, lock_reason) VALUES ('" . $ppID . "','Pipeline','" . $currentTime . "','locked', '".$errString."');";
+            print STDERR "insertLock=$insertLock\n";
             my $sthIL = $dbh->prepare($insertLock) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
             $sthIL->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
           }
@@ -195,7 +220,6 @@ sub update_table {
       email_error($msg);
       die $msg;
     }
-
   }
 }
 
@@ -318,8 +342,8 @@ sub get_qual_stat {
     $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $sub_flowcellID, 1 ;
     my $demuxSummaryFile = "$FASTQ_FOLDER/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
     if (! -e "$demuxSummaryFile") {
-      email_error("file $demuxSummaryFile does not exists! it can be caused by the failure of demultiplexing. please re-run the demultiplex\n");
-      die "file $demuxSummaryFile does not exists! it can be caused by the failure of demultiplexing. please re-run the demultiplex\n";
+      email_error("File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n");
+      die "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n";
     }
     print $demuxSummaryFile,"\n";
     my $te = HTML::TableExtract->new( depth => 0, count => 2 );
@@ -409,20 +433,23 @@ sub email_error {
 sub email_qc {
   #Error code: 1 = low yield, 2 = error on Q30, 3 = error on passing reads threshold
 
-  my ($sampleID, $flowcellID, $errorCode, $failingMetric, $threshold, $machine) = @_;
-  my $errorMsg = "$sampleID on $flowcellID has finished demultiplexing from $machine";
+  my ($sampleID, $flowcellID, $errorCode, $failingMetric, $threshold, $mach) = @_;
+  print STDERR "mach=$mach\n";
+  print STDERR "threshold=$threshold\n";
+  print STDERR "failingMetric=$failingMetric\n";
+  
+  my $errorMsg = "$sampleID on $flowcellID has finished demultiplexing from $mach.";
   my $emailSub = "$sampleID";
   my @splitCode = split(/\,/,$errorCode);
-  my @splitFM = split(/\,/,$errorCode);
-  my @splitThres = split(/\,/,$errorCode);
+  my @splitFM = split(/\,/,$failingMetric);
+  my @splitThres = split(/\,/,$threshold);
   for (my $i = 0; $i < scalar(@splitCode); $i++) {
     if ($splitCode[$i] == 1) {
       $errorMsg = $errorMsg . " It's sequencing yield is $splitFM[$i] which is below our threshold of $splitThres[$i] and may fail coverage metrics & error on analysis. ";
       $emailSub = $emailSub . " *low sequencing yield* ";
-
     } elsif ($splitCode[$i] == 2) {
-      $errorMsg = $errorMsg . " It's Q30 is $splitFM[$i] which is below our threshold of $splitThres[$i]. ";
-      $emailSub = $emailSub . " *low Q30*";
+      $errorMsg = $errorMsg . " It's % Q30 is $splitFM[$i] which is below our threshold of $splitThres[$i]. ";
+      $emailSub = $emailSub . " *low % Q30*";
     } elsif ($splitCode[$2] == 3) {
       $errorMsg = $errorMsg . "The number of passing reads is $splitFM[$i] which is below our threshold of $splitThres[$i] and may fail coverage metrics & error on analysis. ";
       $emailSub = " *low passing reads* ";
@@ -435,7 +462,8 @@ sub email_qc {
   my $mail   = {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
-                to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, crm@sickkids.ca, raveen.basran@sickkids.ca, marianne.eliou@sickkids.ca, weiw.wang@sickkids.ca',
+                to                   => 'lynette.lau@sickkids.ca,',
+                #to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, crm@sickkids.ca, raveen.basran@sickkids.ca, marianne.eliou@sickkids.ca, weiw.wang@sickkids.ca',
                 subject              => $msg . $emailSub,
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
@@ -500,145 +528,3 @@ sub read_in_config {
   close(FILE);
   return ($FASTQ_FOLDERtmp, $CONFIG_VERSION_FILEtmp, $PIPELINE_THING1_ROOTtmp, $WEB_THING1_ROOTtmp, $PIPELINE_HPF_ROOTtmp, $SSHFDATAFILEtmp, $hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp, $msgtmp);
 }
-
-__DATA__
-A01     ATGCCTAA
-  A04   AACTCACC
-  A07   ACGTATCA
-  A10   AATGTTGC
-  B01   GAATCTGA
-  B04   GCTAACGA
-  B07   GTCTGTCA
-  B10   TGAAGAGA
-  C01   AACGTGAT
-  C04   CAGATCTG
-  C07   CTAAGGTC
-  C10   AGATCGCA
-  D01   CACTTCGA
-  D04   ATCCTGTA
-  D07   CGACACAC
-  D10   AAGAGATC
-  E01   GCCAAGAC
-  E04   CTGTAGCC
-  E07   CCGTGAGA
-  E10   CAACCACA
-  F01   GACTAGTA
-  F04   GCTCGGTA
-  F07   GTGTTCTA
-  F10   TGGAACAA
-  G01   ATTGGCTC
-  G04   ACACGACC
-  G07   CAATGGAA
-  G10   CCTCTATC
-  H01   GATGAATC
-  H04   AGTCACTA
-  H07   AGCACCTC
-  H10   ACAGATTC
-  A02   AGCAGGAA
-  A05   AACGCTTA
-  A08   CAGCGTTA
-  A11   CCAGTTCA
-  B02   GAGCTGAA
-  B05   GGAGAACA
-  B08   TAGGATGA
-  B11   TGGCTTCA
-  C02   AAACATCG
-  C05   CATCAAGT
-  C08   AGTGGTCA
-  C11   CGACTGGA
-  D02   GAGTTAGC
-  D05   AAGGTACA
-  D08   ACAGCAGA
-  D11   CAAGACTA
-  E02   CGAACTTA
-  E05   CGCTGATC
-  E08   CATACCAA
-  E11   CCTCCTGA
-  F02   GATAGACA
-  F05   GGTGCGAA
-  F08   TATCAGCA
-  F11   TGGTGGTA
-  G02   AAGGACAC
-  G05   CCTAATCC
-  G08   ATAGCGAC
-  G11   AACAACCA
-  H02   GACAGTGC
-  H05   CTGAGCCA
-  H08   ACGCTCGA
-  H11   AATCCGTC
-  A03   ATCATTCC
-  A06   AGCCATGC
-  A09   CTCAATGA
-  A12   CAAGGAGC
-  B03   GCCACATA
-  B06   GTACGCAA
-  B09   TCCGTCTA
-  B12   TTCACGCA
-  C03   ACCACTGT
-  C06   AGTACAAG
-  C09   AGGCTAAC
-  C12   CACCTTAC
-  D03   CTGGCATA
-  D06   ACATTGGC
-  D09   CCATCCTC
-  D12   AAGACGGA
-  E03   ACCTCCAA
-  E06   ATTGAGGA
-  E09   AGATGTAC
-  E12   ACACAGAA
-  F03   GCGAGTAA
-  F06   GTCGTAGA
-  F09   TCTTCACA
-  F12   GAACAGGC
-  G03   ACTATGCA
-  G06   AGAGTCAA
-  G09   CCGAAGTA
-  G12   AACCGAGA
-  H03   CGGATTGC
-  H06   CCGACAAC
-  H09   CGCATACA
-  H12   ACAAGCTA
-  1     ATCACG
-  2     CGATGT
-  3     TTAGGC
-  4     TGACCA
-  5     ACAGTG
-  6     GCCAAT
-  7     CAGATC
-  8     ACTTGA
-  9     GATCAG
-  10    TAGCTT
-  11    GGCTAC
-  12    CTTGTA
-  13    AGTCAA
-  14    AGTTCC
-  15    ATGTCA
-  16    CCGTCC
-  18    GTCCGC
-  19    GTGAAA
-  20    GTGGCC
-  21    GTTTCG
-  22    CGTACG
-  23    GAGTGG
-  25    ACTGAT
-  27    ATTCCT
-  A501  TGAACCTT
-  A502  TGCTAAGT
-  A503  TGTTCTCT
-  A504  TAAGACAC
-  A505  CTAATCGA
-  A506  CTAGAACA
-  A507  TAAGTTCC
-  A508  TAGACCTA
-  A701  ATCACGAC
-  A702  ACAGTGGT
-  A703  CAGATCCA
-  A704  ACAAACGG
-  A705  ACCCAGCA
-  A706  AACCCCTC
-  A707  CCCAACCT
-  A708  CACCACAC
-  A709  GAAACCCA
-  A710  TGTGACCA
-  A711  AGGGTCAA
-  A712  AGGAGTGG
