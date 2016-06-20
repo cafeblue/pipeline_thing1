@@ -13,8 +13,10 @@ my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SSHDATA    = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
 my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
-my %FILTERS_MAP = ( "meanCvgExome" => ">= 80", "lowCovExonNum" => "<= 6000", 
-                    "perbasesAbove10XExome" => ">= 95", "perbasesAbove20XExome" => ">= 90");
+my %FILTERS_MAP = ( "meanCvgExome"          => " >= 80", "lowCovExonNum"         => " <= 6000", 
+                    "perbasesAbove10XExome" => " >= 95", "perbasesAbove20XExome" => " >= 90",
+                    "perbasesAbove10XGP"    => " >= 95", "perbasesAbove20XGP"    => " >= 90",
+                    "meanCvgGP"             => " >= 80" );
 my %FILTERS_SEQ = ( "yieldMB" => { "hiseq2500" => ">= 6000", "nextseq500" => ">= 6000", "miseqdx" => ">= 20"},
                     "perQ30Bases" => { "hiseq2500" => ">= 80", "nextseq500" => ">= 75", "miseqdx" => ">= 80"},
                     "numReads" => { "hiseq2500" => ">= 30000000", "nextseq500" => ">= 25000000", "miseqdx" => ">= 70000 "});
@@ -101,7 +103,7 @@ sub check_qual {
     my ($sampleID, $postprocID) = @_;
     my $msg = "";
 
-    my $query = "SELECT ss.machine,si.genePanelVer,si.meanCvgExome,lowCovExonNum,si.perbasesAbove10XExome,si.perbasesAbove20XExome,si.yieldMB,si.perQ30Bases,si.numReads FROM sampleInfo AS si INNER JOIN sampleSheet AS ss ON (ss.flowcell_ID = si.flowcellID AND si.sampleID = ss.sampleID) WHERE si.sampleID = '$sampleID' AND si.postprocID = '$postprocID';";
+    my $query = "SELECT ss.machine,si.genePanelVer,si.meanCvgExome,lowCovExonNum,si.perbasesAbove10XExome,si.perbasesAbove20XExome,si.yieldMB,si.perQ30Bases,si.numReads,si.perbasesAbove10XGP,si.perbasesAbove20XGP,si.meanCvgGP,si.offTargetRatioChr1,si.lowCovATRatio FROM sampleInfo AS si INNER JOIN sampleSheet AS ss ON (ss.flowcell_ID = si.flowcellID AND si.sampleID = ss.sampleID) WHERE si.sampleID = '$sampleID' AND si.postprocID = '$postprocID';";
     my $sth_qual = $dbh->prepare($query) or die "Failed to prepare the query: $query\n";
     $sth_qual->execute();
     my $qual_ref = $sth_qual->fetchrow_hashref;
