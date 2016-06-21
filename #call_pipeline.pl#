@@ -1572,8 +1572,8 @@ sub read_in_genepanel_config {
     my $filterID=$splitTab[9];
     my $diseaseAssociationFile= $splitTab[10];
     my $diseaseAssociationAnnovarFile = $splitTab[11];
-    print "genePUsed=$genePUsed|\n";
-    print "genePanelID=$genePanelID|\n";
+    #print "genePUsed=$genePUsed|\n";
+    #print "genePanelID=$genePanelID|\n";
     if ($genePanelID eq $genePUsed) {
       $pipeIDtmp = $pipeID;
       $gene_panel_text_tmp = $isoformFile;
