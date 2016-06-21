@@ -12,7 +12,7 @@ use Data::Dumper;
 $|++;
 
 #read in from a config file
-my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5_test.txt";
+my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5.txt";
 my $barcodeFile = "/localhd/data/db_config_files/pipeline_thing1_config/barcodes.txt";
 # open the accessDB file to retrieve the database name, host name, user name and password
 # open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";

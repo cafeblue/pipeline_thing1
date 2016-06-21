@@ -7,7 +7,7 @@ use strict;
 use DBI;
 
 #read in from a config file
-my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5_test.txt";
+my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5.txt";
 
 my ($host,$port,$user,$pass,$db, $msg) = &read_in_config($configFile);
 
