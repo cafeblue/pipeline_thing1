@@ -212,7 +212,7 @@ my $annovarEnsNonCoding = "Annovar Ensembl Gene or Nearest Gene";
 #need to calculate percent CDS affected and the 1> variant/gene
 
 my $rareFreq = 0.05;            #rare frequency we want to filter on
-my $rareFreqInternal = 0.1;            #rare frequency we want to filter on
+my $rareFreqInternal = 0.1;     #rare frequency we want to filter on
 #my $dpThreshold = 20;
 #my $qdSnpThreshold = 5.0;
 #my $qdIndelThreshold = 10.0;
@@ -638,11 +638,12 @@ while ($data=<FILE>) {
     my $exacFINAFFilter = 1;
     my $exacNFEAFFilter = 1;
     my $exacOTHAFFilter = 1;
-    my $exacSASAFFilter = 1;    
-    my $internalAFSNPsAFFilter = 1;    
-    my $internalAFIndelsAFFilter = 1;    
+    my $exacSASAFFilter = 1;
+    my $internalAFSNPsAFFilter = 1;
+    my $internalAFIndelsAFFilter = 1;
     my $locationFilter = 1;
     my $hgmdClinVar = 0;
+    my $snpEffLoc = "";
     my $qualFilter = 1;
     #my $vtType = "";
     my @splitTab = split(/\t/,$data);
@@ -657,6 +658,7 @@ while ($data=<FILE>) {
       #print STDERR "colInfo=$colInfo\n";
       if ($cHeader eq $effect) { # check to see if variant is non coding (but include splicing)
         #print STDERR "1. EFFECT colInfo=$colInfo\n";
+        $snpEffLoc = $colInfo;
         if (($colInfo=~/intergenic/) || ($colInfo=~/intragenic/) || ($colInfo=~/upstream/) || ($colInfo=~/downstream/)) {
           #print STDERR "2. filter=$filter\n";
           #$filter = 0;
@@ -735,7 +737,7 @@ while ($data=<FILE>) {
               $exacAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $espMAFAA) {
         #print STDERR "5. espMAFAA colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -760,7 +762,7 @@ while ($data=<FILE>) {
               $espMAFAAAFFilter = 0;
             }
           }
-        }           
+        }
       } elsif ($cHeader eq $espMAFEA) {
         #print STDERR "5. espMAFEA colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -785,7 +787,7 @@ while ($data=<FILE>) {
               $espMAFEAAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $thousGAFR) {
         #print STDERR "5. thousGAFR colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -810,7 +812,7 @@ while ($data=<FILE>) {
               $thousGAFRAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $thousGAMR) {
         #print STDERR "5. thousGAMR colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -835,7 +837,7 @@ while ($data=<FILE>) {
               $thousGAMRAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $thousGEASN) {
         #print STDERR "5. thousGEASN colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -860,7 +862,7 @@ while ($data=<FILE>) {
               $thousGEASNAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $thousGSASN) {
         #print STDERR "5. thousGSASN colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -885,7 +887,7 @@ while ($data=<FILE>) {
               $thousGSASNAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $thousGEUR) {
         #print STDERR "5. thousGEUR colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -910,7 +912,7 @@ while ($data=<FILE>) {
               $thousGEURAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $exacAFR) {
         #print STDERR "5. exacAFR colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -935,7 +937,7 @@ while ($data=<FILE>) {
               $exacAFRAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $exacAMR) {
         #print STDERR "5. exacAMR colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -960,7 +962,7 @@ while ($data=<FILE>) {
               $exacAMRAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $exacEAS) {
         #print STDERR "5. exacEAS colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -985,7 +987,7 @@ while ($data=<FILE>) {
               $exacEASAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $exacFIN) {
         #print STDERR "5. exacFIN colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -1010,7 +1012,7 @@ while ($data=<FILE>) {
               $exacFINAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $exacNFE) {
         #print STDERR "5. exacNFE colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -1035,7 +1037,7 @@ while ($data=<FILE>) {
               $exacNFEAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $exacOTH) {
         #print STDERR "5. exacOTH colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -1060,7 +1062,7 @@ while ($data=<FILE>) {
               $exacOTHAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $exacSAS) {
         #print STDERR "5. exacSAS colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -1085,7 +1087,7 @@ while ($data=<FILE>) {
               $exacSASAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $internalAFSNPs) {
         #print STDERR "5. internalAFSNPs colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -1110,7 +1112,7 @@ while ($data=<FILE>) {
               $internalAFSNPsAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $internalAFIndels) {
         #print STDERR "5. internalAFIndels colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -1135,7 +1137,7 @@ while ($data=<FILE>) {
               $internalAFIndelsAFFilter = 0;
             }
           }
-        }        
+        }
       } elsif ($cHeader eq $qd) {
         #print STDERR "QD colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -1192,10 +1194,10 @@ while ($data=<FILE>) {
           }
 
           if ($varHapScore > $snpHapScore) {
-          #############  Wei comment start ###############
-          #   $qualFilter = 0;
-              $HSlg13++;
-          #############  Wei comment stop  ###############
+            #############  Wei comment start ###############
+            #   $qualFilter = 0;
+            $HSlg13++;
+            #############  Wei comment stop  ###############
           }
           if (defined $varMQRankSum && $varMQRankSum ne "") {
             if ($varMQRankSum < $snpMQRankSum) {
@@ -1273,42 +1275,46 @@ while ($data=<FILE>) {
 
     # my $tidName = $splitTab[$colNum{'Gene Symbol'}];
     my $tidName = $splitTab[$colNum{'Transcript ID'}];
-    
+
     #print STDERR "1. filter=$filter\n";
     #print STDERR "2. hgmdClinVar=$hgmdClinVar\n";
     #if ($filter == 1 ) {
+
+    my $useVar = 0;
+
     if (($qualFilter == 1) && ($locationFilter == 1) && ($espAFFilter == 1) && ($thouAFFilter == 1)) {
       #print STDERR "key = $annChr:$annPos:$vtType\n";
       if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) {
         #print STDERR "1. passed filters $data\n";
-        push @datatoprint, $data;
+        #push @datatoprint, $data;
         # print STDERR $splitTab[0];
-        print STDERR $tidName . "\n";
 
-        if (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1) && ($espMAFAAAFFilter == 1) && ($espMAFEAAFFilter == 1) && ($thousGAFRAFFilter == 1) && ($thousGAMRAFFilter == 1) && ($thousGEASNAFFilter == 1) && ($thousGSASNAFFilter == 1) && ($thousGEURAFFilter == 1) && ($exacAFRAFFilter == 1) && ($exacAMRAFFilter == 1) && ($exacEASAFFilter == 1) && ($exacFINAFFilter == 1) && ($exacNFEAFFilter == 1) && ($exacOTHAFFilter == 1) && ($exacSASAFFilter == 1) && ($internalAFSNPsAFFilter == 1) && ($internalAFIndelsAFFilter == 1)) {
-          if (defined $variant{$tidName}) {
-            $variant{$tidName} = $variant{$tidName} + 1;
-          } else {
-            $variant{$tidName} = 1;
-          }
-        }
-        print STDERR $variant{$tidName} . "\n";
+        $useVar = 1;
       }
-    } else {        # if it's filtered out but it's in hgmd or clinVar
-      if ($hgmdClinVar == 1) {
-        #print STDERR "key = $annChr:$annPos:$vtType\n";
-        if (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"}) {
-          #print STDERR "2. HGMD/ClinVar present $data\n";
-          push @datatoprint, $data;
-          
-          if (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1) && ($espMAFAAAFFilter == 1) && ($espMAFEAAFFilter == 1) && ($thousGAFRAFFilter == 1) && ($thousGAMRAFFilter == 1) && ($thousGEASNAFFilter == 1) && ($thousGSASNAFFilter == 1) && ($thousGEURAFFilter == 1) && ($exacAFRAFFilter == 1) && ($exacAMRAFFilter == 1) && ($exacEASAFFilter == 1) && ($exacFINAFFilter == 1) && ($exacNFEAFFilter == 1) && ($exacOTHAFFilter == 1) && ($exacSASAFFilter == 1) && ($internalAFSNPsAFFilter == 1) && ($internalAFIndelsAFFilter == 1)) {
-            if (defined $variant{$tidName}) {
-              $variant{$tidName} = $variant{$tidName} + 1;
-            } else {
-              $variant{$tidName} = 1;
-            }
-          }
-          print STDERR $variant{$tidName} . "\n";
+    }
+    if ($hgmdClinVar == 1) {
+      #print STDERR "key = $annChr:$annPos:$vtType\n";
+      if (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"} && ($snpEffLoc=~/UTR/)) { #if it's in the UTR with a clinVar
+        $useVar = 1;
+      }
+      if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) { #if it's in the genePanel with a clinVar
+        #print STDERR "1. passed filters $data\n";
+        #push @datatoprint, $data;
+        # print STDERR $splitTab[0];
+
+        $useVar = 1;
+      }
+    }
+
+    if ($useVar == 1) {
+      push @datatoprint, $data; #add variant into the rare filtered pile
+
+      #count the variant as a rare variant for the transcript
+      if (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1) && ($espMAFAAAFFilter == 1) && ($espMAFEAAFFilter == 1) && ($thousGAFRAFFilter == 1) && ($thousGAMRAFFilter == 1) && ($thousGEASNAFFilter == 1) && ($thousGSASNAFFilter == 1) && ($thousGEURAFFilter == 1) && ($exacAFRAFFilter == 1) && ($exacAMRAFFilter == 1) && ($exacEASAFFilter == 1) && ($exacFINAFFilter == 1) && ($exacNFEAFFilter == 1) && ($exacOTHAFFilter == 1) && ($exacSASAFFilter == 1) && ($internalAFSNPsAFFilter == 1) && ($internalAFIndelsAFFilter == 1)) {
+        if (defined $variant{$tidName}) {
+          $variant{$tidName} = $variant{$tidName} + 1;
+        } else {
+          $variant{$tidName} = 1;
         }
       }
     }
@@ -1921,13 +1927,13 @@ sub printformat {
       my @splitOmim = split(/\t/,$outputArray[13]);
       #print STDERR "splitOmim=@splitOmim\n";
       if ((defined $splitOmim[0]) && ($splitOmim[0] ne "")) {
-	# Modification made by Lily Jin 2015 Sep 09 1/2
+        # Modification made by Lily Jin 2015 Sep 09 1/2
         if ($splitOmim[1]=~m/^\d+$/) {
           print $splitOmim[0] . "\t"; #print the omim description for the text file
         } else {
           print $splitOmim[1] . "\t"; #print the omim description for the text file
         }
-	# Modification end 1/2
+        # Modification end 1/2
       } else {
         print "\t";
       }
@@ -1952,13 +1958,13 @@ sub printformat {
         my @splitOmim = split(/\t/,$outputArray[13]);
         if (defined $splitOmim[1] && $splitOmim[1] ne "") {
           #print the OMIM description
-	  # Modification made by Lily Jin 2015 Sep 09 2/2
+          # Modification made by Lily Jin 2015 Sep 09 2/2
           if ($splitOmim[1]=~m/^\d+$/) { ##Updated July 16, 2015
             $worksheet->write($rowNum, ($l+3), "$splitOmim[0]");
           } else {
             $worksheet->write($rowNum, ($l+3), "$splitOmim[1]");
           }
-	  # Modification end 2/2
+          # Modification end 2/2
         }
         ##excel will use the description of omim instead of the number
       } elsif (($l >= 21) && ($l <=43)) { # all the allele frequencies
