@@ -514,7 +514,7 @@ sub read_in_config {
     my $type = $splitTab[0];
     my $value = $splitTab[1];
     if ($type eq "SSHDATAFILE") {
-      $SSHFDATAFILE = $value;
+      $SSHFDATAFILEtmp = $value;
     } elsif ($type eq "FASTQ_FOLDER") {
       $FASTQ_FOLDERtmp = $value;
     } elsif ($type eq "CONFIG_VERSION_FILE") {
