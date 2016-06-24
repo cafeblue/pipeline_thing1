@@ -1,4 +1,6 @@
 #! /bin/env perl
+#./call_pipeline.pl -s 282337 -a 3165 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHLV57BCXX/Sample_282337 -g hsp.gp21 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/282337-3165-20162222222222-hsp.gp21-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_miseq/pipeline_hpf_v5/call_pipeline.pl -s 269473 -a 1675 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH3JTHADXX/Sample_269473 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/269473-1675-20161111111111-exome.gp10-b37 -p exome
 
 use strict;
 use Getopt::Long;
@@ -639,8 +641,8 @@ sub picardCalculateHsMetrics {
           . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
             . "\\\n"
               . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $PICARD/CalculateHsMetrics.jar VALIDATION_STRINGENCY=SILENT' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.ods BAIT_INTERVALS=" . $intervalFile . " TARGET_INTERVALS=" . $intervalFile." && \\\n" . "tail -n 4 $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.ods  | tsp > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.ods && \\\n"
-                      . "ln -f $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs* $BACKUP_BASEDIR/matrics/ ; \\\n"
-                        . "\'| jsub -j picardCalculateHsMetrics -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
+                . "ln -f $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs* $BACKUP_BASEDIR/matrics/ ; \\\n"
+                  . "\'| jsub -j picardCalculateHsMetrics -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
   print "\n\n************\npicardCalculateHsMetrics:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -1574,8 +1576,7 @@ sub read_in_genepanel_config {
     my $filterID=$splitTab[9];
     my $diseaseAssociationFile= $splitTab[10];
     my $diseaseAssociationAnnovarFile = $splitTab[11];
-
-    if ($genePanel eq $genePUsed) {
+    if ($genePanelID eq $genePUsed) {
       $pipeIDtmp = $pipeID;
       $gene_panel_text_tmp = $isoformFile;
       $panelExon10bpPadFulltmp = $genePanelFile .".bed";
@@ -1584,10 +1585,12 @@ sub read_in_genepanel_config {
       $panelBedFileFulltmp = $diseaseAssociationFile;
       $captureKitFiletmp = $captureKitFile . ".bed";
       #print "captureKitFiletmp=$captureKitFiletmp\n";
-    } else {
-      die "$genePUsed Doesn't exist\n";
     }
   }
   close(FILE);
-  return ($pipeIDtmp, $gene_panel_text_tmp, $panelExon10bpPadFulltmp, $panelExon10bpPadBedFiletmp, $panelBedFiletmp, $panelBedFileFulltmp, $captureKitFiletmp);
+  if ($pipeIDtmp eq "") {
+    die "$genePUsed Doesn't exist\n";
+  } else {
+    return ($pipeIDtmp, $gene_panel_text_tmp, $panelExon10bpPadFulltmp, $panelExon10bpPadBedFiletmp, $panelBedFiletmp, $panelBedFileFulltmp, $captureKitFiletmp);
+  }
 }
