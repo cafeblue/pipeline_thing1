@@ -119,8 +119,8 @@ sub check_qual {
     #    }
     #}
     foreach my $keys (keys %FILTERS) {
-        if (not eval ($qual_ref->{$keys} . $FILTERS_SEQ{$keys}{$qual_ref->{"machine"}})) {
-            $msg .= "Failed to pass the filter: " . $keys . $FILTERS_SEQ{$keys}{$qual_ref->{"machine"}} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
+        if (not eval ($qual_ref->{$keys} . $FILTERS{$keys}{$qual_ref->{"machine"}})) {
+            $msg .= "Failed to pass the filter: " . $keys . $FILTERS{$keys}{$qual_ref->{"machine"}} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
         }
     }
     
