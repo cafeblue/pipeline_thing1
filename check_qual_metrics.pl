@@ -17,14 +17,14 @@ my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilt
 #"meanCvgGP"             => " >= 80" );
 my %FILTERS = ( "yieldMB"               => { "hiseq2500" => " >= 6000",        "nextseq500" => " >= 6000",       "miseqdx" => " >= 20"},
                 "perQ30Bases"           => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 75",         "miseqdx" => " >= 80"},
-                "numReads"              => { "hiseq2500" => " >= 30000000",    "nextseq500" => " >= 25000000",   "miseqdx" => " >= 70000 "}
+                "numReads"              => { "hiseq2500" => " >= 30000000",    "nextseq500" => " >= 25000000",   "miseqdx" => " >= 70000 "},
                 "lowCovATRatio"         => { "hiseq2500" => " <= 1",           "nextseq500" => " >= 0",          "miseqdx" => " >= 0"},
                 "perbasesAbove10XGP"    => { "hiseq2500" => " >= 95",          "nextseq500" => " >= 95",         "miseqdx" => " >= 98"}, 
                 "perbasesAbove20XGP"    => { "hiseq2500" => " >= 90",          "nextseq500" => " >= 90",         "miseqdx" => " >= 96"}, 
                 "perbasesAbove10XExome" => { "hiseq2500" => " >= 95",          "nextseq500" => " >= 95",         "miseqdx" => " >= 0"}, 
                 "perbasesAbove20XExome" => { "hiseq2500" => " >= 90",          "nextseq500" => " >= 90",         "miseqdx" => " >= 0"}, 
                 "meanCvgGP"             => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 80",         "miseqdx" => " >= 120"}, 
-                "lowCovExonNum"         => ( "hiseq2500" => " <= 6000",        "nextseq500" => " >= 0",          "miseqdx" => " >= 0"}, 
+                "lowCovExonNum"         => { "hiseq2500" => " <= 6000",        "nextseq500" => " >= 0",          "miseqdx" => " >= 0"}, 
                 "meanCvgExome"          => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 80",         "miseqdx" => " >= 120"}); 
 
 my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
@@ -129,7 +129,7 @@ sub check_qual {
         $msg = "sampleID $sampleID postprocID $postprocID has finished analysis using gene panel, $qual_ref->{genePnaelVer}. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through. Please check the following linkage\nhttp://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary\n\n" . $msg;
         email_error($msg, "quality");
         my $lock = "UPDATE sampleInfo SET locked = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
-        print $lock,"\n"
+        print $lock,"\n";
         my $sthLOCK = $dbh->prepare($lock);
         $sthLOCK->execute();
         $lock = "INSERT INTO lock_log VALUES ('$postprocID', 'Pipeline', NOW(), 'locked', 'Failed to pass the quality metrics', NULL)";
