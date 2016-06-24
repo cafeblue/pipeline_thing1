@@ -13,13 +13,18 @@ my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SSHDATA    = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
 my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
-my %FILTERS_MAP = ( "meanCvgExome"          => " >= 80", "lowCovExonNum"         => " <= 6000", 
-                    "perbasesAbove10XExome" => " >= 95", "perbasesAbove20XExome" => " >= 90",
-                    "perbasesAbove10XGP"    => " >= 95", "perbasesAbove20XGP"    => " >= 90",
-                    "meanCvgGP"             => " >= 80" );
-my %FILTERS_SEQ = ( "yieldMB" => { "hiseq2500" => ">= 6000", "nextseq500" => ">= 6000", "miseqdx" => ">= 20"},
-                    "perQ30Bases" => { "hiseq2500" => ">= 80", "nextseq500" => ">= 75", "miseqdx" => ">= 80"},
-                    "numReads" => { "hiseq2500" => ">= 30000000", "nextseq500" => ">= 25000000", "miseqdx" => ">= 70000 "});
+#my %FILTERS_MAP = ( "meanCvgExome"          => " >= 80", "lowCovExonNum"         => " <= 6000", 
+#"meanCvgGP"             => " >= 80" );
+my %FILTERS = ( "yieldMB"               => { "hiseq2500" => " >= 6000",        "nextseq500" => " >= 6000",       "miseqdx" => " >= 20"},
+                "perQ30Bases"           => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 75",         "miseqdx" => " >= 80"},
+                "lowCovATRatio"         => { "hiseq2500" => " <= 1",           "nextseq500" => " >= 0",          "miseqdx" => " >= 0"},
+                "perbasesAbove10XGP"    => { "hiseq2500" => " >= 95",          "nextseq500" => " >= 95",         "miseqdx" => " >= 98"}; 
+                "perbasesAbove20XGP"    => { "hiseq2500" => " >= 90",          "nextseq500" => " >= 90",         "miseqdx" => " >= 96"}; 
+                "perbasesAbove10XExome" => { "hiseq2500" => " >= 95",          "nextseq500" => " >= 95",         "miseqdx" => " >= 0"}; 
+                "perbasesAbove20XExome" => { "hiseq2500" => " >= 90",          "nextseq500" => " >= 90",         "miseqdx" => " >= 0"}; 
+                "meanCvgGP"             => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 80",         "miseqdx" => " >= 120"}; 
+                "meanCvgExome"          => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 80",         "miseqdx" => " >= 120"}; 
+                "numReads"              => { "hiseq2500" => " >= 30000000",    "nextseq500" => " >= 25000000",   "miseqdx" => " >= 70000 "});
 
 my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 
@@ -108,12 +113,12 @@ sub check_qual {
     $sth_qual->execute();
     my $qual_ref = $sth_qual->fetchrow_hashref;
     $qual_ref->{"machine"} =~ s/_.+//;
-    foreach my $keys (keys %FILTERS_MAP) {
-        if (not eval ($qual_ref->{$keys} . $FILTERS_MAP{$keys})) {
-            $msg .= "Failed to pass the filter: " . $keys . $FILTERS_MAP{$keys} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
-        }
-    }
-    foreach my $keys (keys %FILTERS_SEQ) {
+    #foreach my $keys (keys %FILTERS_MAP) {
+    #    if (not eval ($qual_ref->{$keys} . $FILTERS_MAP{$keys})) {
+    #        $msg .= "Failed to pass the filter: " . $keys . $FILTERS_MAP{$keys} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
+    #    }
+    #}
+    foreach my $keys (keys %FILTERS) {
         if (not eval ($qual_ref->{$keys} . $FILTERS_SEQ{$keys}{$qual_ref->{"machine"}})) {
             $msg .= "Failed to pass the filter: " . $keys . $FILTERS_SEQ{$keys}{$qual_ref->{"machine"}} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
         }
