@@ -1,4 +1,6 @@
 #!/usr/bin/perl -w
+#Goes through snpEff results for both refseq and ensembl -> merges all the same refseq/ensemblID for the same variants
+
 use strict;
 
 my $snpEffFile = $ARGV[0];
@@ -22,7 +24,7 @@ sub delete_dup {
     my ($chr, $pos, $rsID, $ref, $alt, $qual, $filter, $info, $format, $gt) = split(/\t/,$data);
     my $snpEff = "";
     foreach (split(/\;/, $info)) {
-        if (/EFF=(.+)/) {
+        if (/ANN=(.+)/) {
             $snpEff = $1;
         }
     }
@@ -127,11 +129,11 @@ sub delete_dup {
             
     my $return_str = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref . "\t" . $alt . "\t" . $qual . "\t" . $filter . "\t";
     foreach my $element (@splitI) {
-        if ($element!~/EFF/) {
+        if ($element!~/ANN/) {
             $return_str .= $element . ";";
         }
     }
-    $return_str .= "EFF=";
+    $return_str .= "ANN=";
             
             ###remove all the removed splice sites
     my @effSpliceInfo = ();
