@@ -128,14 +128,6 @@ sub check_qual {
     if ($msg ne '') {
         $msg = "sampleID $sampleID postprocID $postprocID has finished analysis using gene panel, $qual_ref->{genePnaelVer}. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through. Please check the following linkage\nhttp://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary\n\n" . $msg;
         email_error($msg, "quality");
-        my $lock = "UPDATE sampleInfo SET locked = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
-        print $lock,"\n";
-        my $sthLOCK = $dbh->prepare($lock);
-        $sthLOCK->execute();
-        $lock = "INSERT INTO lock_log VALUES ('$postprocID', 'Pipeline', NOW(), 'locked', 'Failed to pass the quality metrics', NULL)";
-        print $lock,"\n";
-        my $sthLOCK = $dbh->prepare($lock);
-        $sthLOCK->execute();
         return 7;
     }
     return 6;
