@@ -1,4 +1,6 @@
 #! /bin/env perl
+#./call_pipeline.pl -s 282337 -a 3165 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHLV57BCXX/Sample_282337 -g hsp.gp21 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/282337-3165-20162222222222-hsp.gp21-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_miseq/pipeline_hpf_v5/call_pipeline.pl -s 269473 -a 1675 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH3JTHADXX/Sample_269473 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/269473-1675-20161111111111-exome.gp10-b37 -p exome
 
 use strict;
 use Getopt::Long;
@@ -9,7 +11,7 @@ use Time::Piece;
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 
-my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5_pipeline_config_test.txt"; #Future will be passed from the thing1 cmd
+my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5_pipeline.txt"; #Future will be passed from the thing1 cmd
 my $genepanel_config_file = "/hpf/largeprojects/pray/clinical/config/gene_panels_config.txt"; #Future will be passed from the thing1 cmd
 
 GetOptions ("sampleID|s=s" => \$sampleID,
@@ -26,7 +28,7 @@ GetOptions ("sampleID|s=s" => \$sampleID,
 our $depthct                 = '';
 
 
-#our ($pipeID, $gene_panel_text, $panelExon10bpPadFull, $panelExon10bpPadBedFile, $panelBedFile, $panelBedFileFull, $captureKitFile);
+our ($pipeID, $gene_panel_text, $panelExon10bpPadFull, $panelExon10bpPadBedFile, $panelBedFile, $panelBedFileFull, $captureKitFile);
 
 our %pipeline_lst = ( 'cancerT' => \&cancerT, 'cancerN' => \&cancerN, 'exome' => \&exome, 'exome_newGP' => \&exome_newGP);
 
@@ -77,8 +79,8 @@ if ( $sampleID eq '' || $postprocID eq '' || $fastqDir eq '' || $genePanel eq ''
 
 &check_opts;
 &print_time_stamp;
-my ($SCRIPTDIR, $ANNOVAR, $BACKUP_BASEDIR, $GATK, $BWA, $PICARDTOOLS, $SAMTOOLS, $TABIX, $PERL, $VCFTOOLS, $BEDTOOLS, $RSCRIPT, $reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf) = &read_in_pipeline_config($pipeline_config_file); #read in pipeline configuration
-our ($pipeID, $gene_panel_text, $panelExon10bpPadFull, $panelExon10bpPadBedFile, $panelBedFile, $panelBedFileFull, $captureKitFile) = &read_in_genepanel_config($genepanel_config_file, $genePanel); #read in genepanel configuration
+my ($SCRIPTDIR, $ANNOVAR, $BACKUP_BASEDIR, $GATK, $BWA, $PICARDTOOLS, $SAMTOOLS, $TABIX, $PERL, $VCFTOOLS, $BEDTOOLS, $RSCRIPT, $reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf, $vcfPaddingFile) = &read_in_pipeline_config($pipeline_config_file); #read in pipeline configuration
+($pipeID, $gene_panel_text, $panelExon10bpPadFull, $panelExon10bpPadBedFile, $panelBedFile, $panelBedFileFull, $captureKitFile) = &read_in_genepanel_config($genepanel_config_file, $genePanel); #read in genepanel configuration
 
 our $maxGaussians_SNP        = $fastqDir !~ /000000000/ ? '--maxGaussians 8' : '--maxGaussians 1';
 our $maxGaussians_INDEL      = '--maxGaussians 1';
@@ -972,7 +974,7 @@ sub gatkFilteredRecalSNP {
               . "$maxGaussians_SNP -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP \\\n"
                 . "-recalFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal -rscriptFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.plot.R -resource:omni,known=false,training=true,truth=true,prior=12.0 $omni_vcf \\\n"
                   . "-resource:1000G,known=false,training=true,truth=false,prior=10.0 $g1k_snp_vcf -resource:hapmap,known=false,training=true,truth=true,prior=15.0 $hapmap_vcf  \\\n"
-                    . "-input $runfolder/$Pfolder_snp  -R $reference &&" . " \\\n"
+                    . "-input $runfolder/$Pfolder_snp -input $vcfPaddingFile -R $reference &&" . " \\\n"
                       . "\\\n"
                         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T ApplyRecalibration -mode SNP --ts_filter_level 99.0 ' . " \\\n"
                           . " -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches -recalFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal -o $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.recal.filtered.snp.vcf \\\n"
@@ -1493,7 +1495,7 @@ sub read_in_pipeline_config {
   #this filename will be passed from thing1 (from the database in the future)
   my ($pConfigFile) = @_;
   my $data = "";
-  my ($sd, $ann, $backup, $gatk, $bwa, $ptools, $stools, $tab, $pl, $vtools, $btools, $rscript,$reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf);
+  my ($sd, $ann, $backup, $gatk, $bwa, $ptools, $stools, $tab, $pl, $vtools, $btools, $rscript,$reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf, $vcfPaddingFile);
   print "pConfigFile=$pConfigFile\n";
   open (FILE, "< $pConfigFile") or die "Can't open $pConfigFile for read: $!\n";
   while ($data=<FILE>) {
@@ -1543,10 +1545,12 @@ sub read_in_pipeline_config {
       $hgmdAS = $value;
     } elsif ($name eq "hapmap_vcf") {
       $hapmap_vcf = $value;
+    } elsif ($name eq "vcfPaddingFile") {
+      $vcfPaddingFile = $value;
     }
   }
   close(FILE);
-  return ($sd, $ann, $backup, $gatk, $bwa, $ptools, $stools, $tab, $pl, $vtools, $btools, $rscript, $reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf);
+  return ($sd, $ann, $backup, $gatk, $bwa, $ptools, $stools, $tab, $pl, $vtools, $btools, $rscript, $reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf, $vcfPaddingFile);
 }
 
 sub read_in_genepanel_config {
@@ -1572,8 +1576,6 @@ sub read_in_genepanel_config {
     my $filterID=$splitTab[9];
     my $diseaseAssociationFile= $splitTab[10];
     my $diseaseAssociationAnnovarFile = $splitTab[11];
-    print "genePUsed=$genePUsed|\n";
-    print "genePanelID=$genePanelID|\n";
     if ($genePanelID eq $genePUsed) {
       $pipeIDtmp = $pipeID;
       $gene_panel_text_tmp = $isoformFile;
@@ -1582,8 +1584,7 @@ sub read_in_genepanel_config {
       $panelBedFiletmp = $diseaseAssociationAnnovarFile;
       $panelBedFileFulltmp = $diseaseAssociationFile;
       $captureKitFiletmp = $captureKitFile . ".bed";
-      #print "panelExon10bpPadBedFiletmp=$panelExon10bpPadBedFiletmp\n";
-      #print "panelBedFiletmp=$panelBedFiletmp\n";
+      #print "captureKitFiletmp=$captureKitFiletmp\n";
     }
   }
   close(FILE);
