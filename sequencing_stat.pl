@@ -195,29 +195,29 @@ sub update_table {
 
           email_qc($sampleID, $flowcellID, $err, $value, $thres, $machine);
 
-          my $updateLock = "UPDATE sampleInfo SET locked ='1' AND diagnosis = '".$errString."' WHERE sampleID = '".$sampleID."' AND flowcellID = '".$flowcellID."';";
-          print STDERR "updateLock=$updateLock\n";
-          my $sthUL = $dbh->prepare($updateLock) or die "Can't lock sample = $sampleID". $dbh->errstr() . "\n";
-          $sthUL->execute()  or die "Can't execute lock for sample=$sampleID" . $dbh->errstr() . "\n";
+          #my $updateLock = "UPDATE sampleInfo SET locked ='1' AND diagnosis = '".$errString."' WHERE sampleID = '".$sampleID."' AND flowcellID = '".$flowcellID."';";
+          #print STDERR "updateLock=$updateLock\n";
+          #my $sthUL = $dbh->prepare($updateLock) or die "Can't lock sample = $sampleID". $dbh->errstr() . "\n";
+          #$sthUL->execute()  or die "Can't execute lock for sample=$sampleID" . $dbh->errstr() . "\n";
 
           #get the postprocID
-          my $getPPid = "SELECT postprocID FROM sampleInfo WHERE sampleID = '".$sampleID."' AND flowcellID = '". $flowcellID . "';";
-          print STDERR "getPPid=$getPPid\n";
-          my $sthPP = $dbh->prepare($getPPid) or die "Can't query database for postprocID, sampleID = $sampleID and flowcellID = $flowcellID". $dbh->errstr() . "\n";
-          $sthPP->execute()  or die "Can't execute query for postprocID, sampleID = $sampleID and flowcellID = $flowcellID" . $dbh->errstr() . "\n";
-          my @dataPP = ();
-          while (@dataPP = $sthPP->fetchrow_array()) {
-            my $ppID = $dataPP[0];
-            #insert lock log comment
-            my $insertLock = "INSERT INTO lock_log (postprocID, updated_by, updated_at, updated_to, lock_reason) VALUES ('" . $ppID . "','Pipeline','" . $currentTime . "','locked', '".$errString."');";
-            print STDERR "insertLock=$insertLock\n";
-            my $sthIL = $dbh->prepare($insertLock) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-            $sthIL->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-          }
+          #my $getPPid = "SELECT postprocID FROM sampleInfo WHERE sampleID = '".$sampleID."' AND flowcellID = '". $flowcellID . "';";
+          #print STDERR "getPPid=$getPPid\n";
+          #my $sthPP = $dbh->prepare($getPPid) or die "Can't query database for postprocID, sampleID = $sampleID and flowcellID = $flowcellID". $dbh->errstr() . "\n";
+          #$sthPP->execute()  or die "Can't execute query for postprocID, sampleID = $sampleID and flowcellID = $flowcellID" . $dbh->errstr() . "\n";
+          #my @dataPP = ();
+          #while (@dataPP = $sthPP->fetchrow_array()) {
+          #  my $ppID = $dataPP[0];
+          #  #insert lock log comment
+          #  my $insertLock = "INSERT INTO lock_log (postprocID, updated_by, updated_at, updated_to, lock_reason) VALUES ('" . $ppID . "','Pipeline','" . $currentTime . "','locked', '".$errString."');";
+          #  print STDERR "insertLock=$insertLock\n";
+          #  my $sthIL = $dbh->prepare($insertLock) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+          #  $sthIL->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+          #}
         }
       }
     } else {
-      my $msg = "No/multiple sampleID found for $sampleID:\n\n$query\n";
+      my $msg = "No/multiple sampleID(s) found for $sampleID:\n\n$query\n";
       email_error($msg);
       die $msg;
     }
