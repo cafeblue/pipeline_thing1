@@ -1,13 +1,13 @@
 #!/usr/bin/perl -w
 #Author: Lynette Lau
-#Date: June 14,2016 - updates the interHistory for only indels
+#Date: June 14,2016 - updates the interHistory for all samples
 
 use strict;
 
 use DBI;
 
 #read in from a config file
-my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5.txt";
+my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5_test.txt";
 
 my ($host,$port,$user,$pass,$db, $msg) = &read_in_config($configFile);
 
@@ -18,7 +18,7 @@ my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port
 my %interpretationHistory = ( '0' => 'Not yet viewed: ', '1' => 'Select: ', '2' => 'Pathogenic: ', '3' => 'Likely Pathogenic: ', '4' => 'VUS: ', '5' => 'Likely Benign: ', '6' => 'Benign: ', '7' => 'Unknown: ');
 
 
-my $getVar = "SELECT chrom, genomicStart, genomicEnd, variantType, transcriptID, altAllele,interID FROM variants_sub;";
+my $getVar = "SELECT chrom, genomicStart, genomicEnd, variantType, transcriptID, altAllele,interID,postprocID FROM variants_sub;";
 print STDERR "getVar=$getVar\n";
 my $sthGV = $dbh->prepare($getVar) or die "Can't query database for sample name info: ". $dbh->errstr() . "\n";
 $sthGV->execute() or die "Can't execute query for sample name info: " . $dbh->errstr() . "\n";
@@ -31,15 +31,28 @@ while (@dataN = $sthGV->fetchrow_array()) {
   my $txID = $dataN[4];
   my $altAllele = $dataN[5];
   my $interID = $dataN[6];
+  my $ppID = $dataN[7];
 
-  my ($fakeInter, $fakeCmt, $interHist) = &interpretation_note($chrom, $gStart, $gEnd, $vType, $txID, $altAllele);
-
-  print "interHist=$interHist\n";
-  #UPDATE the interpretation
-  my $updateHist = "UPDATE interpretation SET historyInter = '".$interHist."' WHERE interID = '".$interID."';";
-  print "updateHist=$updateHist\n";
-  #my $sthUH = $dbh->prepare($updateHist) or die "Can't update interpretation history for interID = $interID ". $dbh->errstr() . "\n";
-  #$sthGV->execute() or die "Can't execute update interpretation history for interID = $interID" . $dbh->errstr() . "\n";
+  #check to see if ppID is part of a known gene panel
+  my $genePanel = "";
+  my $getGP = "SELECT genePanelVer FROM sampleInfo WHERE postprocID = '".$ppID."';";
+  print STDERR "getGP=$getGP\n";
+  my $sthGP = $dbh->prepare($getGP) or die "Can't query database for sample name info: ". $dbh->errstr() . "\n";
+  $sthGP->execute() or die "Can't execute query for sample name info: " . $dbh->errstr() . "\n";
+  my @dataGP = ();
+  while (@dataGP = $sthGP->fetchrow_array()) {
+    $genePanel = $dataGP[0];
+  }
+  print STDERR "genePanel=$genePanel\n";
+  if (($genePanel!~/exome/) && ($genePanel!~/unknown/)) {
+     my ($fakeInter, $fakeCmt, $interHist) = &interpretation_note($chrom, $gStart, $gEnd, $vType, $txID, $altAllele);
+    print STDERR "interHist=$interHist\n";
+    #UPDATE the interpretation
+    my $updateHist = "UPDATE interpretation SET historyInter = '".$interHist."' WHERE interID = '".$interID."';";
+    print STDERR "updateHist=$updateHist\n";
+    #my $sthUH = $dbh->prepare($updateHist) or die "Can't update interpretation history for interID = $interID ". $dbh->errstr() . "\n";
+    #$sthGV->execute() or die "Can't execute update interpretation history for interID = $interID" . $dbh->errstr() . "\n";
+  }
 }
 
 sub interpretation_note {
