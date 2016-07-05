@@ -108,7 +108,7 @@ while ($data=<FILE>) {
   my $location = $splitTab[6];
   my $locationSortable = $splitTab[7];
   my $synonyms = uc($splitTab[8]);
-  my $nameSynonyms = $splitTab[9];  
+  my $nameSynonyms = $splitTab[9];
   my $prevSymbols = uc($splitTab[10]);
   my $prevNames = $splitTab[11];
   my $geneFamilyTag = $splitTab[13];
@@ -130,7 +130,7 @@ while ($data=<FILE>) {
   my $ratDB = $splitTab[38];
   my $cosmicID = $splitTab[39];
   my $omimID = $splitTab[31];
-  
+
   my $enzymeID = $splitTab[46];
 
 

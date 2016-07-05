@@ -6,10 +6,11 @@ use HPF::pipeline;
 use Time::localtime;
 use Time::Piece;
 
+#perl ./call_pipeline.pl -s 202214 -a 3142 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHK22CBCXX/Sample_202214 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-3142-20164444444444-exome.gp10-b37 -p exome
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 
-my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5_pipeline_config.txt"; #Future will be passed from the thing1 cmd
+my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5_pipeline_config_develop.txt"; #Future will be passed from the thing1 cmd
 my $genepanel_config_file = "/hpf/largeprojects/pray/clinical/config/gene_panels_config.txt"; #Future will be passed from the thing1 cmd
 
 GetOptions ("sampleID|s=s" => \$sampleID,
@@ -77,7 +78,7 @@ if ( $sampleID eq '' || $postprocID eq '' || $fastqDir eq '' || $genePanel eq ''
 
 &check_opts;
 &print_time_stamp;
-my ($SCRIPTDIR, $ANNOVAR, $BACKUP_BASEDIR, $GATK, $BWA, $PICARDTOOLS, $SAMTOOLS, $TABIX, $PERL, $VCFTOOLS, $BEDTOOLS, $RSCRIPT, $reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf) = &read_in_pipeline_config($pipeline_config_file); #read in pipeline configuration
+my ($SCRIPTDIR, $ANNOVAR, $BACKUP_BASEDIR, $GATK, $BWA, $PICARDTOOLS, $SAMTOOLS, $TABIX, $PERL, $VCFTOOLS, $BEDTOOLS, $RSCRIPT, $reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf, $annovarHDB, $ANNOVARANN, $vcfPaddingFile, $snpEff, $snpEffConfig, $internalAFALLSNP, $internalAFALLINDEL, $internalAFHCSNP, $internalAFHCINDEL, $hpoFile, $omimGeneMapFile, $omimMorbidMapFile, $hgncFile, $cgdFile, $homologyFile, $lengthFile) = &read_in_pipeline_config($pipeline_config_file); #read in pipeline configuration
 ($pipeID, $gene_panel_text, $panelExon10bpPadFull, $panelExon10bpPadBedFile, $panelBedFile, $panelBedFileFull, $captureKitFile) = &read_in_genepanel_config($genepanel_config_file, $genePanel); #read in genepanel configuration
 
 our $maxGaussians_SNP        = $fastqDir !~ /000000000/ ? '--maxGaussians 8' : '--maxGaussians 1';
@@ -639,8 +640,8 @@ sub picardCalculateHsMetrics {
           . 'module load ' . $PICARDTOOLS . ' && ' . " \\\n"
             . "\\\n"
               . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $PICARD/CalculateHsMetrics.jar VALIDATION_STRINGENCY=SILENT' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.ods BAIT_INTERVALS=" . $intervalFile . " TARGET_INTERVALS=" . $intervalFile." && \\\n" . "tail -n 4 $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.ods  | tsp > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.ods && \\\n"
-                      . "ln -f $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs* $BACKUP_BASEDIR/matrics/ ; \\\n"
-                        . "\'| jsub -j picardCalculateHsMetrics -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
+                . "ln -f $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs* $BACKUP_BASEDIR/matrics/ ; \\\n"
+                  . "\'| jsub -j picardCalculateHsMetrics -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
   print "\n\n************\npicardCalculateHsMetrics:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -972,7 +973,7 @@ sub gatkFilteredRecalSNP {
               . "$maxGaussians_SNP -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP \\\n"
                 . "-recalFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal -rscriptFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.plot.R -resource:omni,known=false,training=true,truth=true,prior=12.0 $omni_vcf \\\n"
                   . "-resource:1000G,known=false,training=true,truth=false,prior=10.0 $g1k_snp_vcf -resource:hapmap,known=false,training=true,truth=true,prior=15.0 $hapmap_vcf  \\\n"
-                    . "-input $runfolder/$Pfolder_snp  -R $reference &&" . " \\\n"
+                    . "-input $runfolder/$Pfolder_snp -input $vcfPaddingFile -R $reference &&" . " \\\n"
                       . "\\\n"
                         . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T ApplyRecalibration -mode SNP --ts_filter_level 99.0 ' . " \\\n"
                           . " -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches -recalFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal -o $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.recal.filtered.snp.vcf \\\n"
@@ -1082,7 +1083,7 @@ sub windowBed {
         . 'module load ' . $BEDTOOLS . ' && ' . " \\\n"
           . "\\\n"
             . "windowBed -a $runfolder/$Pfolder2 -b $clinvar_indel_vcf -w 20 > $runfolder/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv &&" . " \\\n"
-              . "windowBed -a $runfolder/$Pfolder2 -b $hgmdAML        -w 20 > $runfolder/windowBed/$sampleID.$postprocID.hgmd.window20bp.indel.tsv &&" . " \\\n"
+              . "windowBed -a $runfolder/$Pfolder2 -b $hgmdAML -w 20 > $runfolder/windowBed/$sampleID.$postprocID.hgmd.window20bp.indel.tsv &&" . " \\\n"
                 . "windowBed -a $runfolder/$Pfolder1 -b $hgmdAS -w 3 > $runfolder/windowBed/$sampleID.$postprocID.hgmd.window3bp.snp.tsv &&" . " \\\n"
                   . "cat  $runfolder/windowBed/$sampleID.$postprocID.hgmd.window20bp.indel.tsv $runfolder/windowBed/$sampleID.$postprocID.hgmd.window3bp.snp.tsv > $runfolder/windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv && " . " \\\n"
                     . "ln -f $runfolder/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv $BACKUP_BASEDIR/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv && " . " \\\n"
@@ -1109,96 +1110,34 @@ sub annovar {
   my $cmd = 'echo \''
     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
       . "\\\n"
-        . "/hpf/largeprojects/pray/llau/programs/annovar/current/annovar/convert2annovar.pl -format vcf4 \\\n"
+        . "$ANNOVAR/convert2annovar.pl -format vcf4 \\\n"
           . "$runfolder/$Pfolder > $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar &&" . " \\\n"
             . "\\\n"
-              . "$ANNOVAR -filter -buildver hg19 -dbtype ljb26_sift \\\n"
-                . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                  . "\\\n"
-                    . "$ANNOVAR -filter -buildver hg19 -score_threshold 0 -dbtype ljb23_pp2hvar \\\n"
-                      . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                        . "\\\n"
-                          . "$ANNOVAR -regionanno -buildver hg19 -dbtype segdup \\\n"
-                            . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                              . "\\\n"
-                                . "$ANNOVAR -filter -buildver hg19 -dbtype cg46 \\\n"
-                                  . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                    . "\\\n"
-                                      . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype ljb26_mt \\\n"
-                                        . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                          . "\\\n"
-                                            . "$ANNOVAR -filter -buildver hg19 -dbtype snp138 \\\n"
-                                              . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                . "\\\n"
-                                                  . "$ANNOVAR -filter -buildver hg19 -dbtype esp6500si_all \\\n"
-                                                    . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                      . "\\\n"
-                                                        . "$ANNOVAR -filter -buildver hg19 -dbtype esp6500si_aa \\\n"
-                                                          . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
+              . "$ANNOVAR/table_annovar.pl --protocol dbnsfp30a,segdup,cg46,avsnp144,esp6500siv2_all,esp6500siv2_aa,esp6500siv2_ea,1000g2015aug_all,1000g2015aug_afr,1000g2015aug_amr,1000g2015aug_eas,1000g2015aug_sas,1000g2015aug_eur,clinvar_20150629,refgene,cosmic70,ensGene,exac03 --operation f,r,f,f,f,f,f,f,f,f,f,f,f,f,g,f,g,f --buildver hg19 --remove --nastring . $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.table $annovarHDB && \\\n"
+                . "\\\n"                                                                              . "$ANNOVAR/$ANNOVARANN -filter -buildver hg19_hgmd -dbtype generic --genericdbfile hg19_hgmd.txt \\\n"
+                  . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
+                    . "\\\n"
+                      . "$ANNOVAR/$ANNOVARANN --regionanno -buildver hg19_gene_panel -dbtype bed --bedfile $panelExon10bpPadBedFile \\\n"
+                        . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
+                          . "\\\n"
+                            . "$ANNOVAR/$ANNOVARANN --regionanno --colsWanted 4 -buildver hg19_region_homology -dbtype bed --bedfile $homologyFile \\\n"
+                              . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
+                                . "\\\n"
+                                  . "$ANNOVAR/$ANNOVARANN --regionanno --colsWanted 4 -buildver hg19_disease_associations -dbtype bed --bedfile $panelBedFile \\\n"
+                                    . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
+                                      . "\\\n"
+                                        . "$ANNOVAR/$ANNOVARANN --regionanno -buildver hg19_genemap -dbtype bed --colsWanted 4 --bedfile hg19_genemap.bed \\\n"
+                                          . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
+                                            . "\\\n"
+                                              . "$ANNOVAR/$ANNOVARANN --regionanno -buildver hg19_morbidmap -dbtype bed --colsWanted 4 --bedfile hg19_morbidmap.bed\\\n"
+                                                . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
+                                                  . "\\\n"
+                                                    . "$ANNOVAR/$ANNOVARANN -filter -buildver hg19_cgWellderly -dbtype generic --genericdbfile hg19_cgWellderly.txt \\\n"
+                                                      . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
+                                                        . "\\\n"
+                                                          . "perl $SCRIPTDIR/calculate_variant_genepanel_db.pl $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed $sampleID $postprocID $runfolder/annovar > $runfolder/annovar/$sampleID.$postprocID.variants_gp_metrics.sql ; \\\n"
                                                             . "\\\n"
-                                                              . "$ANNOVAR -filter -buildver hg19 -dbtype esp6500si_ea \\\n"
-                                                                . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                  . "\\\n"
-                                                                    . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_all \\\n"
-                                                                      . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                        . "\\\n"
-                                                                          . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_afr \\\n"
-                                                                            . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                              . "\\\n"
-                                                                                . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_amr \\\n"
-                                                                                  . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                    . "\\\n"
-                                                                                      . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_eas \\\n"
-                                                                                        . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                          . "\\\n"
-                                                                                            . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_sas \\\n"
-                                                                                              . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                . "\\\n"
-                                                                                                  . "$ANNOVAR -filter -buildver hg19 -dbtype 1000g2014sep_eur \\\n"
-                                                                                                    . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                      . "\\\n"
-                                                                                                        . "$ANNOVAR -filter -buildver hg19 -dbtype clinvar_20140929 \\\n"
-                                                                                                          . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                            . "\\\n"
-                                                                                                              . "$ANNOVAR -filter -buildver hg19_hgmd -dbtype generic --genericdbfile hg19_hgmd.txt \\\n"
-                                                                                                                . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                  . "\\\n"
-                                                                                                                    . "$ANNOVAR --regionanno -buildver hg19_gene_panel -dbtype bed --bedfile $panelExon10bpPadBedFile \\\n"
-                                                                                                                      . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                        . "\\\n"
-                                                                                                                          . "$ANNOVAR --geneanno --hgvs -buildver hg19 -dbtype refgene \\\n"
-                                                                                                                            . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                              . "\\\n"
-                                                                                                                                . "$ANNOVAR --regionanno --colsWanted 4 -buildver hg19_region_homology -dbtype bed --bedfile hg19wUnassembled_RefSeqGenes_refGene.Jan312014.exons_no_padding.sort.merge.blat.sort.bed \\\n"
-                                                                                                                                  . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                                    . "\\\n"
-                                                                                                                                      . "$ANNOVAR --regionanno --colsWanted 4 -buildver hg19_disease_associations -dbtype bed --bedfile $panelBedFile \\\n"
-                                                                                                                                        . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                                          . "\\\n"
-                                                                                                                                            . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype ljb26_cadd \\\n"
-                                                                                                                                              . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                                                . "\\\n"
-                                                                                                                                                  . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype ljb26_ma \\\n"
-                                                                                                                                                    . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                                                      . "\\\n"
-                                                                                                                                                        . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype ljb23_phylop \\\n"
-                                                                                                                                                          . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                                                            . "\\\n"
-                                                                                                                                                              . "$ANNOVAR -filter -buildver hg19 -dbtype cosmic68wgs \\\n"
-                                                                                                                                                                . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                                                                  . "\\\n"
-                                                                                                                                                                    . "$ANNOVAR --geneanno --hgvs -buildver hg19 -dbtype ensGene -out $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.ensGene \\\n"
-                                                                                                                                                                      . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                                                                        . "\\\n"
-                                                                                                                                                                          . "$ANNOVAR -filter -otherinfo -buildver hg19 -dbtype exac02 \\\n"
-                                                                                                                                                                            . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                                                                              . "\\\n"
-                                                                                                                                                                                . "$ANNOVAR -filter -buildver hg19_cgWellderly -dbtype generic --genericdbfile hg19_cgWellderly.txt \\\n"
-                                                                                                                                                                                  . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar /hpf/largeprojects/pray/llau/programs/annovar/current/annovar/humandb && \\\n"
-                                                                                                                                                                                    . "\\\n"
-                                                                                                                                                                                      . "perl $SCRIPTDIR/calculate_variant_genepanel_db.pl $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed $sampleID $postprocID $runfolder/annovar > $runfolder/annovar/$sampleID.$postprocID.variants_gp_metrics.sql ; \\\n"
-                                                                                                                                                                                        . "\\\n"
-                                                                                                                                                                                          . "\'| jsub -j annovar -b $runfolder  -nm 32000 -np 1 -nn 1 -nw 12:00:00 -ng localhd:10 $depend";
+                                                              . "\'| jsub -j annovar -b $runfolder  -nm 32000 -np 1 -nn 1 -nw 12:00:00 -ng localhd:10 $depend";
   print "\n\n************\nannovar:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -1243,8 +1182,6 @@ sub annovar_newGP {
   }
 }
 
-
-
 sub snpEff {
   #Pfolder1: annovar/$sampleID.$postprocID.gatk.snp.indel.annovar
   #Pfolder2: gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snps.indel.vcf
@@ -1261,12 +1198,12 @@ sub snpEff {
       . "\\\n"
         . 'module load ' . $PERL . ' && ' . " \\\n"
           . "\\\n"
-            . "/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Xmx11G /hpf/largeprojects/pray/llau/programs/snpEff/current/snpEff/snpEff.jar eff \\\n"
-              . "-v -i vcf -o vcf -c /hpf/largeprojects/pray/llau/programs/snpEff/current/snpEff/snpEff.config -spliceSiteSize 7 hg19 \\\n"
+            . "/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Xmx11G $snpEff eff \\\n"
+              . "-v -i vcf -o vcf -c $snpEffConfig -spliceSiteSize 7 hg19 \\\n"
                 . "$runfolder/$Pfolder2 > $runfolder/snpEff/$sampleID.$postprocID.var.annotated.refseq.vcf && \\\n"
                   . "\\\n"
-                    . "/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java -jar -Xmx11G /hpf/largeprojects/pray/llau/programs/snpEff/current/snpEff/snpEff.jar eff \\\n"
-                      . "-v -motif -nextprot -i vcf -o vcf -c /hpf/largeprojects/pray/llau/programs/snpEff/current/snpEff/snpEff.config GRCh37.75 \\\n"
+                    . "/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Xmx11G $snpEff eff \\\n"
+                      . "-v -motif -nextprot -i vcf -o vcf -c $snpEffConfig GRCh37.75 \\\n"
                         . "$runfolder/$Pfolder2 > $runfolder/snpEff/$sampleID.$postprocID.var.annotated.ens.vcf && \\\n"
                           . "\\\n"
                             . "perl $SCRIPTDIR/snpEff_splice_sites.pl $runfolder/snpEff/$sampleID.$postprocID.var.annotated.refseq.vcf \\\n"
@@ -1275,39 +1212,32 @@ sub snpEff {
                                   . "perl $SCRIPTDIR/snpEff_splice_sites.pl $runfolder/snpEff/$sampleID.$postprocID.var.annotated.ens.vcf \\\n"
                                     . "> $runfolder/snpEff/$sampleID.$postprocID.splice_site.ens.vcf  && \\\n"
                                       . "\\\n"
-                                        . "perl $SCRIPTDIR/merge_snpEff.pl /hpf/largeprojects/pray/llau/internal_databases/txLength/refseq.cds_transcript_length.Aug132014.txt \\\n"
+                                        . "perl $SCRIPTDIR/merge_snpEff.pl $lengthFile \\\n"
                                           . "$gene_panel_text $runfolder/snpEff/$sampleID.$postprocID.splice_site.refseq.vcf $runfolder/snpEff/$sampleID.$postprocID.splice_site.ens.vcf \\\n"
                                             . "> $runfolder/snpEff/$sampleID.$postprocID.snpEff.merged.vcf   && \\\n"
                                               . "\\\n"
                                                 . "perl $SCRIPTDIR/annotate_merged_snpEff.pl $runfolder/snpEff/$sampleID.$postprocID.snpEff.merged.vcf \\\n"
-                                                  . "$runfolder/$Pfolder1 /hpf/largeprojects/pray/llau/internal_databases/AF_unrelated_bams/all/allAF/snps/all.genotyper.snps.allAF.bed  \\\n"
-                                                    . "/hpf/largeprojects/pray/llau/internal_databases/AF_unrelated_bams/all/allAF/indels/all.genotyper.allAF.bed \\\n"
-                                                      . "/hpf/largeprojects/pray/llau/internal_databases/AF_unrelated_bams/all/HCAF/snps/all.genotyper.snps.hcAF.bed  \\\n"
-                                                        . "/hpf/largeprojects/pray/llau/internal_databases/AF_unrelated_bams/all/HCAF/indels/all.genotyper.indels.hcAF.bed \\\n"
-                                                          . "$postprocID $runfolder/$Pfolder3 $runfolder/$Pfolder4 \\\n"
-                                                            . "/hpf/largeprojects/pray/llau/internal_databases/hpo/Mar142014/ALL_SOURCES_ALL_FREQUENCIES_diseases_to_genes_to_phenotypes.txt \\\n"
-                                                              . "/hpf/largeprojects/pray/llau/internal_databases/OMIM/Oct29_2014/genemap \\\n"
-                                                                . "/hpf/largeprojects/pray/llau/internal_databases/OMIM/Oct29_2014/morbidmap \\\n"
-                                                                  . "/hpf/largeprojects/pray/llau/internal_databases/hgnc/hgnc_complete_set.txt \\\n"
-                                                                    . "/hpf/largeprojects/pray/llau/internal_databases/nhgri_cgd/CGD.txt $pipeID \\\n"
-                                                                      . "> $runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv   && \\\n"
-                                                                        . "\\\n"
-                                                                          . "perl $SCRIPTDIR/cal_rare_variant_gene.pl $runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv \\\n"
-                                                                            . "> $runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv && \\\n"
+                                                  . "$runfolder/$Pfolder1 $internalAFALLSNP $internalAFALLINDEL $internalAFHCSNP $internalAFHCINDEL  \\\n"
+                                                    . "$postprocID $runfolder/$Pfolder3 $runfolder/$Pfolder4 \\\n"
+                                                      . "$hpoFile $hgncFile $cgdFile $pipeID \\\n"
+                                                        . "> $runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv   && \\\n"
+                                                          . "\\\n"
+                                                            . "perl $SCRIPTDIR/cal_rare_variant_gene.pl $runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv \\\n"
+                                                              . "> $runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv && \\\n"
+                                                                . "\\\n"
+                                                                  . "perl $SCRIPTDIR/filter_exomes.v1.combined.pl \\\n"
+                                                                    . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv  $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed \\\n"
+                                                                      . "$runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp.sample_interval_summary \\\n"
+                                                                        . "$runfolder/calAF/merged.snp.$genePanel.AF.bed $runfolder/calAF/merged.indel.$genePanel.AF.bed $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_disease_associations_bed \\\n"
+                                                                          . "$runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv /hpf/largeprojects/pray/llau/gene_panels/ACMG_20140918/acmg_genes.HGMD2014.2.txt "
+                                                                            . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > $runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt &&\\\n"
                                                                               . "\\\n"
-                                                                                . "perl $SCRIPTDIR/filter_exomes.v1.combined.pl \\\n"
-                                                                                  . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv  $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed \\\n"
-                                                                                    . "$runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp.sample_interval_summary \\\n"
-                                                                                      . "$runfolder/calAF/merged.snp.$genePanel.AF.bed $runfolder/calAF/merged.indel.$genePanel.AF.bed $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_disease_associations_bed \\\n"
-                                                                                        . "$runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv /hpf/largeprojects/pray/llau/gene_panels/ACMG_20140918/acmg_genes.HGMD2014.2.txt "
-                                                                                          . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > $runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt &&\\\n"
-                                                                                            . "\\\n"
-                                                                                              . "cd $runfolder/snpEff/ && sha256sum sid_$sampleID.aid_$postprocID.var.annotated.tsv > sid_$sampleID.aid_$postprocID.var.annotated.tsv.sha256sum  && \\\n"
-                                                                                                . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx.sha256sum && \\\n"
-                                                                                                  . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt  >  sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt.sha256sum && \\\n"
-                                                                                                    . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
-                                                                                                      . "\\\n"
-                                                                                                        . "\'| jsub -j snpEff -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 02:00:00 -ng localhd:1 $depend";
+                                                                                . "cd $runfolder/snpEff/ && sha256sum sid_$sampleID.aid_$postprocID.var.annotated.tsv > sid_$sampleID.aid_$postprocID.var.annotated.tsv.sha256sum  && \\\n"
+                                                                                  . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx.sha256sum && \\\n"
+                                                                                    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt  >  sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt.sha256sum && \\\n"
+                                                                                      . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
+                                                                                        . "\\\n"
+                                                                                          . "\'| jsub -j snpEff -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 02:00:00 -ng localhd:1 $depend";
   print "\n\n************\nsnpeEff-annotation:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -1339,35 +1269,28 @@ sub snpEff_newGP {
               . "$gene_panel_text $runfolder/snpEff/$sampleID.$postprocID.splice_site.refseq.vcf $runfolder/snpEff/$sampleID.$postprocID.splice_site.ens.vcf \\\n"
                 . "> $runfolder/snpEff/$sampleID.$postprocID.snpEff.merged.vcf   && \\\n"
                   . "\\\n"
-                    . "perl $SCRIPTDIR/annotate_merged_snpEff.pl $runfolder/snpEff/$sampleID.$postprocID.snpEff.merged.vcf \\\n"
-                      . "$runfolder/$Pfolder1 /hpf/largeprojects/pray/llau/internal_databases/AF_unrelated_bams/all/allAF/snps/all.genotyper.snps.allAF.bed  \\\n"
-                        . "/hpf/largeprojects/pray/llau/internal_databases/AF_unrelated_bams/all/allAF/indels/all.genotyper.allAF.bed \\\n"
-                          . "/hpf/largeprojects/pray/llau/internal_databases/AF_unrelated_bams/all/HCAF/snps/all.genotyper.snps.hcAF.bed  \\\n"
-                            . "/hpf/largeprojects/pray/llau/internal_databases/AF_unrelated_bams/all/HCAF/indels/all.genotyper.indels.hcAF.bed \\\n"
-                              . "$postprocID $runfolder/$Pfolder3 $runfolder/$Pfolder4 \\\n"
-                                . "/hpf/largeprojects/pray/llau/internal_databases/hpo/Mar142014/ALL_SOURCES_ALL_FREQUENCIES_diseases_to_genes_to_phenotypes.txt \\\n"
-                                  . "/hpf/largeprojects/pray/llau/internal_databases/OMIM/Oct29_2014/genemap \\\n"
-                                    . "/hpf/largeprojects/pray/llau/internal_databases/OMIM/Oct29_2014/morbidmap \\\n"
-                                      . "/hpf/largeprojects/pray/llau/internal_databases/hgnc/hgnc_complete_set.txt \\\n"
-                                        . "/hpf/largeprojects/pray/llau/internal_databases/nhgri_cgd/CGD.txt $pipeID \\\n"
-                                          . "> $runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv   && \\\n"
-                                            . "\\\n"
-                                              . "perl $SCRIPTDIR/cal_rare_variant_gene.pl $runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv \\\n"
-                                                . "> $runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv && \\\n"
+                   . "perl $SCRIPTDIR/annotate_merged_snpEff.pl $runfolder/snpEff/$sampleID.$postprocID.snpEff.merged.vcf \\\n"
+                      . "$runfolder/$Pfolder1 $internalAFALLSNP $internalAFALLINDEL $internalAFHCSNP $internalAFHCINDEL  \\\n"
+                        . "$postprocID $runfolder/$Pfolder3 $runfolder/$Pfolder4 \\\n"
+                          . "$hpoFile $hgncFile $cgdFile $pipeID \\\n"
+                            . "> $runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv   && \\\n"
+                              . "\\\n"
+                                . "perl $SCRIPTDIR/cal_rare_variant_gene.pl $runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv \\\n"
+                                  . "> $runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv && \\\n"
+                                    . "\\\n"
+                                      . "perl $SCRIPTDIR/filter_exomes.v1.combined.pl \\\n"
+                                        . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv  $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed \\\n"
+                                          . "$runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp.sample_interval_summary \\\n"
+                                            . "$runfolder/calAF/merged.snp.$genePanel.AF.bed $runfolder/calAF/merged.indel.$genePanel.AF.bed $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_disease_associations_bed \\\n"
+                                              . "$runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv /hpf/largeprojects/pray/llau/gene_panels/ACMG_20140918/acmg_genes.HGMD2014.2.txt "
+                                                . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > $runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt &&\\\n"
                                                   . "\\\n"
-                                                    . "perl $SCRIPTDIR/filter_exomes.v1.combined.pl \\\n"
-                                                      . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv  $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed \\\n"
-                                                        . "$runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp.sample_interval_summary \\\n"
-                                                          . "$runfolder/calAF/merged.snp.$genePanel.AF.bed $runfolder/calAF/merged.indel.$genePanel.AF.bed $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_disease_associations_bed \\\n"
-                                                            . "$runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv /hpf/largeprojects/pray/llau/gene_panels/ACMG_20140918/acmg_genes.HGMD2014.2.txt "
-                                                              . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > $runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt &&\\\n"
-                                                                . "\\\n"
-                                                                  . "cd $runfolder/snpEff/ && sha256sum sid_$sampleID.aid_$postprocID.var.annotated.tsv > sid_$sampleID.aid_$postprocID.var.annotated.tsv.sha256sum  && \\\n"
-                                                                    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx.sha256sum && \\\n"
-                                                                      . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt  >  sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt.sha256sum && \\\n"
-                                                                        . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
-                                                                          . "\\\n"
-                                                                            . "\'| jsub -a -j snpEff -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 02:00:00 -ng localhd:1 $depend";
+                                                    . "cd $runfolder/snpEff/ && sha256sum sid_$sampleID.aid_$postprocID.var.annotated.tsv > sid_$sampleID.aid_$postprocID.var.annotated.tsv.sha256sum  && \\\n"
+                                                      . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx.sha256sum && \\\n"
+                                                        . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt  >  sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt.sha256sum && \\\n"
+                                                          . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
+                                                            . "\\\n"
+                                                              . "\'| jsub -a -j snpEff -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 02:00:00 -ng localhd:1 $depend";
   print "\n\n************\nsnpeEff-annotation:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -1493,7 +1416,7 @@ sub read_in_pipeline_config {
   #this filename will be passed from thing1 (from the database in the future)
   my ($pConfigFile) = @_;
   my $data = "";
-  my ($sd, $ann, $backup, $gatk, $bwa, $ptools, $stools, $tab, $pl, $vtools, $btools, $rscript,$reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf);
+  my ($sd, $ann, $backup, $gatk, $bwa, $ptools, $stools, $tab, $pl, $vtools, $btools, $rscript,$reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf, $annovarHDB, $ANNOVARANN, $vcfPaddingFile, $snpEff, $snpEffConfig, $internalAFALLSNP, $internalAFALLINDEL, $internalAFHCSNP, $internalAFHCINDEL, $hpoFile, $omimGeneMapFile, $omimMorbidMapFile, $hgncFile, $cgdFile, $homologyFile);
   print "pConfigFile=$pConfigFile\n";
   open (FILE, "< $pConfigFile") or die "Can't open $pConfigFile for read: $!\n";
   while ($data=<FILE>) {
@@ -1543,10 +1466,43 @@ sub read_in_pipeline_config {
       $hgmdAS = $value;
     } elsif ($name eq "hapmap_vcf") {
       $hapmap_vcf = $value;
+    } elsif ($name eq "annovarHDB") {
+      $annovarHDB = $value;
+    } elsif ($name eq "ANNOVARANN") {
+      $ANNOVARANN = $value;
+    } elsif ($name eq "vcfPaddingFile") {
+      $vcfPaddingFile = $value;
+    } elsif ($name eq "snpEff") {
+      $snpEff = $value;
+    } elsif ($name eq "snpEffConfig") {
+      $snpEffConfig = $value;
+    } elsif ($name eq "internalAFALLSNP") {
+      $internalAFALLSNP = $value;
+    } elsif ($name eq "internalAFALLINDEL") {
+      $internalAFALLINDEL = $value;
+    } elsif ($name eq "internalAFHCSNP") {
+      $internalAFHCSNP = $value;
+    } elsif ($name eq "internalAFHCINDEL") {
+      $internalAFHCINDEL = $value;
+    } elsif ($name eq "hpoFile") {
+      $hpoFile = $value;
+    } elsif ($name eq "omimGeneMapFile") {
+      $omimGeneMapFile = $value;
+    } elsif ($name eq "omimMorbidMapFile") {
+      $omimMorbidMapFile = $value;
+    } elsif ($name eq "hgncFile") {
+      $hgncFile = $value;
+    } elsif ($name eq "cgdFile") {
+      $cgdFile = $value;
+    } elsif ($name eq "homologyFile") {
+      $homologyFile = $value;
+    } elsif ($name eq "lengthFile") {
+      $homologyFile = $value;
     }
+
   }
   close(FILE);
-  return ($sd, $ann, $backup, $gatk, $bwa, $ptools, $stools, $tab, $pl, $vtools, $btools, $rscript, $reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf);
+  return ($sd, $ann, $backup, $gatk, $bwa, $ptools, $stools, $tab, $pl, $vtools, $btools, $rscript, $reference, $dbSNP, $omni_vcf, $g1k_snp_vcf, $g1k_indel_vcf, $clinvar_indel_vcf, $hgmdAML, $hgmdAS, $hapmap_vcf, $annovarHDB, $ANNOVARANN, $vcfPaddingFile, $snpEff, $snpEffConfig, $internalAFALLSNP, $internalAFALLINDEL, $internalAFHCSNP, $internalAFHCINDEL, $hpoFile, $omimGeneMapFile, $omimMorbidMapFile, $hgncFile, $cgdFile, $homologyFile, $lengthFile);
 }
 
 sub read_in_genepanel_config {
@@ -1556,6 +1512,7 @@ sub read_in_genepanel_config {
   my $data = "";
   my ($pipeIDtmp, $gene_panel_text_tmp, $panelExon10bpPadFulltmp, $panelExon10bpPadBedFiletmp, $panelBedFiletmp, $panelBedFileFulltmp, $captureKitFiletmp );
   open (FILE, "< $gpConfigFile") or die "Can't open $gpConfigFile for read: $!\n";
+  print "gpConfigFile=$gpConfigFile\n";
   while ($data=<FILE>) {
     chomp $data;
     my @splitTab = split(/\t/,$data);
@@ -1573,7 +1530,7 @@ sub read_in_genepanel_config {
     my $diseaseAssociationFile= $splitTab[10];
     my $diseaseAssociationAnnovarFile = $splitTab[11];
 
-    if ($genePanel eq $genePUsed) {
+    if ($genePanelID eq $genePUsed) {
       $pipeIDtmp = $pipeID;
       $gene_panel_text_tmp = $isoformFile;
       $panelExon10bpPadFulltmp = $genePanelFile .".bed";
@@ -1582,10 +1539,12 @@ sub read_in_genepanel_config {
       $panelBedFileFulltmp = $diseaseAssociationFile;
       $captureKitFiletmp = $captureKitFile . ".bed";
       #print "captureKitFiletmp=$captureKitFiletmp\n";
-    } else {
-      die "$genePUsed Doesn't exist\n";
     }
   }
   close(FILE);
-  return ($pipeIDtmp, $gene_panel_text_tmp, $panelExon10bpPadFulltmp, $panelExon10bpPadBedFiletmp, $panelBedFiletmp, $panelBedFileFulltmp, $captureKitFiletmp);
+  if ($pipeIDtmp eq "") {
+    die "$genePUsed Doesn't exist\n";
+  } else {
+    return ($pipeIDtmp, $gene_panel_text_tmp, $panelExon10bpPadFulltmp, $panelExon10bpPadBedFiletmp, $panelBedFiletmp, $panelBedFileFulltmp, $captureKitFiletmp);
+  }
 }

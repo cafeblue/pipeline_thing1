@@ -1,4 +1,7 @@
 #!/usr/bin/perl -w
+
+###Goes through snpEff results both ensembl and refseq. Merges all the same refseq/ensembl ID transcript for the same variant - with refseq having priority.
+
 use strict;
 
 my $snpEffFile = $ARGV[0];

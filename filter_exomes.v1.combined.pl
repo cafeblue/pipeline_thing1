@@ -36,8 +36,6 @@ my $annotatedFile = $ARGV[0];   #all annotated variant file
 
 my $genePanelVarFile = $ARGV[1]; #variants only on the gene panel -> this is by location let's keep this
 
-#my $diseaseAsFile = $ARGV[2]; #disease variants file /hpf/tcagstor/llau/programs/annovar/annovar/humandb/cardio_disease_associations.bed
-
 my $exonCoverageFile = $ARGV[2]; #genepanel coverage
 
 my $genePanelSnpFreq = $ARGV[3];
@@ -78,20 +76,16 @@ my %variant = (); #key is transcript ID, #number of rare_coding variants
 
 
 open (FILE, "< $acmgGeneFile") or die "Can't open $acmgGeneFile for read: $!\n";
-#print STDERR "snpEffAnnotatedFile=$snpEffAnnotatedFile\n";
 while ($data=<FILE>) {
   chomp $data;
   my @splitTab = split(/\t/,$data);
   my $gSym = uc($splitTab[0]);
-  #print STDERR "gSym=$gSym\n";
   my $refseqID = $splitTab[1];
-  #print STDERR "refseqID=$refseqID\n";
   $acmgGene{$gSym} = $refseqID;
 }
 close(FILE);
 
 open (FILE, "< $numRareCodingVarFile") or die "Can't open $numRareCodingVarFile for read: $!\n";
-#print STDERR "snpEffAnnotatedFile=$snpEffAnnotatedFile\n";
 while ($data=<FILE>) {
   chomp $data;
   my @splitTab = split(/\t/,$data);
@@ -115,7 +109,6 @@ my $espMAFEA = "ESP EA Allele Frequency";
 my $thousG = "1000G All Allele Frequency";
 my $thousGAFR = "1000G AFR Allele Frequency";
 my $thousGAMR = "1000G AMR Allele Frequency";
-#my $thousGASN = "1000G ASN Allele Frequency";
 my $thousGEASN = "1000G EAS Allele Frequency";
 my $thousGSASN = "1000G SAS Allele Frequency";
 my $thousGEUR = "1000G EUR Allele Frequency";
@@ -149,7 +142,6 @@ my $altDepth = "Allelic Depths for Alternative Alleles";
 my $refDepth = "Allelic Depths for Reference";
 my $qd = "Quality By Depth";
 my $sb = "Fisher's Exact Strand Bias Test";
-#my $dp = "Filtered Depth";
 my $mq = "RMS Mapping Quality";
 my $hapScore = "Haplotype Score";
 my $mqRankSum = "Mapping Quality Rank Sum Test";
@@ -164,38 +156,26 @@ my $hgmdVarIndelWindow = "HGMD INDELs within 20bp window";
 my $gName = "Gene Symbol";
 my $transcriptID = "Transcript ID";
 my $zyg = "Genotype";           #sample name beforehand
-#my $type = " Type of Mutation"; #sample name beforehand
-#my $depth = " Filtered Depth";  #sample name beforehand
-#my $effect = "Effect"; #already got
 my $annovarExonInfo = "Annovar Refseq Exonic Variant Info"; # needs to be pared to give Exon, cds and protein changing
 my $annovarIntronInfo = "Annovar Refseq Gene or Nearest Gene"; # needs to be pared to give Exon, cds and protein changing
 my $chr = "Chrom";
 my $position = "Position";
-#my $clinVarSig = "ClinVar SIG";
 my $clinVarDbn = "ClinVar CLNDBN";
 my $clinVarClnacc = "ClinVar CLNACC";
-#my $hgmdSNVs = "HGMD SNVs";
-#my $hgmdMicro = "HGMD microlesions";
 my $polyphen = "PolyPhen Prediction";
 my $sift = "Sift Prediction";
 my $mutTaster = "Mutation Taster Prediction";
 my $dbsnp = "dbsnp 138";
 my $cgAF = "CG46 Allele Frequency";
-#my $espAF = "";
-#my $thouGAF = "";
 my $internalAFSNPs = "Internal SNPs Allele All AF";
 my $internalAFIndels = "Internal INDELs Allele All AF";
 
 my $segdup = "SegDup";
 my $homolog = "Region of Homology";
-#my $pipelineVer = ""; # need to get from the database will add later on
-#my $diseaseAs = "Gene Disease Association"; # in between HGMD microlesions and Region of Homology
 my $vcfFilter = " Gatk Filters";
 my $postprocID = "PostProcessID";
 
 ###ADDED COLUMNS
-#my $internalGPSNPs = "Internal SNPs Allele All AF"; #this is already there
-#my $internalGPIndels = "Internal INDELs Allele All AF"; # this is already there
 my $curatedInh = "Disease Gene Association"; #use to be parsed out separately
 my $CGDInh = "CGD Inheritance";
 
@@ -213,9 +193,6 @@ my $annovarEnsNonCoding = "Annovar Ensembl Gene or Nearest Gene";
 
 my $rareFreq = 0.05;            #rare frequency we want to filter on
 my $rareFreqInternal = 0.1;     #rare frequency we want to filter on
-#my $dpThreshold = 20;
-#my $qdSnpThreshold = 5.0;
-#my $qdIndelThreshold = 10.0;
 my $qdThreshold = 2.0;
 my $snpFS = 60.0;
 my $snpMQ = 40.0;
@@ -225,10 +202,7 @@ my $snpMQRankSum = -12.5;
 my $snpReadPosRankSum = -8.0;
 my $indelFS = 200.0;
 my $indelReadPosRankSum = -20.0;
-#my $sbThreshold = 60.0; # -0.01;
-#my $gatkFilterThreshold = "PASS";
 
-#my $data = "";
 my @header = ();
 my %colNum = ();
 
@@ -247,8 +221,6 @@ while ($data=<FILE>) {
 
   $location=~s/:/\t/gi;
   $location=~s/-/\t/gi;
-  #print STDERR "location=$location\n";
-  #print STDERR "basesAbove10X=$basesAbove10X\n";
   $coverage{$location} = $basesAbove10X;
 
 }
@@ -348,30 +320,14 @@ while ($data=<FILE>) {
     $groupHeaderCount[4] = 7;
     $groupHeaderCount[5] = 5;
 
-    #my $row = 4;
     my $colStart = 3;
-    # foreach my $gColNames (keys %groupHeader) {
-    #   my $gpTitleFormat = $workbook->add_format();
-    #   $gpTitleFormat->set_align('center');
-    #   $gpTitleFormat->set_bold();
-    #   $gpTitleFormat->set_valign('vcenter');
-    #   $gpTitleFormat->set_bg_color("$groupHeaderColour{$gColNames}");
-    #   my $colEnd = $colStart + $groupHeader{$gColNames};
-    #   print STDERR "colStart=$colStart\n";
-    #   print STDERR "colEnd=$colEnd\n";
-    #   $worksheet->merge_range($rowNum,$colStart,$rowNum,$colEnd,$gColNames,$gpTitleFormat);
-    #   $colStart = $colStart + $groupHeader{$gColNames};
-    # }
     for (my $t = 0; $t < scalar(@groupHeader); $t++) {
-      #print STDERR "groupHeader[$t]=$groupHeader[$t]\n";
       my $gpTitleFormat = $workbook->add_format();
       $gpTitleFormat->set_align('center');
       $gpTitleFormat->set_bold();
       $gpTitleFormat->set_valign('vcenter');
       $gpTitleFormat->set_bg_color("$groupHeaderColour[$t]");
       my $colEnd = $colStart + $groupHeaderCount[$t] - 1;
-      #print STDERR "colStart=$colStart\n";
-      #print STDERR "colEnd=$colEnd\n";
       $worksheet->merge_range($rowNum,$colStart,$rowNum,$colEnd,"$groupHeader[$t]",$gpTitleFormat);
       $colStart = $colStart + $groupHeaderCount[$t];
     }
@@ -425,7 +381,6 @@ while ($data=<FILE>) {
     $colHeader[44] = "ExAC NFE AlleleFrequency";
     $colHeader[45] = "ExAC OTH AlleleFrequency";
     $colHeader[46] = "ExAC SAS AlleleFrequency";
-
     $colHeader[47] = "Sift Prediction";
     $colHeader[48] = "PolyPhen Prediction";
     $colHeader[49] = "Mutation Assessor Prediction";
@@ -477,19 +432,14 @@ while ($data=<FILE>) {
           $colNum{$header[$i]} = $i;
         } elsif ($header[$i]=~/$altDepth/) {
           $colNum{$header[$i]} = $i;
-          #print STDERR "1. altDepth found\n";
         }
       } elsif ($header[$i]=~/$refDepth/) {
         $colNum{$header[$i]} = $i;
-        #print STDERR "2. refDepth found\n";
       } elsif ($header[$i]=~/$qd/) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i]=~/$sb/) {
         $colNum{$header[$i]} = $i;
-      }                         # elsif ($header[$i]=~/$dp/) {
-      #   $colNum{$header[$i]} = $i;
-      # }
-      elsif ($header[$i] eq $variantType) {
+      } elsif ($header[$i] eq $variantType) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i]=~/$mq/) {
         $colNum{$header[$i]} = $i;
@@ -526,21 +476,15 @@ while ($data=<FILE>) {
       } elsif ($header[$i] eq $zyg) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $annovarExonInfo) {
-        #print STDERR "annovar RefSeq Exon\n";
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $postprocID) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $annovarIntronInfo) {
-        #print STDERR "annovar RefSeq Intron\n";
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $chr) {
         $colNum{$header[$i]} = $i;
-        #print STDERR "CHR header[$i]=$header[$i]\n";
-        #print STDERR "CHR i=$i\n";
       } elsif ($header[$i] eq $position) {
         $colNum{$header[$i]} = $i;
-        #print STDERR "POS header[$i]=$header[$i]\n";
-        #print STDERR "POS i=$i\n";
       } elsif ($header[$i] eq $clinVarDbn) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $clinVarClnacc) {
@@ -560,14 +504,10 @@ while ($data=<FILE>) {
       } elsif ($header[$i] eq $internalAFIndels) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $segdup) {
-        #print STDERR "segdup=$segdup=$i\n";
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $homolog) {
         $colNum{$header[$i]} = $i;
-      }                         #  elsif ($header[$i] eq $diseaseAs) {
-      #   $colNum{$header[$i]} = $i;
-      # }
-      elsif ($header[$i] eq $clinVarIndelWindow) {
+      } elsif ($header[$i] eq $clinVarIndelWindow) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $hgmdVarIndelWindow) {
         $colNum{$header[$i]} = $i;
@@ -590,10 +530,8 @@ while ($data=<FILE>) {
       } elsif ($header[$i] eq $perCDSaffected) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $annovarEnsExon) {
-        #print STDERR "annovar Ensembl Exon\n";
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $annovarEnsNonCoding) {
-        #print STDERR "annovar Ensembl Intron\n";
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $snpEffAnnotation) {
         $colNum{$header[$i]} = $i;
@@ -615,13 +553,11 @@ while ($data=<FILE>) {
         $colNum{$header[$i]} = $i;
       }
     }
-  } elsif ($data=~/##/) {   #print out the version
-    #print STDERR "filtered out data=$data\n";
+  } elsif ($data=~/##/) {       #print out the version
     print $data ."\n";
     $worksheet->write($rowNum, 0, "$data"); #print out to excel
     $rowNum++;                              #print out to excel
   } else {                                  #filter
-    #print STDERR "data=$data\n";
     my $espAFFilter = 1;
     my $thouAFFilter = 1;
     my $exacAFFilter = 1;
@@ -645,17 +581,14 @@ while ($data=<FILE>) {
     my $hgmdClinVar = 0;
     my $snpEffLoc = "";
     my $qualFilter = 1;
-    #my $vtType = "";
+    my $useVar = 0;
     my @splitTab = split(/\t/,$data);
     my $annChr = $splitTab[0];
     my $annPos = $splitTab[1];
     my $vtType = $splitTab[$colNum{$variantType}];
     foreach my $cHeader (keys %colNum) {
-      #print STDERR "cHeader=$cHeader\n";
       my $colRow = $colNum{$cHeader};
-      #print STDERR "colRow=$colRow\n";
       my $colInfo = $splitTab[$colRow];
-      #print STDERR "colInfo=$colInfo\n";
       if ($cHeader eq $effect) { # check to see if variant is non coding (but include splicing)
         #print STDERR "1. EFFECT colInfo=$colInfo\n";
         $snpEffLoc = $colInfo;
@@ -1273,40 +1206,30 @@ while ($data=<FILE>) {
       }
     }
 
-    # my $tidName = $splitTab[$colNum{'Gene Symbol'}];
     my $tidName = $splitTab[$colNum{'Transcript ID'}];
 
-    #print STDERR "1. filter=$filter\n";
-    #print STDERR "2. hgmdClinVar=$hgmdClinVar\n";
-    #if ($filter == 1 ) {
-
-    my $useVar = 0;
-
     if (($qualFilter == 1) && ($locationFilter == 1) && ($espAFFilter == 1) && ($thouAFFilter == 1)) {
-      #print STDERR "key = $annChr:$annPos:$vtType\n";
+      print STDERR "1. key = $annChr:$annPos:$vtType\n";
       if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) {
-        #print STDERR "1. passed filters $data\n";
-        #push @datatoprint, $data;
-        # print STDERR $splitTab[0];
-
+        print STDERR "1. passed location filters $data\n";
         $useVar = 1;
       }
     }
-    if ($hgmdClinVar == 1) {
-      #print STDERR "key = $annChr:$annPos:$vtType\n";
-      if (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"} && ($snpEffLoc=~/UTR/)) { #if it's in the UTR with a clinVar
+    if ($hgmdClinVar == 1) { # if the variant has a hgmd or clinvar designation
+      print STDERR "2. In ClinVar\n";
+      print STDERR "2. key = $annChr:$annPos:$vtType\n";
+      if (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"} && ($snpEffLoc=~/UTR/)) { #if it's in the UTR in the gene panel (inside the transcript start and stop location)
         $useVar = 1;
+        print STDERR "2. UTR\n";
       }
-      if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) { #if it's in the genePanel with a clinVar
-        #print STDERR "1. passed filters $data\n";
-        #push @datatoprint, $data;
-        # print STDERR $splitTab[0];
-
+      if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) { #if it's in the genePanel
+        print STDERR "2. genepanel\n";
         $useVar = 1;
       }
     }
 
     if ($useVar == 1) {
+      print STDERR "useVar=$useVar\n";
       push @datatoprint, $data; #add variant into the rare filtered pile
 
       #count the variant as a rare variant for the transcript
@@ -1361,7 +1284,7 @@ sub printformat {
     my $colR = $colNum{$colHeader};
     my $colI = $splitTab[$colR];
     if ($colHeader eq $gName) { #geneName
-      print STDERR "gName = $colI\n";
+      #print STDERR "gName = $colI\n";
       #$counter = 0;
       $outputArray[0] = $colI;
       #print STDERR "ACMG gName=$colI\n";
@@ -1528,14 +1451,18 @@ sub printformat {
         }
 
         #if it's a low Exon
-        if ($cvgPer < $lowPerExon) {
-          #$outputArray[44] =  "Y";
-          #$outputArray[45] =  "Y";
-          $outputArray[53] =  "Y";
-        } elsif ($cvgPer > $lowPerExon) {
-          #$outputArray[44] =  "N";
-          #$outputArray[45] =  "N";
-          $outputArray[53] =  "N";
+        if ($cvgPer ne "") {
+          if ($cvgPer < $lowPerExon) {
+            #$outputArray[44] =  "Y";
+            #$outputArray[45] =  "Y";
+            $outputArray[53] =  "Y";
+          } elsif ($cvgPer > $lowPerExon) {
+            #$outputArray[44] =  "N";
+            #$outputArray[45] =  "N";
+            $outputArray[53] =  "N";
+          }
+        } else {
+          $outputArray[53] =  "NA";
         }
 
         #gets the GP allele frequency for snps and indel
