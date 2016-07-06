@@ -7,6 +7,8 @@ use strict;
 
 my $snpEffAnnotatedFile = $ARGV[0];
 
+my @snpEffLoc = ("coding_sequence_variant", "chromosome", "inframe_insertion", "disruptive_inframe_insertion", "inframe_deletion", "disruptive_inframe_deletion", "exon_variant", "exon_loss_variant", "frameshift_variant", "gene_variant", "miRNA", "missense_variant", "initiator_codon_variant", "stop_retained_variant", "rare_amino_acid_variant", "splice_acceptor_variant", "splice_donor_variant", "splice_region_variant", "stop_loss", "start_lost", "stop_gained", "synonymous_variant", "start_retained", "stop_retained_variant", "transcript_variant");
+
 my $rareAF = 0.05;
 my %variant = (); #key is transcript ID, #number of rare_coding variants
 #my $header = ();
@@ -17,11 +19,11 @@ my $geneTxColNum = "";
 my $effectTypeColNum = "";
 
 open (FILE, "< $snpEffAnnotatedFile") or die "Can't open $snpEffAnnotatedFile for read: $!\n";
-print STDERR "snpEffAnnotatedFile=$snpEffAnnotatedFile\n";
+#print STDERR "snpEffAnnotatedFile=$snpEffAnnotatedFile\n";
 while ($data=<FILE>) {
   chomp $data;
   if ($data=~/##/) {        # if it starts with a # that it is a title
-    print STDERR "title=" .$data . "\n";
+    #print STDERR "title=" .$data . "\n";
     if ($data=~/##Chrom/) {
       #print STDERR "header=$data\n";
       my @splitH = split(/\t/,$data);
@@ -53,12 +55,16 @@ while ($data=<FILE>) {
     my $freqESP = $splitTab[$freqESPColNum];
     my $freqthouG = $splitTab[$freqthouGColNum];
 
-    if ($freqESP=~/\;/) {
-      my @splitSemi = split(/\;/,$freqESP);
+    if ($freqESP=~/\|/) {
+      my @splitSemi = split(/\|/,$freqESP);
       my $lowerAF = "";
       foreach my $af (@splitSemi) {
         if ($lowerAF eq "") {
           $lowerAF = $af;
+        } elsif ($af eq ".") {
+          #do nothing
+          #$lowerAF = 0;
+          $lowerAF = 0;
         } elsif ($af < $lowerAF) {
           $lowerAF = $af;
         }
@@ -66,12 +72,14 @@ while ($data=<FILE>) {
       $freqESP = $lowerAF;
     }
 
-    if ($freqthouG=~/\;/) {
-      my @splitSemi = split(/\;/,$freqESP);
+    if ($freqthouG=~/\|/) {
+      my @splitSemi = split(/\|/,$freqESP);
       my $lowerAF = "";
       foreach my $af (@splitSemi) {
         if ($lowerAF eq "") {
           $lowerAF = $af;
+        } elsif ($af eq ".") {
+          $lowerAF = 0;
         } elsif ($af < $lowerAF) {
           $lowerAF = $af;
         }
@@ -81,11 +89,13 @@ while ($data=<FILE>) {
 
 
     if ((!defined $freqthouG) || (!defined $freqESP) || ($freqthouG eq "") || ($freqESP eq "") || ($freqESP <= $rareAF) || ($freqthouG <= $rareAF)) {
-      if ($effect eq "coding_sequence_variant" || $effect eq "chromosome" || $effect eq "inframe_insertion" || $effect eq "disruptive_inframe_insertion" || $effect eq "inframe_deletion" || $effect eq "disruptive_inframe_deletion" || $effect eq "exon_variant" || $effect eq "exon_loss_variant" || $effect eq "frameshift_variant" || $effect eq "gene_variant" || $effect eq "missense_variant" || $effect eq "initiator_codon_variant" || $effect eq "stop_retained_variant" || $effect eq "rare_amino_acid_variant" || $effect eq "splice_acceptor_variant" || $effect eq "splice_donor_variant" || $effect eq "splice_region_variant" || $effect eq "stop_loss" || $effect eq "start_lost" || $effect eq "stop_gained" || $effect eq "synonymous_variant" || $effect eq "start_retained" || $effect eq "stop_retained_variant" || $effect eq "transcript_variant") {
-        if (defined $variant{$txID}) {
-          $variant{$txID} = $variant{$txID} + 1;
-        } else {
-          $variant{$txID} = 1;
+      foreach my $varLoc (@snpEffLoc) {
+        if ($effect=~/$varLoc/) {
+          if (defined $variant{$txID}) {
+            $variant{$txID} = $variant{$txID} + 1;
+          } else {
+            $variant{$txID} = 1;
+          }
         }
       }
     }

@@ -592,485 +592,48 @@ while ($data=<FILE>) {
       if ($cHeader eq $effect) { # check to see if variant is non coding (but include splicing)
         #print STDERR "1. EFFECT colInfo=$colInfo\n";
         $snpEffLoc = $colInfo;
-        if (($colInfo=~/intergenic/) || ($colInfo=~/intragenic/) || ($colInfo=~/upstream/) || ($colInfo=~/downstream/)) {
+        if (($colInfo=~/intergenic/) || ($colInfo=~/intragenic/) || ($colInfo=~/upstream/) || ($colInfo=~/downstream/)) { 
           #print STDERR "2. filter=$filter\n";
           #$filter = 0;
           $locationFilter = 0;
         }
       } elsif ($cHeader eq $espMAF) {
-        #print STDERR "3. ESP colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "ESP defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $espAFFilter = 0;
-              } else {
-                $espAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "esp no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "esp filtered out\n";
-              #$filter = 0;
-              $espAFFilter = 0;
-            }
-          }
-        }
+        $espAFFilter = allelFreqComp($colInfo);
       } elsif ($cHeader eq $thousG) {
-        #print STDERR "4. 1000G colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          if ($colInfo=~/\;/) {
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) {
-                #$filter = 0;
-                $thouAFFilter = 0;
-                #print STDERR "failed"
-              } else {
-                #$filter = 1;
-                $thouAFFilter = 1;
-                last;
-              }
-            }
-          } else {
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "1000G filtered out\n";
-              #$filter = 0;
-              $thouAFFilter = 0;
-            }
-          }
-        }
+        $thouAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacALL) {
-        #print STDERR "5. exacALL colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacALL defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacAFFilter = 0;
-              } else {
-                $exacAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "exac no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "exac filtered out\n";
-              #$filter = 0;
-              $exacAFFilter = 0;
-            }
-          }
-        }
+        $exacAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $espMAFAA) {
-        #print STDERR "5. espMAFAA colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "espMAFAA defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $espMAFAAAFFilter = 0;
-              } else {
-                $espMAFAAAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $espMAFAAAFFilter = 0;
-            }
-          }
-        }
+        $espMAFAAAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $espMAFEA) {
-        #print STDERR "5. espMAFEA colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "espMAFEA defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $espMAFEAAFFilter = 0;
-              } else {
-                $espMAFEAAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $espMAFEAAFFilter = 0;
-            }
-          }
-        }
+        $espMAFEAAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGAFR) {
-        #print STDERR "5. thousGAFR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGAFR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGAFRAFFilter = 0;
-              } else {
-                $thousGAFRAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGAFRAFFilter = 0;
-            }
-          }
-        }
+        $thousGAFRAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGAMR) {
-        #print STDERR "5. thousGAMR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGAMR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGAMRAFFilter = 0;
-              } else {
-                $thousGAMRAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGAMRAFFilter = 0;
-            }
-          }
-        }
+        $thousGAMRAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGEASN) {
-        #print STDERR "5. thousGEASN colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGEASN defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGEASNAFFilter = 0;
-              } else {
-                $thousGEASNAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGEASNAFFilter = 0;
-            }
-          }
-        }
+        $thousGEASNAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGSASN) {
-        #print STDERR "5. thousGSASN colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGSASN defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGSASNAFFilter = 0;
-              } else {
-                $thousGSASNAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGSASNAFFilter = 0;
-            }
-          }
-        }
+        $thousGSASNAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGEUR) {
-        #print STDERR "5. thousGEUR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGEUR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGEURAFFilter = 0;
-              } else {
-                $thousGEURAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGEURAFFilter = 0;
-            }
-          }
-        }
+        $thousGEURAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacAFR) {
-        #print STDERR "5. exacAFR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacAFR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacAFRAFFilter = 0;
-              } else {
-                $exacAFRAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacAFRAFFilter = 0;
-            }
-          }
-        }
+        $exacAFRAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacAMR) {
-        #print STDERR "5. exacAMR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacAMR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacAMRAFFilter = 0;
-              } else {
-                $exacAMRAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacAMRAFFilter = 0;
-            }
-          }
-        }
       } elsif ($cHeader eq $exacEAS) {
-        #print STDERR "5. exacEAS colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacEAS defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacEASAFFilter = 0;
-              } else {
-                $exacEASAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacEASAFFilter = 0;
-            }
-          }
-        }
+        $exacEASAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacFIN) {
-        #print STDERR "5. exacFIN colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacFIN defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacFINAFFilter = 0;
-              } else {
-                $exacFINAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacFINAFFilter = 0;
-            }
-          }
-        }
+        $exacFINAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacNFE) {
-        #print STDERR "5. exacNFE colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacNFE defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacNFEAFFilter = 0;
-              } else {
-                $exacNFEAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacNFEAFFilter = 0;
-            }
-          }
-        }
+        $exacNFEAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacOTH) {
-        #print STDERR "5. exacOTH colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacOTH defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacOTHAFFilter = 0;
-              } else {
-                $exacOTHAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacOTHAFFilter = 0;
-            }
-          }
-        }
+        $exacOTHAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacSAS) {
-        #print STDERR "5. exacSAS colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacSAS defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacSASAFFilter = 0;
-              } else {
-                $exacSASAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacSASAFFilter = 0;
-            }
-          }
-        }
+        $exacSASAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $internalAFSNPs) {
-        #print STDERR "5. internalAFSNPs colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "internalAFSNPs defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreqInternal) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $internalAFSNPsAFFilter = 0;
-              } else {
-                $internalAFSNPsAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreqInternal) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $internalAFSNPsAFFilter = 0;
-            }
-          }
-        }
+        $internalAFSNPsAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $internalAFIndels) {
-        #print STDERR "5. internalAFIndels colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "internalAFIndels defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreqInternal) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $internalAFIndelsAFFilter = 0;
-              } else {
-                $internalAFIndelsAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreqInternal) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $internalAFIndelsAFFilter = 0;
-            }
-          }
-        }
+        $internalAFIndelsAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $qd) {
         #print STDERR "QD colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -2064,3 +1627,32 @@ sub findRightTx {
 $workbook->close();
 
 #print STDERR "END filter_exomes.v1.beforeExcel.pl\n";
+
+sub alleleFreqComp {
+  my ($alleleFreq) = @_;
+  my $filter = 1;
+  if ((defined $alleleFreq) && ($alleleFreq ne "")) {
+    if ($alleleFreq=~/\|/) {    #if
+      my @splitL = split(/\|/,$alleleFreq);
+      foreach my $sFreq (@splitL) {
+        if ($sFreq eq ".") {
+          $filter = 1;
+          last;
+        } elsif ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+          $filter = 0;
+        } else {
+          $filter = 1;
+          last;
+        }
+      }
+    } else {
+      if ($alleleFreq eq ".") {
+        $filter = 1;
+      } elsif ($alleleFreq >= $rareFreq) {
+        $filter = 0;
+      }
+    }
+  }
+
+  return $filter;
+}

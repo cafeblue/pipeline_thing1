@@ -108,7 +108,7 @@ while ($data=<FILE>) {
   my $location = $splitTab[6];
   my $locationSortable = $splitTab[7];
   my $synonyms = uc($splitTab[8]);
-  my $nameSynonyms = $splitTab[9];  
+  my $nameSynonyms = $splitTab[9];
   my $prevSymbols = uc($splitTab[10]);
   my $prevNames = $splitTab[11];
   my $geneFamilyTag = $splitTab[13];
@@ -130,7 +130,7 @@ while ($data=<FILE>) {
   my $ratDB = $splitTab[38];
   my $cosmicID = $splitTab[39];
   my $omimID = $splitTab[31];
-  
+
   my $enzymeID = $splitTab[46];
 
 
@@ -653,7 +653,7 @@ foreach my $suffix (@annovarFileSuffix) {
       if (defined $annovarInfo{"$chr:$startpos:$type"}[28]) {
         #print STDERR "ERROR score data=$data already defined\n";
         my @tmpExac = split(/\t/, $annovarInfo{"$chr:$startpos:$type"}[28]);
-        $annovarInfo{"$chr:$startpos:$type"}[28] = $exacALL . ";" . $tmpExac[0] . "\t" . $exacAFR . ";" . $tmpExac[1] . "\t" . $exacAMR . ";" . $tmpExac[2] . "\t" . $exacEAS . ";" . $tmpExac[3] . "\t" . $exacFIN .";" . $tmpExac[4] . "\t" . $exacNFE . ";" . $tmpExac[5] . "\t" . $exacOTH .";" . $tmpExac[6] . "\t" . $exacSAS .";" . $tmpExac[7];
+        $annovarInfo{"$chr:$startpos:$type"}[28] = $exacALL . "|" . $tmpExac[0] . "\t" . $exacAFR . "|" . $tmpExac[1] . "\t" . $exacAMR . "|" . $tmpExac[2] . "\t" . $exacEAS . "|" . $tmpExac[3] . "\t" . $exacFIN ."|" . $tmpExac[4] . "\t" . $exacNFE . "|" . $tmpExac[5] . "\t" . $exacOTH ."|" . $tmpExac[6] . "\t" . $exacSAS ."|" . $tmpExac[7];
       } else {
         $annovarInfo{"$chr:$startpos:$type"}[28] = $exacALL . "\t" . $exacAFR . "\t" . $exacAMR . "\t" . $exacEAS . "\t" . $exacFIN . "\t" . $exacNFE . "\t" . $exacOTH . "\t" . $exacSAS;
       }
@@ -780,7 +780,7 @@ foreach my $suffix (@annovarFileSuffix) {
       }
       if (defined $annovarInfo{"$chr:$startpos:$type"}[14]) {
         #print STDERR "ERROR score data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[14] = $annovarInfo{"$chr:$startpos:$type"}[14] . ";" . $allWellderly;
+        $annovarInfo{"$chr:$startpos:$type"}[14] = $annovarInfo{"$chr:$startpos:$type"}[14] . "|" . $allWellderly;
       } else {
         $annovarInfo{"$chr:$startpos:$type"}[14] = $allWellderly;
 
