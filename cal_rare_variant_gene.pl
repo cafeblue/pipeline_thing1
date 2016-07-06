@@ -23,21 +23,21 @@ while ($data=<FILE>) {
   if ($data=~/##/) {        # if it starts with a # that it is a title
     print STDERR "title=" .$data . "\n";
     if ($data=~/##Chrom/) {
-      print STDERR "header=$data\n";
+      #print STDERR "header=$data\n";
       my @splitH = split(/\t/,$data);
       for (my $i = 0; $i < scalar(@splitH); $i++) {
         if ($splitH[$i] eq "ESP All Allele Frequency") {
           $freqESPColNum = $i;
-          print STDERR "freqESPColNum=$freqESPColNum\n";
+          #print STDERR "freqESPColNum=$freqESPColNum\n";
         } elsif ($splitH[$i] eq "1000G All Allele Frequency") {
           $freqthouGColNum = $i;
-          print STDERR "freqthouGColNum=$freqthouGColNum\n";
+          #print STDERR "freqthouGColNum=$freqthouGColNum\n";
         } elsif ($splitH[$i] eq "Transcript ID") {
           $geneTxColNum = $i;
-          print STDERR "geneTxColNum=$geneTxColNum\n";
+          #print STDERR "geneTxColNum=$geneTxColNum\n";
         } elsif ($splitH[$i] eq "Effect") {
           $effectTypeColNum = $i;
-          print STDERR "effectTypeColNum=$effectTypeColNum\n";
+          #print STDERR "effectTypeColNum=$effectTypeColNum\n";
         }
       }
     }
@@ -49,7 +49,7 @@ while ($data=<FILE>) {
 
     my $effect = $splitTab[$effectTypeColNum];
     my $txID = $splitTab[$geneTxColNum];
-    print STDERR "txID=$txID\n";
+    #print STDERR "txID=$txID\n";
     my $freqESP = $splitTab[$freqESPColNum];
     my $freqthouG = $splitTab[$freqthouGColNum];
 

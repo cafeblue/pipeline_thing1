@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 #Author: Lynette Lau
-#Date: Dec 19,2013 -> Update Aug22,2014 -> Feb 17, 2015
+#Date: Dec 19,2013 -> Update Aug22,2014 -> Feb 17, 2015 -> July 6, 2016
 #reads in the final annotated file and filters the data on allelefrequency <= rareFreq, coding, on gene panel, with hgmd annotation
 #read in all the files from all the comparisons and put them all on the same line
 
@@ -1511,6 +1511,7 @@ sub printformat {
       }
       #print STDERR "1. hgmdSsig=$outputArray[17]\n";
     } elsif ($colHeader eq $hgmdSdescrip) { #HGMD DISEASE
+      $colI=~s/\"//gi;
       #$counter = 20; #concatenate with hgmd SNVs
       if ((defined $outputArray[18]) && ($outputArray[18] ne "")) {
         if ($colI ne "") {
@@ -1536,6 +1537,8 @@ sub printformat {
       #print STDERR "3. hgmdIsig=$outputArray[17]\n";
     } elsif ($colHeader eq $hgmdIdescrip) { #concatenate the snps and indel disease descrip
       #$counter = 24;
+
+
       if ((defined $outputArray[18]) && ($outputArray[18] ne "")) {
         if ($colI ne "") {
           $outputArray[18]= $outputArray[18] . "|" . $colI;
@@ -1734,15 +1737,24 @@ sub printformat {
 
     } elsif ($colHeader eq $segdup) { #Seg Dup
       #print STDERR "in colHeader= $colHeader, segdup=$segdup, colI=$colI|\n";
-      if ((defined $colI) && ($colI ne "")) {
-        #$outputArray[42] = "Y"; #segdup
-        #$outputArray[43] = "Y"; #segdup
-        $outputArray[51] = "Y"; #segdup
+
+      if ((!defined $colI) || ($colI eq "")) {
+        $outputArray[51] = "NA";
       } else {
-        #$outputArray[42] = "N"; #seqdup
-        #$outputArray[43] = "N"; #seqdup
-        $outputArray[51] = "N"; #seqdup
+        my @splitSD = split(/\|/,$colI);
+        my $sgTmp = "N";
+        foreach my $sg (@splitSD) {
+          if ($sg eq ".") {
+            if ($sgTmp eq "N") {
+              $sgTmp = "NA";
+            }
+          } elsif ($sg > 0) {
+            $sgTmp = "Y";
+          }
+        }
+        $outputArray[51] = "$sgTmp";
       }
+
     } elsif ($colHeader eq $homolog) { #Homology
       if (defined $colI && $colI eq "Y") {
         #$outputArray[43] = "Y"; #fixed no.
