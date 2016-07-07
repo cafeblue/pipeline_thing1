@@ -208,7 +208,7 @@ sub update_table {
           while (@dataPP = $sthPP->fetchrow_array()) {
             my $ppID = $dataPP[0];
             #insert lock log comment
-            my $insertLock = "INSERT INTO lock_log (postprocID, updated_by, updated_at, updated_to, lock_reason) VALUES ('" . $ppID . "','Pipeline','" . $currentTime . "','locked', '".$errString."');";
+            my $insertLock = "INSERT INTO lock_log (postprocID, updated_by, updated_at, updated_to, lock_reason) VALUES ('" . $ppID . "','Pipeline','" . $currentTime . "','locked', 'Locked by: Pipeline," . $currentTime . ":" . $errString."');";
             print STDERR "insertLock=$insertLock\n";
             my $sthIL = $dbh->prepare($insertLock) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
             $sthIL->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
@@ -464,8 +464,8 @@ sub email_qc {
   my $mail   = {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
-                to                   => 'lynette.lau@sickkids.ca,',
-                #to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, crm@sickkids.ca, raveen.basran@sickkids.ca, marianne.eliou@sickkids.ca, weiw.wang@sickkids.ca',
+                #to                   => 'lynette.lau@sickkids.ca,',
+                to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, crm@sickkids.ca, raveen.basran@sickkids.ca, marianne.eliou@sickkids.ca, weiw.wang@sickkids.ca',
                 subject              => $msg . $emailSub,
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
