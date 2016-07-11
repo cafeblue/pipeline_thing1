@@ -11,7 +11,7 @@ use Time::Piece;
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 
-my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5_pipeline.txt"; #Future will be passed from the thing1 cmd
+my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5_pipeline_config.txt"; #Future will be passed from the thing1 cmd
 my $genepanel_config_file = "/hpf/largeprojects/pray/clinical/config/gene_panels_config.txt"; #Future will be passed from the thing1 cmd
 
 GetOptions ("sampleID|s=s" => \$sampleID,
@@ -41,6 +41,7 @@ our %startPoint_lst = ( 'NEW' => '', 'bwaAlign' => '', 'picardMarkDup' => 'bwaAl
                         'gatkRawVariants' => "gatkRawVariantsCall/$sampleID.$postprocID.raw_variants",
                         #'annovar' => "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf",
                         'muTect' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
+                        'muTect2' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
                         'mutectCombine' => "mutect", 'annovarMutect' => "mutectCombine/$sampleID.$postprocID.mutect.combine.annovar",
                         'gatkFilteredRecalVariant' => ["gatkRawVariants/$sampleID.$postprocID.raw.snps.vcf", "gatkRawVariants/$sampleID.$postprocID.raw.indels.vcf"],
                         'snpEff' => ["annovar/$sampleID.$postprocID.gatk.snp.indel.annovar", "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf",
@@ -266,7 +267,7 @@ sub cancerT {
  gatkQscoreRecalibration:   @jobID_and_Pfolder   = &gatkQscoreRecalibration(@jobID_and_Pfolder);
  gatkCovCalGP:                                     &gatkCovCalGP(@jobID_and_Pfolder);
  muTect2:                   @jobID_and_Pfolder2  = &muTect2(@jobID_and_Pfolder, $normalPair); 
- muTect2Combine:            @jobID_and_Pfolder2  = &muTect2(@jobID_and_Pfolder2); 
+ muTect2Combine:            @jobID_and_Pfolder2  = &muTect2Combine(@jobID_and_Pfolder2); 
  muTect:                    @jobID_and_Pfolder   = &muTect(@jobID_and_Pfolder, $normalPair);
  mutectCombine:             @jobID_and_Pfolder   = &mutectCombine(@jobID_and_Pfolder);
  #annovarMutect:             @jobID_and_Pfolder   = &annovarMutect(@jobID_and_Pfolder);
@@ -1386,6 +1387,8 @@ sub snpEff_newGP {
 
 sub muTect {
   my ($jobID, $Pfolder1, $Pfolder2) = @_;
+  my $normal_bam_file = (split(/\//, $Pfolder2))[-1];
+  my ($normal_sampleID, $normal_postprocID) = split(/\./, $normal_bam_file);
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/mutect") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/mutect\n";
@@ -1393,34 +1396,34 @@ sub muTect {
   }
   my $cmd = 'echo \''
     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
-      . "\\\n"
-        . 'module load mutect/1.1.4 &&' . " \\\n"
-          . "\\\n"
-            . 'chr=${PBS_ARRAYID};' . "\\\n"
-              . 'if [ ${chr} = "23" ]; then' . "\\\n"
-                . '  chr=X; fi;' . "\\\n"
-                  . 'if [ ${chr} = "24" ]; then' . "\\\n"
-                    . '  chr=Y; fi;' . "\\\n"
-                      . 'if [ ${chr} = "25" ]; then' . "\\\n"
-                        . '  chr=M; fi;' . "\\\n"
-                          . "\\\n"
-                            . "/hpf/tools/centos6/java/1.6.0/bin/java -Xmx4g -Djava.io.tmpdir=/tmp -jar /hpf/tools/centos6/mutect/1.1.4/muTect-1.1.4.jar --analysis_type MuTect \\\n"
-                              . "--reference_sequence /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hs37d5/fasta/hs37d5.fa \\\n"
-                                . "--cosmic /hpf/largeprojects/adam/local/genomes/homosapiens/mutect/1.1.4/resources/b37_cosmic_v54_120711.vcf \\\n"
-                                  . "--dbsnp /hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/dbsnp_138.b37.vcf \\\n"
-                                    . "--input_file:tumor $runfolder/$Pfolder1 \\\n"
-                                      . "--out $runfolder/mutect/$sampleID.$postprocID." . 'chr${chr}' . ".mutect_1.1.4.callstats.txt \\\n"
-                                        . "--coverage_file $runfolder/mutect/$sampleID.$postprocID.chr" . '${chr}' . ".mutect_1.1.4.coverage.wig \\\n"
-                                          . "--input_file:normal $Pfolder2 \\\n"
-                                            . '--intervals /hpf/largeprojects/pray/wei.wang/mutect_cancer_intervals/${chr}.intervals' . " \\\n"
-                                              . "\\\n"
-                                                . "\'| jsub -j mutect -b $runfolder  --te 24 -nm 16000 -np 1 -nn 1 -nw 12:00:00 -ng localhd:1 $depend";
+    . "\\\n"
+    . 'module load mutect/1.1.4 &&' . " \\\n"
+    . "\\\n"
+    . 'chr=${PBS_ARRAYID};' . "\\\n"
+    . 'if [ ${chr} = "23" ]; then' . "\\\n"
+    . '  chr=X; fi;' . "\\\n"
+    . 'if [ ${chr} = "24" ]; then' . "\\\n"
+    . '  chr=Y; fi;' . "\\\n"
+    . 'if [ ${chr} = "25" ]; then' . "\\\n"
+    . '  chr=M; fi;' . "\\\n"
+    . "\\\n"
+    . "/hpf/tools/centos6/java/1.6.0/bin/java -Xmx4g -Djava.io.tmpdir=/tmp -jar /hpf/tools/centos6/mutect/1.1.4/muTect-1.1.4.jar --analysis_type MuTect \\\n"
+    . "--reference_sequence /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hs37d5/fasta/hs37d5.fa \\\n"
+    . "--cosmic /hpf/largeprojects/adam/local/genomes/homosapiens/mutect/1.1.4/resources/b37_cosmic_v54_120711.vcf \\\n"
+    . "--dbsnp /hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/dbsnp_138.b37.vcf \\\n"
+    . "--input_file:tumor $runfolder/$Pfolder1 \\\n"
+    . "--out $runfolder/mutect/$sampleID.$postprocID." . 'chr${chr}' . ".mutect_1.1.4.callstats.txt \\\n"
+    . "--coverage_file $runfolder/mutect/$sampleID.$postprocID.chr" . '${chr}' . ".mutect_1.1.4.coverage.wig \\\n"
+    . "--input_file:normal $Pfolder2 \\\n"
+    . '--intervals /hpf/largeprojects/pray/wei.wang/mutect_cancer_intervals/${chr}.intervals' . " \\\n"
+    . "\\\n"
+    . "\'| jsub -j mutect -b $runfolder  --te 24 -nm 16000 -np 1 -nn 1 -nw 12:00:00 -ng localhd:1 $depend";
   print "\n\n************\nmutect:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+\[\])\n/) {
     $jobID = $1;
-    return($jobID,"mutect");
+    return($jobID,"mutect",$normal_sampleID,$normal_postprocID);
   } else {
     die "mutect for $runfolder failed to be submitted!\n";
   }
@@ -1428,6 +1431,8 @@ sub muTect {
 
 sub muTect2 {
   my ($jobID, $Pfolder1, $Pfolder2) = @_;
+  my $normal_bam_file = (split(/\//, $Pfolder2))[-1];
+  my ($normal_sampleID, $normal_postprocID) = split(/\./, $normal_bam_file);
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/mutect2") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/mutect\n";
@@ -1447,7 +1452,7 @@ sub muTect2 {
     . 'if [ ${chr} = "25" ]; then' . "\\\n"
     . '  chr=M; fi;' . "\\\n"
     . "\\\n"
-    . '/hpf/tools/centos6/java/1.7.0/bin/java -Xmx24g -Djava.io.tmpdir=/tmp -jar $GATK -T MuTect2 -R /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hs37d5/fasta/hs37d5.fa' . " \\\n"
+    . '/hpf/tools/centos6/java/1.8.0_91/bin/java -Xmx24g -Djava.io.tmpdir=/tmp -jar $GATK -T MuTect2 -R /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hs37d5/fasta/hs37d5.fa' . " \\\n"
     . " -I:tumor $runfolder/$Pfolder1\\\n"
     . " -I:normal $Pfolder2\\\n"
     . " --dbsnp /hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/dbsnp_138.b37.vcf \\\n"
@@ -1456,8 +1461,8 @@ sub muTect2 {
     . "\\\n"
     . "/hpf/largeprojects/adam/local/bin/mutect2annovar.pl --vcf $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.vcf' . " --filter false --header false --output $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar &&' . " \\\n"
     . "\\\n"
-    . "table_annovar.pl $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hg19/annovar/humandb --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile/mutect2/' 
-    . "$sampleID.$postprocID." 
+    . "table_annovar.pl $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hg19/annovar/humandb --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile ' 
+    . "$runfolder/mutect2/$sampleID.$postprocID." 
     . '${chr}' . " \\\n"
     . "\\\n"
     . "\'| jsub -j mutect2 -b $runfolder  --te 24 -nm 32000 -np 1 -nn 1 -nw 48:00:00 -ng localhd:1 $depend";
@@ -1466,7 +1471,7 @@ sub muTect2 {
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+\[\])\n/) {
     $jobID = $1;
-    return($jobID,"mutect2");
+    return($jobID,"mutect2",$normal_sampleID,$normal_postprocID);
   } else {
     die "mutect2 for $runfolder failed to be submitted!\n";
   }
@@ -1474,7 +1479,7 @@ sub muTect2 {
 }
 
 sub mutectCombine {
-  my ($jobID, $Pfolder) = @_;
+  my ($jobID, $Pfolder, $normal_sampleID, $normal_postprocID) = @_;
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/mutectCombine") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/mutectCombine\n";
@@ -1491,9 +1496,9 @@ sub mutectCombine {
     . "\\\n"
     . "Rscript /hpf/largeprojects/adam/local/bin/run_annotation_pipeline.R --directory $runfolder/mutectCombine/ --sample $sampleID.$postprocID && \\\n"
     . "\\\n"
-    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $runfolder/mutectCombine/$sampleID.$postprocID.csv && \\\n "
+    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n "
     . "\\\n"
-    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv"
+    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv"
     . "\\\n"
     . "\'| jsub -j mutectCombine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 08:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutectCombine:\n$cmd\n************\n\n";
@@ -1501,14 +1506,14 @@ sub mutectCombine {
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+)\n/) {
     $jobID = $1;
-    return($jobID,"mutectCombine/$sampleID.$postprocID.csv");
+    return($jobID,"mutectCombine/$sampleID.$postprocID.snv.csv");
   } else {
     die "mutectCombine for $runfolder failed to be submitted!\n";
   }
 }
 
-sub mutect2Combine {
-  my ($jobID, $Pfolder) = @_;
+sub muTect2Combine {
+  my ($jobID, $Pfolder, $normal_sampleID, $normal_postprocID) = @_;
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/mutect2Combine") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/mutect2Combine\n";
@@ -1519,17 +1524,18 @@ sub mutect2Combine {
     . "\\\n"
     . 'module load  shlienlab/0.1 R/3.1.1 &&'
     . " \\\n"
-    . "Rscript /hpf/largeprojects/adam/local/bin/annotated_indels.R --path $runfolder/$Pfolder/ --sample $runfolder/mutect2Combine/$sampleID.$postprocID "
+    . "Rscript /hpf/largeprojects/adam/local/bin/annotated_indels.R --path $runfolder/$Pfolder/ --sample $runfolder/mutect2Combine/$sampleID.$postprocID && \\\n"
     . "\\\n"
-    . "Rscript $SCRIPTDIR/mut2rda2txt.R $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv ; "
+    . "Rscript $SCRIPTDIR/mut2rda2txt.R $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
     . "\\\n"
+    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv"
     . "\'| jsub -j mutect2Combine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 00:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutect2Combine:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+)\n/) {
     $jobID = $1;
-    return($jobID,"mutect2Combine/$sampleID.$postprocID.mutect.combine.annovar");
+    return($jobID,"mutect2Combine/$sampleID.$postprocID.indel.csv");
   } else {
     die "mutect2Combine for $runfolder failed to be submitted!\n";
   }
@@ -1549,9 +1555,9 @@ sub annovarMutect {
           . "\\\n"
             . "table_annovar.pl $runfolder/$Pfolder /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hg19/annovar/humandb --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile $runfolder/annovarMutect/$sampleID.$postprocID; \\\n"
               . "\\\n"
-                . "Rscript /hpf/largeprojects/adam/local/bin/run_annotation_pipeline.R --directory $runfolder/annovarMutect/ --sample $sampleID.$postprocID ;\\\n"
+                . "Rscript /hpf/largeprojects/adam/local/bin/run_annotation_pipeline.R --directory $runfolder/annovarMutect/ --sample $sampleID.$postprocID && \\\n"
                   . "\\\n"
-                    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/annovarMutect/$sampleID.$postprocID\_annotated.rda $runfolder/annovarMutect/$sampleID.$postprocID.csv ; "
+                    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/annovarMutect/$sampleID.$postprocID\_annotated.rda $runfolder/annovarMutect/$sampleID.$postprocID.csv && "
                       . "\\\n"
                         . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/annovarMutect/$sampleID.$postprocID.snv.csv"
                           . "\\\n"
