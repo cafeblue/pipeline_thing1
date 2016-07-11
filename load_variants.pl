@@ -405,11 +405,11 @@ sub code_cadd_prediction {
 sub code_chrom {
   my $chr = shift;
   if ($chr =~ /X/i) {
-    return 23;
-  } elsif ($chr =~ /Y/i) {
     return 24;
-  } elsif ($chr =~ /M/i) {
+  } elsif ($chr =~ /Y/i) {
     return 25;
+  } elsif ($chr =~ /M/i) {
+    return 26;
   }
   return $chr;
 }
