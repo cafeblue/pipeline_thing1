@@ -1,10 +1,12 @@
 #!/usr/bin/perl -w
 #Author: Lynette Lau
-#Date: Nov 7, 2011 -> August 15,2014 -> Oct 15, 2014 -> Feb 9, 2015 -> Sep 9, 2015 -> April 7, 2016
+#Date: Nov 7, 2011 -> August 15,2014 -> Oct 15, 2014 -> Feb 9, 2015 -> Sep 9, 2015 -> April 7, 2016 -> July 8, 2016
 #read in all the files from all the comparisons and put them all on the same line
 #update -> reads in the merged snpEff file
 #update -> allow more then one variant per position for multiple isoforms
 #update -> get OMIM MorbidMap info for all gene panels (not just for exomes in the previous version). Edited by Lily Jin
+#update -> update annotation files with the new annovar
+#update -> alt-hets are deal with correctly from snpEFF
 
 use strict;
 
@@ -39,15 +41,17 @@ my $clinVarWindowIndelFile = $ARGV[8];
 #print STDERR "clinVarWindowIndelFile=$clinVarWindowIndelFile\n";
 
 my $hpoFile = $ARGV[9];
-#my $omimDiseaseFile = $ARGV[10];
-#my $omimMorbidMapFile = $ARGV[11];
 
-my %omimInfo = ();
+my %omimInfo = (); #key is geneSymbol {geneSymbol}[0] = morbid, {geneSymbol}[1] = genemap
 
 my $hgncFile = $ARGV[10];
 my $cgdFile = $ARGV[11];
 
 my $pipelineVersion = $ARGV[12];
+
+my $omimGeneMapFile = $ARGV[13];
+my $omimMorbidMapFile = $ARGV[14];
+
 
 #reads in the windowBed files of the indels to find indels +/- 20bp
 my %hgmdWindowIndel = readInWindow($hgmdWindowIndelFile, "hgmd");
@@ -91,6 +95,71 @@ my %numHCCmpdHetPerGene = ();
 my $data = "";
 my %geneIDs = ();
 
+#read in OMIM genemap
+open (FILE, "< $omimGeneMapFile") or die "Can't open $omimGeneMapFile for read: $!\n";
+while ($data=<FILE>) {
+  chomp $data;
+  if ($data!~/^#/) {
+    my @splitTab = split(/\t/,$data);
+    my $sort = $splitTab[0];
+    my $month = $splitTab[1];
+    my $day = $splitTab[2];
+    my $year = $splitTab[3];
+    my $cytoLoc = $splitTab[4];
+    my $gSymbol = uc($splitTab[5]);
+    my $confidence = $splitTab[6];
+    my $geneName = $splitTab[7];
+    my $mimNum = $splitTab[8];
+    my $mappingMeth = $splitTab[9];
+    my $comments = $splitTab[10];
+    my $phenotypes = $splitTab[11];
+    my $mGeneSym = $splitTab[12];
+
+    if (defined $gSymbol && $gSymbol ne "") {
+      $gSymbol=~s/ //gi;
+      my @splitComma = split(/\,/,$gSymbol);
+      foreach my $gS (@splitComma) {
+        #print STDERR "omimGeneMap gS=$gS\n";
+        #print STDERR "mimNum=$mimNum\n";
+        if (defined $omimInfo{$gS}[1]) {
+          $omimInfo{$gS}[1] = $omimInfo{$gS}[1] . " & " . $mimNum;
+        } else {
+          $omimInfo{$gS}[1] = $mimNum;
+        }
+      }
+    }
+  }
+}
+close(FILE);
+
+#read in OMIM morbidmap
+open (FILE, "< $omimMorbidMapFile") or die "Can't open $omimMorbidMapFile for read: $!\n";
+while ($data=<FILE>) {
+  chomp $data;
+  if ($data!~/^#/) {
+    my @splitTab = split(/\t/,$data);
+    my $phenotype = $splitTab[0];
+    my $gSymbol = uc($splitTab[1]);
+    my $mimNum = $splitTab[2];
+    my $cytoLocation = $splitTab[3];
+
+    if (defined $gSymbol && $gSymbol ne "") {
+      $gSymbol=~s/ //gi;
+      my @splitComma = split(/\,/,$gSymbol);
+      foreach my $gS (@splitComma) {
+        #print STDERR "omimMorbidMap gS=$gS\n";
+        #print STDERR "omimMorbidMap phenotype=$phenotype\n";
+        if (defined $omimInfo{$gS}[0]) {
+          $omimInfo{$gS}[0] = $omimInfo{$gS}[0] . " & " . $phenotype;
+        } else {
+          $omimInfo{$gS}[0] = $phenotype;
+        }
+      }
+    }
+  }
+}
+close(FILE);
+
 #read in the HGNC file to read in all the gene IDs and how they relate to each other
 open (FILE, "< $hgncFile") or die "Can't open $hgncFile for read: $!\n";
 print STDERR "hgncFile=$hgncFile\n";
@@ -133,6 +202,21 @@ while ($data=<FILE>) {
 
   my $enzymeID = $splitTab[46];
 
+  if (!defined $entrezGeneID) {
+    $entrezGeneID = "";
+  }
+  if (!defined $mouseGenomeDBID) {
+    $mouseGenomeDBID = "";
+  }
+  if (!defined $hgncID) {
+    $hgncID = "";
+  }
+  if (!defined $omimID) {
+    $omimID = "";
+  }
+  if (!defined $refseqID) {
+    $refseqID = "";
+  }
 
   my $idInfo = $entrezGeneID . "\t" . $mouseGenomeDBID . "\t" . $hgncID . "\t" . $omimID . "\t" . $refseqID;
   if ($status eq "Approved") { #only looking at approved geneSymbol names
@@ -279,6 +363,7 @@ foreach my $suffix (@annovarFileSuffix) {
 
   my $realFileName = $annovarFilesPrefix . "." . $suffix;
   open (FILE, "< $realFileName") or die "Can't open $realFileName for read: $!\n";
+  $data=<FILE>;                 #read out header
   while ($data=<FILE>) {
     chomp $data;
     my @splitTab = split(/\t/,$data);
@@ -380,13 +465,15 @@ foreach my $suffix (@annovarFileSuffix) {
         $pp2String = "Benign";
       }
 
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[2]) {
-        #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
-        my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[2]);
-        $annovarInfo{"$chr:$startpos:$type"}[2] = $pp2HVARScore . "|" . $tmpScore[0] . "\t" . $pp2String . "|" . $tmpScore[1];
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[2] = $pp2HVARScore . "\t" . $pp2String;
-        #print STDERR "$chr:$startpos = $score\n";
+      if ($pp2HVARScore ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[2]) {
+          #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
+          my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[2]);
+          $annovarInfo{"$chr:$startpos:$type"}[2] = $pp2HVARScore . "|" . $tmpScore[0] . "\t" . $pp2String . "|" . $tmpScore[1];
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[2] = $pp2HVARScore . "\t" . $pp2String;
+          #print STDERR "$chr:$startpos = $score\n";
+        }
       }
       #print STDERR "PP2HVAR score=$score\n";
       #print STDERR "PP2HVARpred=$pred\n";
@@ -402,13 +489,15 @@ foreach my $suffix (@annovarFileSuffix) {
         $siftString = "Tolerated";
       }
 
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[3]) {
-        #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
-        my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[3]);
-        $annovarInfo{"$chr:$startpos:$type"}[3] = $siftScore . "|" . $tmpScore[0] . "\t" . $siftString . "|" . $tmpScore[1];
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[3] = $siftScore . "\t" . $siftString;
-        #print STDERR "$chr:$startpos = $score\n";
+      if ($siftScore ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[3]) {
+          #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
+          my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[3]);
+          $annovarInfo{"$chr:$startpos:$type"}[3] = $siftScore . "|" . $tmpScore[0] . "\t" . $siftString . "|" . $tmpScore[1];
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[3] = $siftScore . "\t" . $siftString;
+          #print STDERR "$chr:$startpos = $score\n";
+        }
       }
       #} elsif ($suffix eq "hg19_ljb26_mt_dropped") {
       #$counter = 4;
@@ -432,15 +521,16 @@ foreach my $suffix (@annovarFileSuffix) {
         $mutTasString = "Polymorphism Automatic";
       }
       #$score = $scoreP;
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[4]) {
-        #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
-        my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[4]);
-        $annovarInfo{"$chr:$startpos:$type"}[4] = $mutTasScore . "|" . $tmpScore[0] . "\t" . $mutTasString . "|" . $tmpScore[1];
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[4] = $mutTasScore . "\t" . $mutTasString;
-        #print STDERR "$chr:$startpos = $score\n";
+      if ($mutTasScore ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[4]) {
+          #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
+          my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[4]);
+          $annovarInfo{"$chr:$startpos:$type"}[4] = $mutTasScore . "|" . $tmpScore[0] . "\t" . $mutTasString . "|" . $tmpScore[1];
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[4] = $mutTasScore . "\t" . $mutTasString;
+          #print STDERR "$chr:$startpos = $score\n";
+        }
       }
-
       #} elsif ($suffix eq "hg19_ljb26_cadd_dropped") {
       #$counter = 5;
       #my @splitC = split(/\,/,$score);
@@ -460,15 +550,16 @@ foreach my $suffix (@annovarFileSuffix) {
       #$score = $predScore;
       #$pred = $realPred;
       #$score = $scoreP;
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[5]) {
-        #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
-        my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[5]);
-        $annovarInfo{"$chr:$startpos:$type"}[5] = $caddPred . "|" . $tmpScore[0] . "\t" . $caddString . "|" . $tmpScore[1];
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[5] = $caddPred . "\t" . $caddString;
-        #print STDERR "$chr:$startpos = $score\n";
+      if ($caddPred ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[5]) {
+          #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
+          my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[5]);
+          $annovarInfo{"$chr:$startpos:$type"}[5] = $caddPred . "|" . $tmpScore[0] . "\t" . $caddString . "|" . $tmpScore[1];
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[5] = $caddPred . "\t" . $caddString;
+          #print STDERR "$chr:$startpos = $score\n";
+        }
       }
-
       #} elsif ($suffix eq "hg19_ljb23_phylop_dropped") {
       #$counter = 6;
       #my $realPred = "";
@@ -482,13 +573,15 @@ foreach my $suffix (@annovarFileSuffix) {
       }
       #$pred = $realPred;
       #$pred = $score . "\t" . $realPred;
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[6]) {
-        #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
-        my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[6]);
-        $annovarInfo{"$chr:$startpos:$type"}[6] = $phylop20way . "|" . $tmpScore[0] . "\t" . $phylopString . "|" . $tmpScore[1];
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[6] = $phylop20way . "\t" . $phylopString;
-        #print STDERR "$chr:$startpos = $score\n";
+      if ($phylop20way ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[6]) {
+          #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
+          my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[6]);
+          $annovarInfo{"$chr:$startpos:$type"}[6] = $phylop20way . "|" . $tmpScore[0] . "\t" . $phylopString . "|" . $tmpScore[1];
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[6] = $phylop20way . "\t" . $phylopString;
+          #print STDERR "$chr:$startpos = $score\n";
+        }
       }
       #} elsif ($suffix eq "hg19_ljb26_ma_dropped") {
       #$counter = 7;
@@ -514,110 +607,140 @@ foreach my $suffix (@annovarFileSuffix) {
       print STDERR "mutAssScore=$mutAssScore\n";
       print STDERR "maString=$maString\n";
 
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[7]) {
-        #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
-        my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[7]);
-        $annovarInfo{"$chr:$startpos:$type"}[7] = $mutAssScore . "|" . $tmpScore[0] . "\t" . $maString . "|" . $tmpScore[1];
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[7] = $mutAssScore . "\t" . $maString;
-        #print STDERR "$chr:$startpos = $score\n";
+      if ($mutAssScore ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[7]) {
+          #print STDERR "ERROR score key= $chr:$startpos:$type, data=$data already defined\n";
+          my @tmpScore = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[7]);
+          $annovarInfo{"$chr:$startpos:$type"}[7] = $mutAssScore . "|" . $tmpScore[0] . "\t" . $maString . "|" . $tmpScore[1];
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[7] = $mutAssScore . "\t" . $maString;
+          #print STDERR "$chr:$startpos = $score\n";
+        }
       }
-
       #segdup
       my @splitSegDup = split(/\;/,$segdup);
       my $segdupScore = $splitSegDup[0];
       $segdupScore=~s/Score=//gi;
       #print "segdupScore=$segdupScore\n";
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[1]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[1] = $annovarInfo{"$chr:$startpos:$type"}[1] . "|" . $segdupScore;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[1] = "$segdupScore";
+      if ($segdupScore ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[1]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[1] = $annovarInfo{"$chr:$startpos:$type"}[1] . "|" . $segdupScore;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[1] = $segdupScore;
+        }
       }
 
       #cg46 -> $cg46
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[16]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[16] = $annovarInfo{"$chr:$startpos:$type"}[16] . "|" . $cg46;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[16] = "$cg46";
+      if ($cg46 ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[16]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[16] = $annovarInfo{"$chr:$startpos:$type"}[16] . "|" . $cg46;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[16] = $cg46;
+        }
       }
 
       #avsnp144 -> $avsnp144
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[0]) {
-        $annovarInfo{"$chr:$startpos:$type"}[0] = $annovarInfo{"$chr:$startpos:$type"}[0] ."|" . $avsnp144;
-        #print STDERR "ERROR score data=$data already defined\n";
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[0] = $avsnp144;
-        #print STDERR "$chr:$startpos = $score\n";
+      if ($avsnp144 ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[0]) {
+          $annovarInfo{"$chr:$startpos:$type"}[0] = $annovarInfo{"$chr:$startpos:$type"}[0] ."|" . $avsnp144;
+          #print STDERR "ERROR score data=$data already defined\n";
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[0] = $avsnp144;
+          #print STDERR "$chr:$startpos = $score\n";
+        }
       }
 
       # my $esp6500siv2All = $splitTab[42];
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[17]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[17] = $annovarInfo{"$chr:$startpos:$type"}[17] . "|" . $esp6500siv2All;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[17] = $esp6500siv2All;
+      if ($esp6500siv2All ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[17]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[17] = $annovarInfo{"$chr:$startpos:$type"}[17] . "|" . $esp6500siv2All;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[17] = $esp6500siv2All;
+        }
       }
 
       # my $esp6500siv2AA = $splitTab[43];
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[18]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[18] = $annovarInfo{"$chr:$startpos:$type"}[18] . "|" . $esp6500siv2AA;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[18] = $esp6500siv2AA;
+      if ($esp6500siv2AA ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[18]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[18] = $annovarInfo{"$chr:$startpos:$type"}[18] . "|" . $esp6500siv2AA;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[18] = $esp6500siv2AA;
+        }
       }
 
       # my $esp6500siv2EA = $splitTab[44];
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[19]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[19] = $annovarInfo{"$chr:$startpos:$type"}[19] . "|" . $esp6500siv2EA;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[19] = $esp6500siv2EA;
+      if ($esp6500siv2EA ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[19]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[19] = $annovarInfo{"$chr:$startpos:$type"}[19] . "|" . $esp6500siv2EA;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[19] = $esp6500siv2EA;
+        }
       }
 
       # my $thouAll = $splitTab[45];
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[20]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[20] = $annovarInfo{"$chr:$startpos:$type"}[20] . "|" . $thouAll;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[20] = $thouAll;
+      if ($thouAll ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[20]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[20] = $annovarInfo{"$chr:$startpos:$type"}[20] . "|" . $thouAll;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[20] = $thouAll;
+        }
       }
 
       # my $thouAfr = $splitTab[46];
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[21]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[21] = $annovarInfo{"$chr:$startpos:$type"}[21] . "|" . $thouAfr;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[21] = $thouAfr;
+      if ($thouAfr ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[21]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[21] = $annovarInfo{"$chr:$startpos:$type"}[21] . "|" . $thouAfr;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[21] = $thouAfr;
+        }
       }
+
+
       # my $thouAmr = $splitTab[47];
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[22]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[22] = $annovarInfo{"$chr:$startpos:$type"}[22] . "|" . $thouAmr;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[22] = $thouAmr;
+      if ($thouAmr ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[22]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[22] = $annovarInfo{"$chr:$startpos:$type"}[22] . "|" . $thouAmr;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[22] = $thouAmr;
+        }
       }
+
       # my $thouEas = $splitTab[48];
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[23]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[23] = $annovarInfo{"$chr:$startpos:$type"}[23] . "|" . $thouEas;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[23] = $thouEas;
+      if ($thouEas ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[23]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[23] = $annovarInfo{"$chr:$startpos:$type"}[23] . "|" . $thouEas;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[23] = $thouEas;
+        }
       }
+
       # my $thouSas = $splitTab[49];
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[24]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[24] = $annovarInfo{"$chr:$startpos:$type"}[24] . "|" . $thouSas;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[24] = $thouSas;
+      if ($thouSas ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[24]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[24] = $annovarInfo{"$chr:$startpos:$type"}[24] . "|" . $thouSas;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[24] = $thouSas;
+        }
       }
+
       # my $thouEur = $splitTab[50];
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[25]) {
-        #print STDERR "ERROR segdup data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[25] = $annovarInfo{"$chr:$startpos:$type"}[25] . "|" . $thouEur;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[25] = $thouEur;
+      if ($thouEur ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[25]) {
+          #print STDERR "ERROR segdup data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[25] = $annovarInfo{"$chr:$startpos:$type"}[25] . "|" . $thouEur;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[25] = $thouEur;
+        }
       }
 
       # my $clinVar = $splitTab[51];
@@ -632,37 +755,73 @@ foreach my $suffix (@annovarFileSuffix) {
       $clnacc=~s/CLNACC=//;
       my @splitLi = split(/\|/,$clnacc);
 
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[10]) {
-        my @splitAT = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[10]);
-        $annovarInfo{"$chr:$startpos:$type"}[10] = $splitAT[0] . "|" . $sig . "\t" . $splitAT[1] . "|" . $clndbn ."\t" . $splitAT[2] . "|" . "=HYPERLINK(\"http://www.ncbi.nlm.nih.gov/clinvar/" . $splitLi[0] ."/\",\"" . $clnacc  . "\")";
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[10] = "$sig\t$clndbn\t" . "=HYPERLINK(\"http://www.ncbi.nlm.nih.gov/clinvar/" . $splitLi[0] ."/\",\"" . $clnacc  . "\")";
+      if ($clinVar ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[10]) {
+          my @splitAT = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[10]);
+          $annovarInfo{"$chr:$startpos:$type"}[10] = $splitAT[0] . "|" . $sig . "\t" . $splitAT[1] . "|" . $clndbn ."\t" . $splitAT[2] . "|" . "=HYPERLINK(\"http://www.ncbi.nlm.nih.gov/clinvar/" . $splitLi[0] ."/\",\"" . $clnacc  . "\")";
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[10] = "$sig\t$clndbn\t" . "=HYPERLINK(\"http://www.ncbi.nlm.nih.gov/clinvar/" . $splitLi[0] ."/\",\"" . $clnacc  . "\")";
+        }
       }
       # my $cosmic = $splitTab[57];
       my @splitCosmic = split(/\;/,$cosmic);
       my $cosmicID = $splitCosmic[0];
       $cosmicID=~s/ID=//gi;
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[13]) {
-        #print STDERR "ERROR score data=$data already defined\n";
-        $annovarInfo{"$chr:$startpos:$type"}[13]=$annovarInfo{"$chr:$startpos:$type"}[13] . "|" . $cosmicID;
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[13] = $cosmicID;
-        #print STDERR "$chr:$startpos = $score\n";
+      if ($cosmicID ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[13]) {
+          #print STDERR "ERROR score data=$data already defined\n";
+          $annovarInfo{"$chr:$startpos:$type"}[13]=$annovarInfo{"$chr:$startpos:$type"}[13] . "|" . $cosmicID;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[13] = $cosmicID;
+          #print STDERR "$chr:$startpos = $score\n";
+        }
       }
       #exac allele frequencies
-      if (defined $annovarInfo{"$chr:$startpos:$type"}[28]) {
-        #print STDERR "ERROR score data=$data already defined\n";
-        my @tmpExac = split(/\t/, $annovarInfo{"$chr:$startpos:$type"}[28]);
-        $annovarInfo{"$chr:$startpos:$type"}[28] = $exacALL . "|" . $tmpExac[0] . "\t" . $exacAFR . "|" . $tmpExac[1] . "\t" . $exacAMR . "|" . $tmpExac[2] . "\t" . $exacEAS . "|" . $tmpExac[3] . "\t" . $exacFIN ."|" . $tmpExac[4] . "\t" . $exacNFE . "|" . $tmpExac[5] . "\t" . $exacOTH ."|" . $tmpExac[6] . "\t" . $exacSAS ."|" . $tmpExac[7];
-      } else {
-        $annovarInfo{"$chr:$startpos:$type"}[28] = $exacALL . "\t" . $exacAFR . "\t" . $exacAMR . "\t" . $exacEAS . "\t" . $exacFIN . "\t" . $exacNFE . "\t" . $exacOTH . "\t" . $exacSAS;
+      if ($exacAll ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[28]) {
+          #print STDERR "ERROR score data=$data already defined\n";
+          my @tmpExac = split(/\t/, $annovarInfo{"$chr:$startpos:$type"}[28]);
+          $annovarInfo{"$chr:$startpos:$type"}[28] = $exacALL . "|" . $tmpExac[0] . "\t" . $exacAFR . "|" . $tmpExac[1] . "\t" . $exacAMR . "|" . $tmpExac[2] . "\t" . $exacEAS . "|" . $tmpExac[3] . "\t" . $exacFIN ."|" . $tmpExac[4] . "\t" . $exacNFE . "|" . $tmpExac[5] . "\t" . $exacOTH ."|" . $tmpExac[6] . "\t" . $exacSAS ."|" . $tmpExac[7];
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[28] = $exacALL . "\t" . $exacAFR . "\t" . $exacAMR . "\t" . $exacEAS . "\t" . $exacFIN . "\t" . $exacNFE . "\t" . $exacOTH . "\t" . $exacSAS;
+        }
       }
 
+      if ($aaChangeRefGene ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[8]) {
+          $annovarInfo{"$chr:$startpos:$type"}[8] = $annovarInfo{"$chr:$startpos:$type"}[8] . "|" . $aaChangeRefGene;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[8] = $aaChangeRefGene;
+        }
+      }
+      if ($geneRefGene ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[9]) {
+          my @splitSC = split(/\;/,$annovarInfo{"$chr:$startpos:$type"}[9]);
 
-      $annovarInfo{"$chr:$startpos:$type"}[8] = $aaChangeRefGene;
-      $annovarInfo{"$chr:$startpos:$type"}[9] = $geneRefGene . "|" .$geneDetailRefGene;
-      $annovarInfo{"$chr:$startpos:$type"}[26] = $aaChangeEnsGene;
-      $annovarInfo{"$chr:$startpos:$type"}[27] = $geneEnsGene . "|" . $geneDetailEnsGene;
+          $annovarInfo{"$chr:$startpos:$type"}[9] = $splitSC[0] . "|" . $geneRefGene . ";" . $splitSC[1] . $geneDetailRefGene;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[9] = $geneRefGene . ";" .$geneDetailRefGene;
+        }
+      }
+
+      if ($aaChangeEnsGene ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[26]) {
+
+          $annovarInfo{"$chr:$startpos:$type"}[26] = $annovarInfo{"$chr:$startpos:$type"}[26] . "|" . $aaChangeEnsGene;
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[26] = $aaChangeEnsGene;
+        }
+      }
+      if ($geneEnsGene ne ".") {
+        if (defined $annovarInfo{"$chr:$startpos:$type"}[27]) {
+          my @splitSC = split(/\;/,$annovarInfo{"$chr:$startpos:$type"}[27]);
+
+          $annovarInfo{"$chr:$startpos:$type"}[9] = $splitSC[0] . "|" . $geneEnsGene . ";" . $splitSC[1] . $geneDetailEnsGene;
+
+        } else {
+          $annovarInfo{"$chr:$startpos:$type"}[27] = $geneEnsGene . ";" . $geneDetailEnsGene;
+        }
+      }
 
     } elsif ($suffix eq "hg19_hgmd_generic_dropped") {
       my $counter;
@@ -749,11 +908,11 @@ foreach my $suffix (@annovarFileSuffix) {
       } elsif ((length($ref) == length($alt)) && (length($ref) != 1)) {
         $type = "mnp";
       }
-      if (defined $annovarInfo{"$chr:$start:$type"}[15]) {
-        #the region is probably big enough that only one is good enough
-      } else {
-        $annovarInfo{"$chr:$start:$type"}[15] = "Y";
-      }
+      # if (defined $annovarInfo{"$chr:$start:$type"}[15]) {
+      #   #the region is probably big enough that only one is good enough
+      # } else {
+      $annovarInfo{"$chr:$start:$type"}[15] = "Y";
+      #}
 
     } elsif ($suffix eq "hg19_cgWellderly_generic_dropped") {
       my $wellderly = $splitTab[1];
@@ -783,63 +942,6 @@ foreach my $suffix (@annovarFileSuffix) {
         $annovarInfo{"$chr:$startpos:$type"}[14] = $annovarInfo{"$chr:$startpos:$type"}[14] . "|" . $allWellderly;
       } else {
         $annovarInfo{"$chr:$startpos:$type"}[14] = $allWellderly;
-
-      }
-    } elsif ($suffix eq "hg19_morbidmap_bed") {
-      my $morbid = $splitTab[1];
-      $morbid=~s/Name=//gi;
-      my $chr = $splitTab[2];
-      #if it is an indel startpos - 1
-
-      my $startpos = $splitTab[3];
-      #my $endpos = $splitTab[4];
-      my $ref = $splitTab[5];
-      my $alt = $splitTab[6];
-      if ($alt eq "-") {
-        $startpos=$startpos - 1;
-      }
-      #determining the type in annovar
-      my $type = "snp";
-      if ($ref eq "-" || $alt eq "-") {
-        $type = "indel";
-      } elsif ((length($ref) == length($alt)) && (length($ref) != 1)) {
-        $type = "mnp";
-      }
-      if (defined $omimInfo{"$chr:$startpos:$type"}[0]) {
-        #print STDERR "ERROR score data=$data already defined\n";
-        $omimInfo{"$chr:$startpos:$type"}[0] = $omimInfo{"$chr:$startpos:$type"}[0] . "&" . $morbid;
-      } else {
-        $omimInfo{"$chr:$startpos:$type"}[0] = $morbid;
-
-      }
-    } elsif ($suffix eq "hg19_genemap_bed") {
-      my $genemap = $splitTab[1];
-      $genemap=~s/Name=//gi;
-      my @splitLine = split(/\|/,$genemap);
-      my $genemapOmimNum = $splitLine[2];
-      my $chr = $splitTab[2];
-      #if it is an indel startpos - 1
-
-      my $startpos = $splitTab[3];
-      #my $endpos = $splitTab[4];
-      my $ref = $splitTab[5];
-      my $alt = $splitTab[6];
-      if ($alt eq "-") {
-        $startpos=$startpos - 1;
-      }
-      #determining the type in annovar
-      my $type = "snp";
-      if ($ref eq "-" || $alt eq "-") {
-        $type = "indel";
-      } elsif ((length($ref) == length($alt)) && (length($ref) != 1)) {
-        $type = "mnp";
-      }
-      if (defined $omimInfo{"$chr:$startpos:$type"}[1]) {
-        #print STDERR "ERROR score data=$data already defined\n";
-        $omimInfo{"$chr:$startpos:$type"}[1] = $omimInfo{"$chr:$startpos:$type"}[1] . "&" . $genemapOmimNum;
-      } else {
-        $omimInfo{"$chr:$startpos:$type"}[1] = $genemapOmimNum;
-
       }
     }
   }
@@ -855,7 +957,7 @@ my @splitSlash = split(/\//,$fName);
 my $vcfDir = $splitSlash[scalar(@splitSlash) - 3];
 print STDERR "vcfDir=$vcfDir\n";
 print "##$fName\n";
-print "##Chrom\tPosition\tReference\tGenotype\tAlleles\tType of Mutation\tAllelic Depths for Reference\tAllelic Depths for Alternative Alleles\tFiltered Depth\tQuality By Depth\tFisher's Exact Strand Bias Test\tRMS Mapping Quality\tHaplotype Score\tMapping Quality Rank Sum Test\tRead Pos Rank Sum Test\tGatk Filters\tTranscript ID\tGene Symbol\tOther Symbols\tGene Name\tGene Family Description\tEntrez ID\tHGNC ID\tEffect\tEffect Impact\tCodon Change\tAmino Acid change\tDisease Gene Association\tOMIM Gene Map\tOMIM Morbidmap\tCGD Condition\tCGD Inheritance\tHPO Terms\tHPO Disease\tMotif\tNextProt\tPercent CDS Affected\tPercent Transcript Affected\tdbsnp 138\tSegDup\tPolyPhen Score\tPolyPhen Prediction\tSift Score\tSift Prediction\tMutation Taster Score\tMutation Taster Prediction\tCADD Pred-Scaled Score\tCADD Prediction\tPhylop Score\tPhylop Prediction\tMutation Assessor Score\tMutation Assessor Prediction\tAnnovar Refseq Exonic Variant Info\tAnnovar Refseq Gene or Nearest Gene\tClinVar SIG\tClinVar CLNDBN\tClinVar CLNACC\tHGMD SIG SNVs\tHGMD ID SNVs\tHGMD HGVS SNVs\tHGMD Protein SNVs\tHGMD Description SNVs\tHGMD SIG microlesions\tHGMD ID microlesions\tHGMD HGVS microlesions\tHGMD Decription microlesions\tCosmic68\tcgWellderly all frequency\tRegion of Homology\tCG46 Allele Frequency\tESP All Allele Frequency\tESP AA Allele Frequency\tESP EA Allele Frequency\t1000G All Allele Frequency\t1000G AFR Allele Frequency\t1000G AMR Allele Frequency\t1000G EAS Allele Frequency\t1000G SAS Allele Frequency\t1000G EUR Allele Frequency\tAnnovar Ensembl Exonic Variant Info\tAnnovar Ensembl Gene or Nearest Gene\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tHGMD INDELs within 20bp window\tClinVar INDELs within 20bp window\tInternal SNPs Allele All Chromosomes Called\tInternal SNPs Allele All AF\tInternal SNPs Allele All AF genotype\tInternal SNPs Allele All Calls\tInternal INDELs Allele All Chromosomes Called\tInternal INDELs Allele All AF\tInternal INDELs Allele All AF genotype\tInternal INDELs Allele All Calls\tInternal SNPs Allele High Confidence Chromosomes Called\tInternal SNPs Allele High Confidence AF\tInternal SNPs Allele High Confidence AF genotype\tInternal SNPs Allele High Confidence Calls\tInternal INDELs Allele High Confidence Chromosomes Called\tInternal INDELs Allele High Confidence AF\tInternal INDELs Allele High Confidence AF genotype\tInternal INDELs Allele High Confidence Calls\n";
+print "##Chrom\tPosition\tReference\tGenotype\tAlleles\tType of Mutation\tAllelic Depths for Reference\tAllelic Depths for Alternative Alleles\tFiltered Depth\tQuality By Depth\tFisher's Exact Strand Bias Test\tRMS Mapping Quality\tHaplotype Score\tMapping Quality Rank Sum Test\tRead Pos Rank Sum Test\tGatk Filters\tTranscript ID\tGene Symbol\tOther Symbols\tGene Name\tGene Family Description\tEntrez ID\tHGNC ID\tEffect\tEffect Impact\tCodon Change\tAmino Acid change\tDisease Gene Association\tOMIM Gene Map\tOMIM Morbidmap\tCGD Condition\tCGD Inheritance\tHPO Terms\tHPO Disease\tMotif\tNextProt\tPercent CDS Affected\tPercent Transcript Affected\tdbsnp 144\tSegDup\tPolyPhen Score\tPolyPhen Prediction\tSift Score\tSift Prediction\tMutation Taster Score\tMutation Taster Prediction\tCADD Pred-Scaled Score\tCADD Prediction\tPhylop Score\tPhylop Prediction\tMutation Assessor Score\tMutation Assessor Prediction\tAnnovar Refseq Exonic Variant Info\tAnnovar Refseq Gene or Nearest Gene\tClinVar SIG\tClinVar CLNDBN\tClinVar CLNACC\tHGMD SIG SNVs\tHGMD ID SNVs\tHGMD HGVS SNVs\tHGMD Protein SNVs\tHGMD Description SNVs\tHGMD SIG microlesions\tHGMD ID microlesions\tHGMD HGVS microlesions\tHGMD Decription microlesions\tCosmic68\tcgWellderly all frequency\tRegion of Homology\tCG46 Allele Frequency\tESP All Allele Frequency\tESP AA Allele Frequency\tESP EA Allele Frequency\t1000G All Allele Frequency\t1000G AFR Allele Frequency\t1000G AMR Allele Frequency\t1000G EAS Allele Frequency\t1000G SAS Allele Frequency\t1000G EUR Allele Frequency\tAnnovar Ensembl Exonic Variant Info\tAnnovar Ensembl Gene or Nearest Gene\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tHGMD INDELs within 20bp window\tClinVar INDELs within 20bp window\tInternal SNPs Allele All Chromosomes Called\tInternal SNPs Allele All AF\tInternal SNPs Allele All AF genotype\tInternal SNPs Allele All Calls\tInternal INDELs Allele All Chromosomes Called\tInternal INDELs Allele All AF\tInternal INDELs Allele All AF genotype\tInternal INDELs Allele All Calls\tInternal SNPs Allele High Confidence Chromosomes Called\tInternal SNPs Allele High Confidence AF\tInternal SNPs Allele High Confidence AF genotype\tInternal SNPs Allele High Confidence Calls\tInternal INDELs Allele High Confidence Chromosomes Called\tInternal INDELs Allele High Confidence AF\tInternal INDELs Allele High Confidence AF genotype\tInternal INDELs Allele High Confidence Calls\n";
 
 #my $title = 0;
 open (FILE, "< $vcfFile") or die "Can't open $vcfFile for read: $!\n";
@@ -959,17 +1061,17 @@ while ($data=<FILE>) {
       ($rGt, $geno, $vType, $cgFilter, $aDP, $gtDp) = split(/\t/,$x);
     }
     my $chrpos = "$chr:$pos:$vType";
-    #print STDERR "rGt=$rGt\n";
-    #print STDERR "geno=$geno\n";
-    #print STDERR "vType=$vType\n";
-    #print STDERR "cgFilter=$cgFilter\n";
+    print STDERR "chrpos=$chrpos\n";
+    print STDERR "rGt=$rGt\n";
+    print STDERR "geno=$geno\n";
+    print STDERR "vType=$vType\n";
+    print STDERR "cgFilter=$cgFilter\n";
 
     #go through EFF -> from the refseqID or ensembl ID match up the HPO, OMIM, MPO, and CGD information
     #print STDERR "snpEff=$snpEff\n";
     #my @splitB = split(/\(/,$snpEff);
     #my $snpEffInfo = $splitB[1];
     #$snpEffInfo=~s/\)//gi;
-    my @splitSnpEffInfo = split(/\|/,$snpEff);
 
     my $snpEffAllele = "";
     my $effect = "";
@@ -986,57 +1088,141 @@ while ($data=<FILE>) {
     my $exonRank = "";
     my $gtNo = "";
     my $errors = "";
-    if (defined $splitSnpEffInfo[0]) {
-      $snpEffAllele = $splitSnpEffInfo[0];
-    }
-    if (defined $splitSnpEffInfo[1]) {
-      $effect = $splitSnpEffInfo[1];
-    }
-    if (defined $splitSnpEffInfo[2]) {
-      $effectImpact = $splitSnpEffInfo[2];
-    }
-    if (defined $splitSnpEffInfo[5]) {
-      $functionalClass = $splitSnpEffInfo[5];
-    }
-    if (defined $splitSnpEffInfo[9]) {
-      $codonChange = $splitSnpEffInfo[9];
-    }
-    if (defined $splitSnpEffInfo[10]) {
-      $aaChange = $splitSnpEffInfo[10];
-    }
-    if (defined $splitSnpEffInfo[12]) {
-      #$aaLength = $splitSnpEffInfo[13];
-      my $perCDSaffectedTmp = $splitSnpEffInfo[12];
-      my @splitC = split(/\//,$perCDSaffectedTmp);
-      if (defined $splitC[0] && defined $splitC[1] && $splitC[0] ne "0" && $splitC[1] ne "0" ) {
-        $perCDSaffected = $splitC[0]/$splitC[1] * 100;
-      } else {
-        $perCDSaffected = "NA";
+
+    if ($rGt eq "het-alt") {
+      #if it's alt-het get all information from snpEff
+      my @splitSEIC = split(/\,/,$snpEff);
+      foreach my $sei (@splitSEIC) { #will there ever be a case for more than two alt-het? three? how is that handled in VCF
+        my @splitSnpEffInfo = split(/\|/,$sei);
+        if (defined $splitSnpEffInfo[0]) {
+          if ($snpEffAllele eq "") {
+            $snpEffAllele = $splitSnpEffInfo[0];
+          } else {
+            $snpEffAllele =  $splitSnpEffInfo[0] . "|" . $snpEffAllele;
+          }
+        }
+        if (defined $splitSnpEffInfo[1]) {
+          if ($effect eq "") {
+            $effect = $splitSnpEffInfo[1];
+          } else {
+            $effect = $splitSnpEffInfo[1] . "|" . $effect;
+          }
+        }
+        if (defined $splitSnpEffInfo[2]) {
+          if ($effectImpact eq "") {
+            $effectImpact = $splitSnpEffInfo[2];
+          } else {
+            $effectImpact = $splitSnpEffInfo[2] . "|" . $effectImpact;
+          }
+        }
+        if (defined $splitSnpEffInfo[5]) {
+          if ($functionalClass eq "") {
+            $functionalClass = $splitSnpEffInfo[5];
+          } else {
+            $functionalClass = $splitSnpEffInfo[5] . "|" . $functionalClass;
+          }
+        }
+        if (defined $splitSnpEffInfo[9]) {
+          if ($codonChange eq "") {
+            $codonChange = $splitSnpEffInfo[9];
+          } else {
+            $codonChange = $splitSnpEffInfo[9] . "|" . $codonChange;
+          }
+        }
+        if (defined $splitSnpEffInfo[10]) {
+          if ($aaChange eq "") {
+            $aaChange = $splitSnpEffInfo[10];
+          } else {
+            $aaChange = $splitSnpEffInfo[10] . "|" . $aaChange;
+          }
+        }
+        if (defined $splitSnpEffInfo[12]) { #THE SAME FOR ALT_HETS
+          #$aaLength = $splitSnpEffInfo[13];
+          #THE SAME FOR ALT_HETS
+          my $perCDSaffectedTmp = $splitSnpEffInfo[12];
+          my @splitC = split(/\//,$perCDSaffectedTmp);
+          if (defined $splitC[0] && defined $splitC[1] && $splitC[0] ne "0" && $splitC[1] ne "0" ) {
+            $perCDSaffected = $splitC[0]/$splitC[1] * 100;
+          } else {
+            $perCDSaffected = "NA";
+          }
+        }
+
+        if (defined $splitSnpEffInfo[3]) { #THE SAME FOR ALT_HETS
+          $geneName = uc($splitSnpEffInfo[3]);
+        }
+        if (defined $splitSnpEffInfo[7]) { #THE SAME FOR ALT_HETS
+          $txBioType = $splitSnpEffInfo[7];
+        }
+        if (defined $splitSnpEffInfo[7]) { #THE SAME FOR ALT_HETS
+          $geneCoding = $splitSnpEffInfo[7];
+        }
+        if (defined $splitSnpEffInfo[6]) { #THE SAME FOR ALT_HETS
+          $txID = $splitSnpEffInfo[6];
+        }
+        if (defined $splitSnpEffInfo[14]) { #THE SAME FOR ALT_HETS
+          $exonRank = $splitSnpEffInfo[14];
+        }
+        if (defined $splitSnpEffInfo[5]) { #no corresponding column? #THE SAME FOR ALT_HETS
+          $gtNo = $splitSnpEffInfo[5];
+        }
+        if (defined $splitSnpEffInfo[15]) { #THE SAME FOR ALT_HETS
+          $errors = $splitSnpEffInfo[15];
+        }
+      }
+    } else {
+      my @splitSnpEffInfo = split(/\|/,$snpEff);
+      if (defined $splitSnpEffInfo[0]) {
+        $snpEffAllele = $splitSnpEffInfo[0];
+      }
+      if (defined $splitSnpEffInfo[1]) {
+        $effect = $splitSnpEffInfo[1];
+      }
+      if (defined $splitSnpEffInfo[2]) {
+        $effectImpact = $splitSnpEffInfo[2];
+      }
+      if (defined $splitSnpEffInfo[5]) {
+        $functionalClass = $splitSnpEffInfo[5];
+      }
+      if (defined $splitSnpEffInfo[9]) {
+        $codonChange = $splitSnpEffInfo[9];
+      }
+      if (defined $splitSnpEffInfo[10]) {
+        $aaChange = $splitSnpEffInfo[10];
+      }
+      if (defined $splitSnpEffInfo[12]) {
+        #$aaLength = $splitSnpEffInfo[13];
+        my $perCDSaffectedTmp = $splitSnpEffInfo[12];
+        my @splitC = split(/\//,$perCDSaffectedTmp);
+        if (defined $splitC[0] && defined $splitC[1] && $splitC[0] ne "0" && $splitC[1] ne "0" ) {
+          $perCDSaffected = $splitC[0]/$splitC[1] * 100;
+        } else {
+          $perCDSaffected = "NA";
+        }
+      }
+
+      if (defined $splitSnpEffInfo[3]) {
+        $geneName = uc($splitSnpEffInfo[3]);
+      }
+      if (defined $splitSnpEffInfo[7]) {
+        $txBioType = $splitSnpEffInfo[7];
+      }
+      if (defined $splitSnpEffInfo[7]) {
+        $geneCoding = $splitSnpEffInfo[7];
+      }
+      if (defined $splitSnpEffInfo[6]) {
+        $txID = $splitSnpEffInfo[6];
+      }
+      if (defined $splitSnpEffInfo[14]) {
+        $exonRank = $splitSnpEffInfo[14];
+      }
+      if (defined $splitSnpEffInfo[5]) { #no corresponding column?
+        $gtNo = $splitSnpEffInfo[5];
+      }
+      if (defined $splitSnpEffInfo[15]) {
+        $errors = $splitSnpEffInfo[15];
       }
     }
-
-    if (defined $splitSnpEffInfo[3]) {
-      $geneName = uc($splitSnpEffInfo[3]);
-    }
-    if (defined $splitSnpEffInfo[7]) {
-      $txBioType = $splitSnpEffInfo[7];
-    }
-    if (defined $splitSnpEffInfo[7]) {
-      $geneCoding = $splitSnpEffInfo[7];
-    }
-    if (defined $splitSnpEffInfo[6]) {
-      $txID = $splitSnpEffInfo[6];
-    }
-    if (defined $splitSnpEffInfo[14]) {
-      $exonRank = $splitSnpEffInfo[14];
-    }
-    if (defined $splitSnpEffInfo[5]) { #no corresponding column?
-      $gtNo = $splitSnpEffInfo[5];
-    }
-    if (defined $splitSnpEffInfo[15]) {
-      $errors = $splitSnpEffInfo[15];
-    }
-
 
     ##get gene IDs
     my $approvedGeneSymbol = "";
@@ -1071,15 +1257,15 @@ while ($data=<FILE>) {
 
     ##get OMIM genemap info
     my $ogeneMap = "";
-    if (defined $omimInfo{$chrpos}[1]) {
-      $ogeneMap = $omimInfo{$chrpos}[1];
+    if (defined $omimInfo{$geneName}[1]) {
+      $ogeneMap = $omimInfo{$geneName}[1];
     }
 
     ##get OMIM MorbidMap info
     ###only for exomes ->
     my $omorbidmap = "";
-    if (defined $omimInfo{$chrpos}[0]) {
-      $omorbidmap = $omimInfo{$chrpos}[0];
+    if (defined $omimInfo{$geneName}[0]) {
+      $omorbidmap = $omimInfo{$geneName}[0];
     }
 
     ##get CDG info
@@ -1132,7 +1318,7 @@ while ($data=<FILE>) {
     #print out all the data ---> old method
     if (defined $annovarInfo{$chrpos}) {
       for (my $i= 0; $i <= $annovarCounter; $i++ ) {
-        print STDERR "i=$i\n";
+        #print STDERR "i=$i\n";
         if ((defined $annovarInfo{$chrpos}[$i]) && ($annovarInfo{$chrpos}[$i] ne "")) {
           print $annovarInfo{$chrpos}[$i];
         } else {
@@ -1277,8 +1463,8 @@ sub getGenotype {               #determines the genotype
   } else {
     print STDERR "ERROR alleleTwo case not handled splitGt[1]=$splitGt[1]\n";
   }
-  #print STDERR "alleleOne=$alleleOne\n";
-  #print STDERR "alleleTwo=$alleleTwo\n";
+  print STDERR "alleleOne=$alleleOne\n";
+  print STDERR "alleleTwo=$alleleTwo\n";
   if ($realGt eq "hap") {
     $genotype = $alleleOne;
   } elsif ($realGt eq "no-call") {
@@ -1286,7 +1472,7 @@ sub getGenotype {               #determines the genotype
   } else {
     $genotype = $alleleOne . "|" . $alleleTwo;
   }
-  #print STDERR "genotype=$genotype\n";
+  print STDERR "genotype=$genotype\n";
 
   #determine if it's a snp, indel, sub, or na
 

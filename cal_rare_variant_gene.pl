@@ -59,34 +59,40 @@ while ($data=<FILE>) {
       my @splitSemi = split(/\|/,$freqESP);
       my $lowerAF = "";
       foreach my $af (@splitSemi) {
+        if ($af eq ".") {
+          $af = 0.00;
+        }
         if ($lowerAF eq "") {
           $lowerAF = $af;
-        } elsif ($af eq ".") {
-          #do nothing
-          #$lowerAF = 0;
-          $lowerAF = 0;
         } elsif ($af < $lowerAF) {
           $lowerAF = $af;
         }
       }
       $freqESP = $lowerAF;
+    } elsif ($freqESP eq ".") {
+      $freqESP = 0.00;
     }
 
     if ($freqthouG=~/\|/) {
-      my @splitSemi = split(/\|/,$freqESP);
+      my @splitSemi = split(/\|/,$freqthouG);
       my $lowerAF = "";
       foreach my $af (@splitSemi) {
+        if ($af eq ".") {
+          $af = 0.00;
+        }
         if ($lowerAF eq "") {
           $lowerAF = $af;
-        } elsif ($af eq ".") {
-          $lowerAF = 0;
         } elsif ($af < $lowerAF) {
           $lowerAF = $af;
         }
       }
-      $freqESP = $lowerAF;
+      $freqthouG = $lowerAF;
+    } elsif ($freqthouG eq ".") {
+      $freqthouG = 0.00
     }
 
+    #print STDERR "freqESP=$freqESP\n";
+    #print STDERR "freqthouG=$freqthouG\n";
 
     if ((!defined $freqthouG) || (!defined $freqESP) || ($freqthouG eq "") || ($freqESP eq "") || ($freqESP <= $rareAF) || ($freqthouG <= $rareAF)) {
       foreach my $varLoc (@snpEffLoc) {
