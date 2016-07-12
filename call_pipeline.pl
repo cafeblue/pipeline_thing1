@@ -276,6 +276,10 @@ sub cancerT {
  muTect2Combine:            @jobID_and_Pfolder2  = &muTect2Combine(@jobID_and_Pfolder2); 
  muTect:                    @jobID_and_Pfolder   = &muTect(@jobID_and_Pfolder, $normalPair);
  mutectCombine:             @jobID_and_Pfolder   = &mutectCombine(@jobID_and_Pfolder);
+   $jobID_and_Pfolder[0] = $jobID_and_Pfolder2[0] . ',' . @jobID_and_Pfolder[0]; 
+   $jobID_and_Pfolder[1] = $jobID_and_Pfolder[1];
+   $jobID_and_Pfolder[2] = $jobID_and_Pfolder2[1];
+ finished:                  @jobID_and_Pfolder   = &finished(@jobID_and_Pfolder);
  #annovarMutect:             @jobID_and_Pfolder   = &annovarMutect(@jobID_and_Pfolder);
 }
 
@@ -1137,6 +1141,32 @@ sub snpEff {
   }
 }
 
+sub finished {
+  #Pfolder1: mutectCombine
+  #Pfolder2: mutect2Combine
+  my ($jobID, $Pfolder1, $Pfolder2) = @_;
+  my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
+  if ( -d "$runfolder/snpEff") {
+    print "Jsub folder already exists, removing...\nrm -rf $runfolder/snpEff\n";
+    `rm -rf $runfolder/snpEff`;
+  }
+  my $cmd = 'echo \''
+    . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
+    . "\\\n"
+    . "touch $runfolder/snpEff/finished.txt \\\n"
+    . "\\\n"
+    . "\'| jsub -j snpEff -b $runfolder  -nm 1000 -np 1 -nn 1 -nw 00:10:00 -ng localhd:1 $depend";
+  print "\n\n************\nFinished:\n$cmd\n************\n\n";
+  my $cmdOut = `$cmd`;
+  print "============\n$cmdOut============\n\n";
+  if ($cmdOut =~ /^(\d+)\n/) {
+    $jobID = $1;
+    return($jobID,"snpEff");
+  } else {
+    die "snpEff for $runfolder failed to be submitted!\n";
+  }
+}
+
 sub snpEff_newGP {
   #Pfolder1: annovar/$sampleID.$postprocID.gatk.snp.indel.annovar
   #Pfolder2: gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snps.indel.vcf
@@ -1303,7 +1333,7 @@ sub mutectCombine {
     . "\\\n"
     . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n "
     . "\\\n"
-    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv"
+    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\([^\t]*\t\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv"
     . "\\\n"
     . "\'| jsub -j mutectCombine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 08:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutectCombine:\n$cmd\n************\n\n";
@@ -1333,7 +1363,7 @@ sub muTect2Combine {
     . "\\\n"
     . "Rscript $SCRIPTDIR/mut2rda2txt.R $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
     . "\\\n"
-    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv"
+    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\(\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv"
     . "\'| jsub -j mutect2Combine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 00:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutect2Combine:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
