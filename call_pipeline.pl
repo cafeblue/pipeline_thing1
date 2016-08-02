@@ -1439,7 +1439,7 @@ sub muTect {
     . "\\\n"
     . "/hpf/tools/centos6/java/1.6.0/bin/java -Xmx4g -Djava.io.tmpdir=/tmp -jar /hpf/tools/centos6/mutect/1.1.4/muTect-1.1.4.jar --analysis_type MuTect \\\n"
     . "--reference_sequence /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hs37d5/fasta/hs37d5.fa \\\n"
-    . "--cosmic /hpf/largeprojects/adam/local/genomes/homosapiens/mutect/1.1.4/resources/b37_cosmic_v54_120711.vcf \\\n"
+    . "--cosmic /hpf/largeprojects/adam/local/genomes/homosapiens/grch37/cosmic/0.75/CosmicCodingMuts.vcf.gz \\\n"
     . "--dbsnp /hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/dbsnp_138.b37.vcf \\\n"
     . "--input_file:tumor $runfolder/$Pfolder1 \\\n"
     . "--out $runfolder/mutect/$sampleID.$postprocID." . 'chr${chr}' . ".mutect_1.1.4.callstats.txt \\\n"
