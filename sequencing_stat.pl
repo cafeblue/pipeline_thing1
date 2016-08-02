@@ -14,6 +14,7 @@ $|++;
 #read in from a config file
 my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5.txt";
 my $barcodeFile = "/localhd/data/db_config_files/pipeline_thing1_config/barcodes.txt";
+my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 # open the accessDB file to retrieve the database name, host name, user name and password
 # open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
 # my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
@@ -191,32 +192,11 @@ sub update_table {
         print STDERR "thres=$thres\n";
         print STDERR "machine=$machine\n";
         if ($err ne "") {
-
           email_qc($sampleID, $flowcellID, $err, $value, $thres, $machine);
-
-          my $updateLock = "UPDATE sampleInfo SET locked ='1' AND diagnosis = '".$errString."' WHERE sampleID = '".$sampleID."' AND flowcellID = '".$flowcellID."';";
-          print STDERR "updateLock=$updateLock\n";
-          my $sthUL = $dbh->prepare($updateLock) or die "Can't lock sample = $sampleID". $dbh->errstr() . "\n";
-          $sthUL->execute()  or die "Can't execute lock for sample=$sampleID" . $dbh->errstr() . "\n";
-
-          #get the postprocID
-          my $getPPid = "SELECT postprocID FROM sampleInfo WHERE sampleID = '".$sampleID."' AND flowcellID = '". $flowcellID . "';";
-          print STDERR "getPPid=$getPPid\n";
-          my $sthPP = $dbh->prepare($getPPid) or die "Can't query database for postprocID, sampleID = $sampleID and flowcellID = $flowcellID". $dbh->errstr() . "\n";
-          $sthPP->execute()  or die "Can't execute query for postprocID, sampleID = $sampleID and flowcellID = $flowcellID" . $dbh->errstr() . "\n";
-          my @dataPP = ();
-          while (@dataPP = $sthPP->fetchrow_array()) {
-            my $ppID = $dataPP[0];
-            #insert lock log comment
-            my $insertLock = "INSERT INTO lock_log (postprocID, updated_by, updated_at, updated_to, lock_reason) VALUES ('" . $ppID . "','Pipeline','" . $currentTime . "','locked', 'Locked by: Pipeline," . $currentTime . ":" . $errString."');";
-            print STDERR "insertLock=$insertLock\n";
-            my $sthIL = $dbh->prepare($insertLock) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-            $sthIL->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-          }
         }
       }
     } else {
-      my $msg = "No/multiple sampleID found for $sampleID:\n\n$query\n";
+      my $msg = "No/multiple sampleID(s) found for $sampleID:\n\n$query\n";
       email_error($msg);
       die $msg;
     }
@@ -421,7 +401,7 @@ sub email_error {
   my $mail   = {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
-                to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
+                to                   => $email_lst_ref->{'WARNINGS'}, 
                 subject              => $msg . "Job Status on thing1 for update sample info.",
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
@@ -464,14 +444,25 @@ sub email_qc {
   my $mail   = {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
-                #to                   => 'lynette.lau@sickkids.ca,',
-                to                   => 'lynette.lau@sickkids.ca, jennifer.orr@sickkids.ca, crm@sickkids.ca, raveen.basran@sickkids.ca, marianne.eliou@sickkids.ca, weiw.wang@sickkids.ca',
+                to                   => $email_lst_ref->{'QUALMETRICS'},
                 subject              => $msg . $emailSub,
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
                 msg                  => $msg . $errorMsg
                };
   my $ret =  $sender->MailMsg($mail);
+}
+
+sub email_list {
+    my $infile = shift;
+    my %email;
+    open (INF, "$infile") or die $!;
+    while (<INF>) {
+        chomp;
+        my ($type, $lst) = split(/\t/);
+        $email{$type} = $lst;
+    }
+    return(\%email);
 }
 
 sub print_time_stamp {
@@ -501,7 +492,7 @@ sub read_in_config {
     my $type = $splitTab[0];
     my $value = $splitTab[1];
     if ($type eq "SSHDATAFILE") {
-      $SSHFDATAFILE = $value;
+      $SSHFDATAFILEtmp = $value;
     } elsif ($type eq "FASTQ_FOLDER") {
       $FASTQ_FOLDERtmp = $value;
     } elsif ($type eq "CONFIG_VERSION_FILE") {

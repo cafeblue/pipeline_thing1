@@ -13,8 +13,21 @@ my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SSHDATA    = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
 my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
-#my %FILTERS = ( "meanCvgExome" => ">= 80", "lowCovExonNum" => "<= 6000", "lowCovATRatio" => "<= 1", "perbasesAbove10XExome" => ">= 95", "perbasesAbove20XExome" => ">= 90", "offTargetRatioChr1" >= "<= 28", "perPCRdup" => "<= 15");
-my %FILTERS = ( "meanCvgExome" => ">= 80", "lowCovExonNum" => "<= 6000", "perbasesAbove10XExome" => ">= 95", "perbasesAbove20XExome" => ">= 90");
+#my %FILTERS_MAP = ( "meanCvgExome"          => " >= 80", "lowCovExonNum"         => " <= 6000", 
+#"meanCvgGP"             => " >= 80" );
+my %FILTERS = ( "yieldMB"               => { "hiseq2500" => " >= 6000",        "nextseq500" => " >= 6000",       "miseqdx" => " >= 20"},
+                "perQ30Bases"           => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 75",         "miseqdx" => " >= 80"},
+                "numReads"              => { "hiseq2500" => " >= 30000000",    "nextseq500" => " >= 25000000",   "miseqdx" => " >= 70000 "},
+                "lowCovATRatio"         => { "hiseq2500" => " <= 1",           "nextseq500" => " >= 0",          "miseqdx" => " >= 0"},
+                "perbasesAbove10XGP"    => { "hiseq2500" => " >= 95",          "nextseq500" => " >= 95",         "miseqdx" => " >= 98"}, 
+                "perbasesAbove20XGP"    => { "hiseq2500" => " >= 90",          "nextseq500" => " >= 90",         "miseqdx" => " >= 96"}, 
+                "perbasesAbove10XExome" => { "hiseq2500" => " >= 95",          "nextseq500" => " >= 95",         "miseqdx" => " >= 0"}, 
+                "perbasesAbove20XExome" => { "hiseq2500" => " >= 90",          "nextseq500" => " >= 90",         "miseqdx" => " >= 0"}, 
+                "meanCvgGP"             => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 80",         "miseqdx" => " >= 120"}, 
+                "lowCovExonNum"         => { "hiseq2500" => " <= 6000",        "nextseq500" => " >= 0",          "miseqdx" => " >= 0"}, 
+                "meanCvgExome"          => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 80",         "miseqdx" => " >= 120"}); 
+
+my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 
 open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
 # assign the values in the accessDB file to the variables
@@ -72,7 +85,7 @@ sub update_qualMetrics {
         }
 
         &run_update(@updates);
-        $query = "UPDATE sampleInfo SET currentStatus = '" . &check_qual($sampleID, $postprocID, @updates) . "' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        $query = "UPDATE sampleInfo SET currentStatus = '" . &check_qual($sampleID, $postprocID) . "' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
         print $query,"\n";
         $sthQUF = $dbh->prepare($query);
         $sthQUF->execute();
@@ -93,44 +106,56 @@ sub run_update {
 }
 
 sub check_qual {
-    my ($sampleID, $postprocID, @querys) = @_;
-    my %qualMetrics;
+    my ($sampleID, $postprocID) = @_;
     my $msg = "";
-    foreach (@querys) {
-        chomp;
-        s/UPDATE sampleInfo SET //i;
-        s/WHERE.+//;
-        s/'//g;
-        s/ //g;
-        foreach (split(/,/)) {
-            my @tmmp = split(/=/);
-            if (exists $FILTERS{$tmmp[0]}) {
-                if (not eval($tmmp[1] . $FILTERS{$tmmp[0]})) {
-                    $msg .= "Failed to pass the filter: " . $tmmp[0] . $FILTERS{$tmmp[0]} . "(" . $tmmp[0] . " = " . $tmmp[1] . ")\n";
-                }
-            }
+
+    my $query = "SELECT ss.machine,si.genePanelVer,si.meanCvgExome,lowCovExonNum,si.perbasesAbove10XExome,si.perbasesAbove20XExome,si.yieldMB,si.perQ30Bases,si.numReads,si.perbasesAbove10XGP,si.perbasesAbove20XGP,si.meanCvgGP,si.offTargetRatioChr1,si.lowCovATRatio FROM sampleInfo AS si INNER JOIN sampleSheet AS ss ON (ss.flowcell_ID = si.flowcellID AND si.sampleID = ss.sampleID) WHERE si.sampleID = '$sampleID' AND si.postprocID = '$postprocID';";
+    my $sth_qual = $dbh->prepare($query) or die "Failed to prepare the query: $query\n";
+    $sth_qual->execute();
+    my $qual_ref = $sth_qual->fetchrow_hashref;
+    $qual_ref->{"machine"} =~ s/_.+//;
+    #foreach my $keys (keys %FILTERS_MAP) {
+    #    if (not eval ($qual_ref->{$keys} . $FILTERS_MAP{$keys})) {
+    #        $msg .= "Failed to pass the filter: " . $keys . $FILTERS_MAP{$keys} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
+    #    }
+    #}
+    foreach my $keys (keys %FILTERS) {
+        if (not eval ($qual_ref->{$keys} . $FILTERS{$keys}{$qual_ref->{"machine"}})) {
+            $msg .= "Failed to pass the filter: " . $keys . $FILTERS{$keys}{$qual_ref->{"machine"}} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
         }
     }
     
     if ($msg ne '') {
-        $msg = "sampleID $sampleID postprocID $postprocID has finished analysis using gene panel, ai.gp18. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through. Please check the following linkage\nhttp://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary\n\n" . $msg;
+        $msg = "sampleID $sampleID postprocID $postprocID has finished analysis using gene panel, $qual_ref->{genePanelVer}. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through. Please check the following linkage\nhttp://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary\n\n" . $msg;
         email_error($msg, "quality");
         return 7;
     }
     return 6;
 }
 
+sub email_list {
+    my $infile = shift;
+    my %email;
+    open (INF, "$infile") or die $!;
+    while (<INF>) {
+        chomp;
+        my ($type, $lst) = split(/\t/);
+        $email{$type} = $lst;
+    }
+    return(\%email);
+}
+
 sub email_error {
     my ($errorMsg, $quality) = @_;
     print STDERR $errorMsg;
     $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
-    my $email_list = $quality eq 'quality' ? 'crm@sickkids.ca, jennifer.orr@sickkids.ca, marianne.eliou@sickkids.ca, lynette.lau@sickkids.ca, weiw.wang@sickkids.ca' : 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca';
+    my $email_lst = $quality eq 'quality' ? $email_lst_ref->{'QUALMETRICS'} : $email_lst_ref->{'WARNINGS'}; 
     my $title = $quality eq 'quality' ? 'Sample failed to pass the QC' : 'JobStatus on HPF';
     my $sender = Mail::Sender->new();
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => $email_list, 
+        to                   => $email_lst, 
         subject              => $title,
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
