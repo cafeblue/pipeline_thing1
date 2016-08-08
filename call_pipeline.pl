@@ -1528,7 +1528,10 @@ sub mutectCombine {
     . "\\\n"
     . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n "
     . "\\\n"
-    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\([^\t]*\t\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv"
+    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\([^\t]*\t\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n"
+    . "\\\n"
+    . "ln -f $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv $BACKUP_BASEDIR/variants/sid_$sampleID.aid_$postprocID.snv.csv && \\\n"
+    . "ln -f $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $BACKUP_BASEDIR/variants/sid_$sampleID.aid_$postprocID.snv.rda \\\n"
     . "\\\n"
     . "\'| jsub -j mutectCombine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 08:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutectCombine:\n$cmd\n************\n\n";
@@ -1558,7 +1561,11 @@ sub muTect2Combine {
     . "\\\n"
     . "Rscript $SCRIPTDIR/mut2rda2txt.R $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
     . "\\\n"
-    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\(\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv"
+    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\(\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
+    . "\\\n"
+    . "ln -f $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv $BACKUP_BASEDIR/variants/sid_$sampleID.aid_$postprocID.indel.csv && \\\n"
+    . "ln -f $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $BACKUP_BASEDIR/variants/sid_$sampleID.aid_$postprocID.indel.rda \\\n"
+    . "\\\n"
     . "\'| jsub -j mutect2Combine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 00:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutect2Combine:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
