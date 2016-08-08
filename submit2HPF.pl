@@ -63,39 +63,25 @@ sub main {
             }
 
             my $normal_bam = '';
-            my $search_pairID = "SELECT postprocID1,postprocID2 FROM pairInfo WHERE pairID = '$pairID'";
+            my $search_pairID = "SELECT sampleID,postprocID FROM sampleInfo WHERE pairID = '$pairID' AND genePanelVer like 'cancer%' AND sampleType = 'normal' ORDER BY postprocID DESC LIMIT 1;";
             my $sth = $dbh->prepare($search_pairID) or $allerr .= "Can't query database for $pairID : " . $dbh->errstr() . "\n";
-            while (my @data_ref = $sth->fetchrow_array) {
-                if ($data_ref[0] eq $postprocID) {
-                    my $pairedppID = $data_ref[1];
-                    my $search_analysisId = "SELECT sampleID FROM sampleInfo WHERE postprocID = '$pairedppID' and genePanelVer = 'cancer.gp19'";
-                    my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedppID : " . $dbh->errstr() . "\n"; 
-                    if ($sth_tmp->rows() == 1) {
-                        my @data_sID_ref = $sth_tmp->fetchrow_array ;
-                        $normal_bam = "$BACKUP_BAM/" . $data_sID_ref[0] . ".$pairedppID.realigned-recalibrated.bam";
-                    }
-                    else {
-                        $allerr .= "multiple/no postprocID found for paired sampleID $pairedppID with sampleID $sampleID, please run the following mysql command to double check:\n\n"
-                        . "SELECT postprocID1,postprocID2 FROM pairInfo WHERE pairID = '$pairID';\n"
-                        . "SELECT sampleID FROM sampleInfo WHERE postprocID = '$pairedppID' and genePanelVer = 'cancer.gp19'\n";
-                        return(1);
-                    }
+            $sth->execute() or $allerr .= "Can't execute query $search_pairID:\n ". $dbh->errstr() . "\n";
+            if ($sth->rows() == 1) {
+                my @normal_info = $sth->fetchrow_array;
+                $normal_bam = "$BACKUP_BAM/" . $normal_info[0] . "." . $normal_info[1] . ".realigned-recalibrated.bam";
+                my $check_exists = "$SSH_DATA \" ls $normal_bam |wc -l \"";
+                my $file_number = `$check_exists`;
+                chomp($file_number);
+                if ($file_number ne '1') {
+                    $allerr .= "No normal paired sampleID: " . $normal_info[0] . " postprocID: " . $normal_info[1] . " BAM file found for tumor sampleID: " . $sampleID . ", please check the file\n\n $normal_bam\n\n on HPF!\n";
+                    return(1);
                 }
-                elsif ($data_ref[1] eq $postprocID) {
-                    my $pairedppID = $data_ref[0];
-                    my $search_analysisId = "SELECT sampleID FROM sampleInfo WHERE postprocID = '$pairedppID' and genePanelVer = 'cancer.gp19'";
-                    my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedppID : " . $dbh->errstr() . "\n"; 
-                    if ($sth_tmp->rows() == 1) {
-                        my @data_sID_ref = $sth_tmp->fetchrow_array ;
-                        $normal_bam = "$BACKUP_BAM/" . $data_sID_ref[0] . ".$pairedppID.realigned-recalibrated.bam";
-                    }
-                    else {
-                        $allerr .= "multiple/no postprocID found for paired sampleID $pairedppID with sampleID $sampleID, please run the following mysql command to double check:\n\n"
-                        . "SELECT postprocID1,postprocID2 FROM pairInfo WHERE pairID = '$pairID';\n"
-                        . "SELECT sampleID FROM sampleInfo WHERE postprocID = '$pairedppID' and genePanelVer = 'cancer.gp19'\n";
-                        return(1);
-                    }
-                }
+            }
+            else {
+                $allerr .= "No paired normal postprocID found for tumor sampleID $sampleID, please run the following mysql command to double check:\n\n";
+                $allerr .= $search_pairID;
+                $allerr .= "\n";
+                return(1);
             }
 
             $command = "$SSH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam\" \n";
