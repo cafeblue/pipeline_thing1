@@ -114,7 +114,28 @@ sub updateDB {
 
 sub loadVariants2DB {
   my ($sampleID, $postprocID, $genePanelVer) = @_;
+
   my $msg = "";
+
+  #### load variants for tumor samples ######
+  if ( -e "$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.snv.csv") {
+      my $fileload = "LOAD DATA LOCAL INFILE \'$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.snv.csv\' INTO TABLE variants_cancer FIELDS TERMINATED BY \'\\t\' LINES TERMINATED BY \'\\n\'";
+      print $fileload,"\n";
+      $dbh->do( $fileload ) or $msg .= "Failed to run $fileload, Unable load in file: " . $dbh->errstr . "\n";
+
+      $fileload = "LOAD DATA LOCAL INFILE \'$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.indel.csv\' INTO TABLE indel_cancer FIELDS TERMINATED BY \'\\t\' LINES TERMINATED BY \'\\n\'";
+      print $fileload,"\n";
+      $dbh->do( $fileload ) or $msg .= "Failed to run $fileload, Unable load in file: " . $dbh->errstr . "\n";
+      if ($msg ne '') {
+          email_error($msg);
+          return 1;
+      } 
+      else {
+          return 0;
+      }
+  }
+
+  #### load variants for exome panel samples #######
   open (FILTERED, "$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.annotated.filter.txt") or $msg .= "Failed to open file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.annotated.filter.txt\n";
   open (VARIANTS, "$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.annotated.tsv") or $msg .= "Failed to open file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.annotated.tsv\n";
   open (ALLFILE,  ">$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt") or $msg .= "Failed to open file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt\n";
