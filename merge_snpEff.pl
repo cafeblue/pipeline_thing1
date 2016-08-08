@@ -101,7 +101,7 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
       my $snpEff = "";
       for (my $t=0; $t < scalar(@splitI); $t++) {
         my @splitVariable = split(/\=/,$splitI[$t]);
-        if ($splitVariable[0] eq "ANN") {
+        if ($splitVariable[0] eq "EFF") {
           $snpEff = $splitVariable[1];
         }
       }
@@ -295,7 +295,7 @@ sub isoformPrint{
           } else {
             $infoVcf = $infoVcf . ";" . $splitI[$t];
           }
-        } elsif ($splitVariable[0] eq "ANN") {
+        } elsif ($splitVariable[0] eq "EFF") {
           $snpEff = $splitVariable[1];
         }
       }
@@ -411,7 +411,7 @@ sub isoformPrint{
           #this is the transcript that must be used
           #insert into isoform hash
           #print STDERR "isoformHash geneName=$geneName, transcript=$transcript\n";
-          $isoformHash{"$chr\t$pos\t$ref\t$alt\t$geneName\t$transcript"} = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";ANN=" . $isoform . "\t" . $format . "\t" . $gt;
+          $isoformHash{"$chr\t$pos\t$ref\t$alt\t$geneName\t$transcript"} = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";EFF=" . $isoform . "\t" . $format . "\t" . $gt;
           if ($type eq "ensembl") {
             $ensAnn{"$chr\t$pos\t$ref\t$alt"} = "1";
           } else {
@@ -422,19 +422,19 @@ sub isoformPrint{
 
           if ($lastIsoform eq "") { #first transcript
             if ((defined $transcript) && ($transcript ne "") && (defined $txLength{$transcript})) {
-              $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";ANN=" . $isoform . "\t" . $format . "\t" . $gt;
+              $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";EFF=" . $isoform . "\t" . $format . "\t" . $gt;
               $lastIsoformLeng = $txLength{$transcript};
               $lastIsoformNames = $geneName . "\t" . $transcript;
             } else {
               #this variant is overlapping no known transcript
-              $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";ANN=" . $isoform . "\t" . $format . "\t" . $gt;
+              $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";EFF=" . $isoform . "\t" . $format . "\t" . $gt;
               $lastIsoformLeng = 0;
               $lastIsoformNames = $geneName . "\t" . $transcript;
             }
           } else {              #check which one is longer
             if ((defined $transcript) && ($transcript ne "") && (defined $txLength{$transcript})) {
               if ($lastIsoformLeng < $txLength{$transcript}) {
-                $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";ANN=" . $isoform . "\t" . $format . "\t" . $gt;
+                $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";EFF=" . $isoform . "\t" . $format . "\t" . $gt;
                 $lastIsoformLeng = $txLength{$transcript};
                 $lastIsoformNames = $geneName . "\t" . $transcript;
               }
