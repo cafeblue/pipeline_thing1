@@ -63,32 +63,36 @@ sub main {
             }
 
             my $normal_bam = '';
-            my $search_pairID = "SELECT sampleID1,sampleID2 FROM pairInfo WHERE pairID = '$pairID'";
+            my $search_pairID = "SELECT postprocID1,postprocID2 FROM pairInfo WHERE pairID = '$pairID'";
             my $sth = $dbh->prepare($search_pairID) or $allerr .= "Can't query database for $pairID : " . $dbh->errstr() . "\n";
             while (my @data_ref = $sth->fetchrow_array) {
-                if ($data_ref[0] eq $sampleID) {
-                    my $pairedSampleID = $data_ref[1];
-                    my $search_analysisId = "SELECT postprocID FROM sampleInfo WHERE sampleID = '$pairedSampleID' and genePanelVer = 'cancer.gp19'";
-                    my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedSampleID : " . $dbh->errstr() . "\n"; 
+                if ($data_ref[0] eq $postprocID) {
+                    my $pairedppID = $data_ref[1];
+                    my $search_analysisId = "SELECT sampleID FROM sampleInfo WHERE postprocID = '$pairedppID' and genePanelVer = 'cancer.gp19'";
+                    my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedppID : " . $dbh->errstr() . "\n"; 
                     if ($sth_tmp->rows() == 1) {
-                        my @data_ref = $sth_tmp->fetchrow_array ;
-                        $normal_bam = "$BACKUP_BAM/$pairedSampleID." . $data_ref[0] . ".realigned-recalibrated.bam";
+                        my @data_sID_ref = $sth_tmp->fetchrow_array ;
+                        $normal_bam = "$BACKUP_BAM/" . $data_sID_ref[0] . ".$pairedppID.realigned-recalibrated.bam";
                     }
                     else {
-                        $allerr .= "multiple/no postprocID found for paired sampleID $pairedSampleID with sampleID $sampleID\n";
+                        $allerr .= "multiple/no postprocID found for paired sampleID $pairedppID with sampleID $sampleID, please run the following mysql command to double check:\n\n"
+                        . "SELECT postprocID1,postprocID2 FROM pairInfo WHERE pairID = '$pairID';\n"
+                        . "SELECT sampleID FROM sampleInfo WHERE postprocID = '$pairedppID' and genePanelVer = 'cancer.gp19'\n";
                         return(1);
                     }
                 }
-                elsif ($data_ref[1] eq $sampleID) {
-                    my $pairedSampleID = $data_ref[0];
-                    my $search_analysisId = "SELECT postprocID FROM sampleInfo WHERE sampleID = '$pairedSampleID' and genePanelVer = 'cancer.gp19'";
-                    my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedSampleID : " . $dbh->errstr() . "\n"; 
+                elsif ($data_ref[1] eq $postprocID) {
+                    my $pairedppID = $data_ref[0];
+                    my $search_analysisId = "SELECT sampleID FROM sampleInfo WHERE postprocID = '$pairedppID' and genePanelVer = 'cancer.gp19'";
+                    my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedppID : " . $dbh->errstr() . "\n"; 
                     if ($sth_tmp->rows() == 1) {
-                        my @data_ref = $sth_tmp->fetchrow_array ;
-                        $normal_bam = "$BACKUP_BAM/$pairedSampleID." . $data_ref[0] . ".realigned-recalibrated.bam";
+                        my @data_sID_ref = $sth_tmp->fetchrow_array ;
+                        $normal_bam = "$BACKUP_BAM/" . $data_sID_ref[0] . ".$pairedppID.realigned-recalibrated.bam";
                     }
                     else {
-                        $allerr .= "multiple/no postprocID found for paired sampleID $pairedSampleID with sampleID $sampleID\n";
+                        $allerr .= "multiple/no postprocID found for paired sampleID $pairedppID with sampleID $sampleID, please run the following mysql command to double check:\n\n"
+                        . "SELECT postprocID1,postprocID2 FROM pairInfo WHERE pairID = '$pairID';\n"
+                        . "SELECT sampleID FROM sampleInfo WHERE postprocID = '$pairedppID' and genePanelVer = 'cancer.gp19'\n";
                         return(1);
                     }
                 }
@@ -197,7 +201,7 @@ sub insert_jobstatus {
                                "windowBed", "annovar", "snpEff"],
                    'cancerT' => ["bwaAlign", "picardMarkDup", "picardMarkDupIdx", "picardMeanQualityByCycle", "CollectAlignmentSummaryMetrics", "picardCollectGcBiasMetrics",
                                "picardQualityScoreDistribution", "picardCalculateHsMetrics", "picardCollectInsertSizeMetrics", "gatkLocalRealign", "gatkQscoreRecalibration",
-                               "gatkCovCalGP", "muTect", "mutectCombine", "annovarMutect"],
+                               "gatkCovCalGP", "mutect", "mutectCombine", "mutect2", "mutect2Combine", "snpEff"],
                    'newGP' => [ "calAF", "gatkCovCalGP", "annovar", "snpEff"]);
     foreach my $jobName (@{$joblist{$pipeline}}) {
         my $insert_sql = "INSERT INTO hpfJobStatus (sampleID, postprocID, jobName) VALUES ('$sampleID', '$postprocID', '$jobName')";
