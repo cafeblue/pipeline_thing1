@@ -1530,8 +1530,11 @@ sub mutectCombine {
     . "\\\n"
     . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\([^\t]*\t\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n"
     . "\\\n"
-    . "ln -f $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv $BACKUP_BASEDIR/variants/sid_$sampleID.aid_$postprocID.snv.csv && \\\n"
-    . "ln -f $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $BACKUP_BASEDIR/variants/sid_$sampleID.aid_$postprocID.snv.rda \\\n"
+    . "cd $runfolder/mutectCombine/ && mv $sampleID.$postprocID.snv.csv sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.csv && \\\n"
+    . "mv $sampleID.$postprocID\_annotated.rda sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.rda && \\\n"
+    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.csv > sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.csv.sha256sum && \\\n"
+    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.rda > sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.rda.sha256sum && \\\n"
+    . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
     . "\\\n"
     . "\'| jsub -j mutectCombine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 08:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutectCombine:\n$cmd\n************\n\n";
@@ -1563,8 +1566,11 @@ sub muTect2Combine {
     . "\\\n"
     . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\(\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
     . "\\\n"
-    . "ln -f $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv $BACKUP_BASEDIR/variants/sid_$sampleID.aid_$postprocID.indel.csv && \\\n"
-    . "ln -f $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $BACKUP_BASEDIR/variants/sid_$sampleID.aid_$postprocID.indel.rda \\\n"
+    . "cd $runfolder/mutect2Combine/ && mv $sampleID.$postprocID.indel.csv sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.csv && \\\n"
+    . "mv $sampleID.$postprocID\_annotated.rda sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.rda && \\\n"
+    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.csv > sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.csv.sha256sum && \\\n"
+    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.rda > sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.rda.sha256sum && \\\n"
+    . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
     . "\\\n"
     . "\'| jsub -j mutect2Combine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 00:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutect2Combine:\n$cmd\n************\n\n";
