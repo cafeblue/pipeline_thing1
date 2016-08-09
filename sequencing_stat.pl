@@ -90,7 +90,7 @@ sub update_table {
       $dbh->do($delete_sql);
     }
 
-    my $query = "SELECT gene_panel,capture_kit,testType,priority,pairedSampleID,specimen,sample_type,machine from sampleSheet where flowcell_ID = '$flowcellID' and sampleID = '$sampleID'";
+    my $query = "SELECT gene_panel,capture_kit,testType,priority,pairID,specimen,sample_type,machine from sampleSheet where flowcell_ID = '$flowcellID' and sampleID = '$sampleID'";
     $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
     if ($sthQNS->rows() == 1) {
@@ -99,7 +99,7 @@ sub update_table {
         my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype,$machine) = @data_ref;
         my $key = $gp . "\t" . $ck;
         if (defined $ps) {
-          $ps = &get_pairID($ps, $sampleID);
+          #$ps = &get_pairID($ps, $sampleID);
           my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer ) VALUES ('" . $sampleID . "','$flowcellID','$ps','$gp','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','$specimen', '$sampletype', '$tt','$pt', '0', '$pipething1ver', '$pipehpfver', '$webver')";
           my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
           $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";

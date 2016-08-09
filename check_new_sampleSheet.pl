@@ -129,8 +129,8 @@ foreach my $file  (@new_fl) {
 
         my $genePanel = lc($lines_ref->{'gene_panel'});
 
-        if ($genePanel =~ /cancer/ && $lines_ref->{'pairedSampleID'} !~ /\d/) {
-            $cancer_samples_msg .= "Please specify the pairedSampleID for " . $lines_ref->{'sampleID'} . " which is runnig on flowcellID: " . $lines_ref->{'flowcell_ID'}  . "\n";
+        if ($genePanel =~ /cancer/ && $lines_ref->{'pairID'} !~ /\d/) {
+            $cancer_samples_msg .= "Please specify the pairID for " . $lines_ref->{'sampleID'} . " which is runnig on flowcellID: " . $lines_ref->{'flowcell_ID'}  . "\n";
         }
 
         my %uniqueGPDB = ();
