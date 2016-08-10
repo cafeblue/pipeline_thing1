@@ -126,9 +126,11 @@ sub check_qual {
     #    }
     #}
     foreach my $keys (keys %FILTERS) {
-        my @equations = map { s/^/$qual_ref->{$keys}/ ; $_} @{$FILTERS{$keys}{$qual_ref->{"machine"}}};
+        #my @equations = map { s/^/$qual_ref->{$keys}/ ; $_} @{$FILTERS{$keys}{$qual_ref->{"machine"}}};
+        my @equations = @{$FILTERS{$keys}{$qual_ref->{"machine"}}};
+        map { s/^/$qual_ref->{$keys}/ ; $_} @equations;
         if (not eval (join (" && ", @equations))) {
-            $msg .= "Failed to pass the filter: " . $keys . join(@{$FILTERS{$keys}{$qual_ref->{"machine"}}}) . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
+            $msg .= "Failed to pass the filter: " . $keys . join(" && ", @{$FILTERS{$keys}{$qual_ref->{"machine"}}}) . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
         }
     }
     
