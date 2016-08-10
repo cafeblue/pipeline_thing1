@@ -15,17 +15,18 @@ my $SSHDATA    = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.si
 my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
 #my %FILTERS_MAP = ( "meanCvgExome"          => " >= 80", "lowCovExonNum"         => " <= 6000", 
 #"meanCvgGP"             => " >= 80" );
-my %FILTERS = ( "yieldMB"               => { "hiseq2500" => " >= 6000",        "nextseq500" => " >= 6000",       "miseqdx" => " >= 20"},
-                "perQ30Bases"           => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 75",         "miseqdx" => " >= 80"},
-                "numReads"              => { "hiseq2500" => " >= 30000000",    "nextseq500" => " >= 25000000",   "miseqdx" => " >= 70000 "},
-                "lowCovATRatio"         => { "hiseq2500" => " <= 1",           "nextseq500" => " >= 0",          "miseqdx" => " >= 0"},
-                "perbasesAbove10XGP"    => { "hiseq2500" => " >= 95",          "nextseq500" => " >= 95",         "miseqdx" => " >= 98"}, 
-                "perbasesAbove20XGP"    => { "hiseq2500" => " >= 90",          "nextseq500" => " >= 90",         "miseqdx" => " >= 96"}, 
-                "perbasesAbove10XExome" => { "hiseq2500" => " >= 95",          "nextseq500" => " >= 95",         "miseqdx" => " >= 0"}, 
-                "perbasesAbove20XExome" => { "hiseq2500" => " >= 90",          "nextseq500" => " >= 90",         "miseqdx" => " >= 0"}, 
-                "meanCvgGP"             => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 80",         "miseqdx" => " >= 120"}, 
-                "lowCovExonNum"         => { "hiseq2500" => " <= 6000",        "nextseq500" => " >= 0",          "miseqdx" => " >= 0"}, 
-                "meanCvgExome"          => { "hiseq2500" => " >= 80",          "nextseq500" => " >= 80",         "miseqdx" => " >= 120"}); 
+my %FILTERS = ( 
+    "yieldMB"               => { "hiseq2500" => [" >= 6000"],            "nextseq500" => [" >= 6000"],            "miseqdx" => [" >= 20"]},
+    "perQ30Bases"           => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 75"],              "miseqdx" => [" >= 80"]},
+    "numReads"              => { "hiseq2500" => [" >= 30000000"],        "nextseq500" => [" >= 25000000"],        "miseqdx" => [" >= 70000 "]},
+    "lowCovATRatio"         => { "hiseq2500" => [" <= 1"],               "nextseq500" => [" <= 1"],               "miseqdx" => [" >= 0"]},
+    "perbasesAbove10XGP"    => { "hiseq2500" => [" >= 95"],              "nextseq500" => [" >= 95"],              "miseqdx" => [" >= 98"]}, 
+    "perbasesAbove20XGP"    => { "hiseq2500" => [" >= 90"],              "nextseq500" => [" >= 90"],              "miseqdx" => [" >= 96"]}, 
+    "perbasesAbove10XExome" => { "hiseq2500" => [" >= 95"],              "nextseq500" => [" >= 95"],              "miseqdx" => [" >= 0"]}, 
+    "perbasesAbove20XExome" => { "hiseq2500" => [" >= 90"],              "nextseq500" => [" >= 90"],              "miseqdx" => [" >= 0"]}, 
+    "meanCvgGP"             => { "hiseq2500" => [" >= 80", " <= 200"],   "nextseq500" => [" >= 80", " <= 200"],   "miseqdx" => [" >= 120"]}, 
+    "lowCovExonNum"         => { "hiseq2500" => [" <= 6000"],            "nextseq500" => [" >= 6000"],            "miseqdx" => [" >= 0"]}, 
+    "meanCvgExome"          => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 80"],              "miseqdx" => [" >= 120"]}); 
 
 my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 
@@ -109,19 +110,25 @@ sub check_qual {
     my ($sampleID, $postprocID) = @_;
     my $msg = "";
 
-    my $query = "SELECT ss.machine,si.genePanelVer,si.meanCvgExome,lowCovExonNum,si.perbasesAbove10XExome,si.perbasesAbove20XExome,si.yieldMB,si.perQ30Bases,si.numReads,si.perbasesAbove10XGP,si.perbasesAbove20XGP,si.meanCvgGP,si.offTargetRatioChr1,si.lowCovATRatio FROM sampleInfo AS si INNER JOIN sampleSheet AS ss ON (ss.flowcell_ID = si.flowcellID AND si.sampleID = ss.sampleID) WHERE si.sampleID = '$sampleID' AND si.postprocID = '$postprocID';";
+    my $query = "SELECT ss.machine,si.genePanelVer,si.meanCvgExome,lowCovExonNum,si.perbasesAbove10XExome,si.perbasesAbove20XExome,si.yieldMB,si.perQ30Bases,si.numReads,si.perbasesAbove10XGP,si.perbasesAbove20XGP,si.meanCvgGP,si.offTargetRatioChr1,si.lowCovATRatio,si.perPCRdup FROM sampleInfo AS si INNER JOIN sampleSheet AS ss ON (ss.flowcell_ID = si.flowcellID AND si.sampleID = ss.sampleID) WHERE si.sampleID = '$sampleID' AND si.postprocID = '$postprocID';";
     my $sth_qual = $dbh->prepare($query) or die "Failed to prepare the query: $query\n";
     $sth_qual->execute();
     my $qual_ref = $sth_qual->fetchrow_hashref;
     $qual_ref->{"machine"} =~ s/_.+//;
+
+    ######  ignore all the cancer samples   #######
+    if ($qual_ref->{"genePanelVer"} =~ /cancer/) {
+        return 6;
+    }
     #foreach my $keys (keys %FILTERS_MAP) {
     #    if (not eval ($qual_ref->{$keys} . $FILTERS_MAP{$keys})) {
     #        $msg .= "Failed to pass the filter: " . $keys . $FILTERS_MAP{$keys} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
     #    }
     #}
     foreach my $keys (keys %FILTERS) {
-        if (not eval ($qual_ref->{$keys} . $FILTERS{$keys}{$qual_ref->{"machine"}})) {
-            $msg .= "Failed to pass the filter: " . $keys . $FILTERS{$keys}{$qual_ref->{"machine"}} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
+        my @equations = map { s/^/$qual_ref->{$keys}/ ; $_} @{$FILTERS{$keys}{$qual_ref->{"machine"}}};
+        if (not eval (join (" && ", @equations))) {
+            $msg .= "Failed to pass the filter: " . $keys . join(@{$FILTERS{$keys}{$qual_ref->{"machine"}}}) . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
         }
     }
     
