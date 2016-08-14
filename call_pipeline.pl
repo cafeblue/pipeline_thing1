@@ -11,7 +11,7 @@ use Time::Piece;
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 
-my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5_pipeline_config.txt"; #Future will be passed from the thing1 cmd
+my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config_test/v5_pipeline_cancer_config.txt"; #Future will be passed from the thing1 cmd
 my $genepanel_config_file = "/hpf/largeprojects/pray/clinical/config/gene_panels_config.txt"; #Future will be passed from the thing1 cmd
 
 GetOptions ("sampleID|s=s" => \$sampleID,
@@ -42,7 +42,7 @@ our %startPoint_lst = ( 'NEW' => '', 'bwaAlign' => '', 'picardMarkDup' => 'bwaAl
                         #'annovar' => "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf",
                         'muTect' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
                         'muTect2' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
-                        'mutectCombine' => "mutect", 'annovarMutect' => "mutectCombine/$sampleID.$postprocID.mutect.combine.annovar",
+                        'mutectCombine' => "mutect", 'mutect2Combine' => 'mutect2',
                         'gatkFilteredRecalVariant' => ["gatkRawVariants/$sampleID.$postprocID.raw.snps.vcf", "gatkRawVariants/$sampleID.$postprocID.raw.indels.vcf"],
                         'snpEff' => ["annovar/$sampleID.$postprocID.gatk.snp.indel.annovar", "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf",
                                      "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv","windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv"]);
@@ -69,7 +69,7 @@ our $help =  <<EOF;
               startPoint list: NEW, bwaAlign, picardMarkDup, picardMarkDupIdx,
                                gatkLocalRealign, gatkQscoreRecalibration, gatkGenoTyper, gatkCovCalExomeTargets,
                                gatkCovCalGP, gatkRawVariantsCall, gatkRawVariants, gatkFilteredRecalVariant, snpEff, calAF
-                               muTect, mutectCombine
+                               muTect, mutectCombine, mutect2Combine
 
 EOF
 
@@ -1526,9 +1526,9 @@ sub mutectCombine {
     . "\\\n"
     . "Rscript /hpf/largeprojects/adam/local/bin/run_annotation_pipeline.R --directory $runfolder/mutectCombine/ --sample $sampleID.$postprocID && \\\n"
     . "\\\n"
-    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n "
+    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv $postprocID $normal_postprocID && \\\n "
     . "\\\n"
-    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\([^\t]*\t\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n"
+    . 'sed -i "s/^\([^\t]*\t\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tTRUE\t/\t1\t/g;s/\tFALSE\t/\t0\t/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n"
     . "\\\n"
     . "cd $runfolder/mutectCombine/ && mv $sampleID.$postprocID.snv.csv sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.csv && \\\n"
     . "mv $sampleID.$postprocID\_annotated.rda sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.rda && \\\n"
@@ -1562,9 +1562,9 @@ sub muTect2Combine {
     . " \\\n"
     . "Rscript /hpf/largeprojects/adam/local/bin/annotated_indels.R --path $runfolder/$Pfolder/ --sample $runfolder/mutect2Combine/$sampleID.$postprocID && \\\n"
     . "\\\n"
-    . "Rscript $SCRIPTDIR/mut2rda2txt.R $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
+    . "Rscript $SCRIPTDIR/mut2rda2txt.R $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv $postprocID $normal_postprocID  && \\\n"
     . "\\\n"
-    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\(\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
+    . 'sed -i "s/^\(\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tTRUE\t/\t1\t/g;s/\tFALSE\t/\t0\t/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
     . "\\\n"
     . "cd $runfolder/mutect2Combine/ && mv $sampleID.$postprocID.indel.csv sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.csv && \\\n"
     . "mv $sampleID.$postprocID\_annotated.rda sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.rda && \\\n"
