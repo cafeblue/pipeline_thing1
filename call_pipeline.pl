@@ -11,7 +11,7 @@ use Time::Piece;
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 
-my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5_pipeline_config.txt"; #Future will be passed from the thing1 cmd
+my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config_test/v5_pipeline_cancer_config.txt"; #Future will be passed from the thing1 cmd
 my $genepanel_config_file = "/hpf/largeprojects/pray/clinical/config/gene_panels_config.txt"; #Future will be passed from the thing1 cmd
 
 GetOptions ("sampleID|s=s" => \$sampleID,
@@ -42,7 +42,7 @@ our %startPoint_lst = ( 'NEW' => '', 'bwaAlign' => '', 'picardMarkDup' => 'bwaAl
                         #'annovar' => "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf",
                         'muTect' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
                         'muTect2' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
-                        'mutectCombine' => "mutect", 'mutect2Combine' => 'mutect2',
+                        'muTectCombine' => "muTect", 'muTect2Combine' => 'muTect2',
                         'gatkFilteredRecalVariant' => ["gatkRawVariants/$sampleID.$postprocID.raw.snps.vcf", "gatkRawVariants/$sampleID.$postprocID.raw.indels.vcf"],
                         'snpEff' => ["annovar/$sampleID.$postprocID.gatk.snp.indel.annovar", "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf",
                                      "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv","windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv"]);
@@ -69,7 +69,7 @@ our $help =  <<EOF;
               startPoint list: NEW, bwaAlign, picardMarkDup, picardMarkDupIdx,
                                gatkLocalRealign, gatkQscoreRecalibration, gatkGenoTyper, gatkCovCalExomeTargets,
                                gatkCovCalGP, gatkRawVariantsCall, gatkRawVariants, gatkFilteredRecalVariant, snpEff, calAF
-                               muTect, mutectCombine, mutect2Combine
+                               muTect, muTectCombine, muTect2Combine
 
 EOF
 
@@ -269,7 +269,7 @@ sub cancerT {
  muTect2:                   @jobID_and_Pfolder2  = &muTect2(@jobID_and_Pfolder, $normalPair); 
  muTect2Combine:            @jobID_and_Pfolder2  = &muTect2Combine(@jobID_and_Pfolder2); 
  muTect:                    @jobID_and_Pfolder   = &muTect(@jobID_and_Pfolder, $normalPair);
- mutectCombine:             @jobID_and_Pfolder   = &mutectCombine(@jobID_and_Pfolder);
+ muTectCombine:             @jobID_and_Pfolder   = &muTectCombine(@jobID_and_Pfolder);
    $jobID_and_Pfolder[0] = $jobID_and_Pfolder2[0] . ',' . @jobID_and_Pfolder[0]; 
    $jobID_and_Pfolder[1] = $jobID_and_Pfolder[1];
    $jobID_and_Pfolder[2] = $jobID_and_Pfolder2[1];
@@ -1330,8 +1330,8 @@ sub snpEff {
 }
 
 sub finished {
-  #Pfolder1: mutectCombine
-  #Pfolder2: mutect2Combine
+  #Pfolder1: muTectCombine
+  #Pfolder2: muTect2Combine
   my ($jobID, $Pfolder1, $Pfolder2) = @_;
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/snpEff") {
@@ -1508,7 +1508,7 @@ sub muTect2 {
 
 }
 
-sub mutectCombine {
+sub muTectCombine {
   my ($jobID, $Pfolder, $normal_sampleID, $normal_postprocID) = @_;
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/mutectCombine") {
