@@ -42,7 +42,6 @@ our %startPoint_lst = ( 'NEW' => '', 'bwaAlign' => '', 'picardMarkDup' => 'bwaAl
                         #'annovar' => "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf",
                         'muTect' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
                         'muTect2' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
-                        'muTectCombine' => "muTect", 'muTect2Combine' => 'muTect2',
                         'gatkFilteredRecalVariant' => ["gatkRawVariants/$sampleID.$postprocID.raw.snps.vcf", "gatkRawVariants/$sampleID.$postprocID.raw.indels.vcf"],
                         'snpEff' => ["annovar/$sampleID.$postprocID.gatk.snp.indel.annovar", "gatkFilteredRecalVariant/$sampleID.$postprocID.gatk.snp.indel.vcf",
                                      "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv","windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv"]);
@@ -69,7 +68,7 @@ our $help =  <<EOF;
               startPoint list: NEW, bwaAlign, picardMarkDup, picardMarkDupIdx,
                                gatkLocalRealign, gatkQscoreRecalibration, gatkGenoTyper, gatkCovCalExomeTargets,
                                gatkCovCalGP, gatkRawVariantsCall, gatkRawVariants, gatkFilteredRecalVariant, snpEff, calAF
-                               muTect, muTectCombine, muTect2Combine
+                               muTect2
 
 EOF
 
@@ -267,9 +266,9 @@ sub cancerT {
  gatkQscoreRecalibration:   @jobID_and_Pfolder   = &gatkQscoreRecalibration(@jobID_and_Pfolder);
  gatkCovCalGP:                                     &gatkCovCalGP(@jobID_and_Pfolder);
  muTect2:                   @jobID_and_Pfolder2  = &muTect2(@jobID_and_Pfolder, $normalPair); 
- muTect2Combine:            @jobID_and_Pfolder2  = &muTect2Combine(@jobID_and_Pfolder2); 
+ muTect2Combine:            @jobID_and_Pfolder2  = &muTect2Combine(@jobID_and_Pfolder2, $normalPair); 
  muTect:                    @jobID_and_Pfolder   = &muTect(@jobID_and_Pfolder, $normalPair);
- muTectCombine:             @jobID_and_Pfolder   = &muTectCombine(@jobID_and_Pfolder);
+ muTectCombine:             @jobID_and_Pfolder   = &muTectCombine(@jobID_and_Pfolder, $normalPair);
    $jobID_and_Pfolder[0] = $jobID_and_Pfolder2[0] . ',' . @jobID_and_Pfolder[0]; 
    $jobID_and_Pfolder[1] = $jobID_and_Pfolder[1];
    $jobID_and_Pfolder[2] = $jobID_and_Pfolder2[1];
@@ -705,7 +704,7 @@ sub gatkLocalRealign {
               . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T RealignerTargetCreator' . " -I $runfolder/$Pfolder -o $runfolder/gatkLocalRealign/forRealigner.intervals -R $reference -l INFO &&" . " \\\n"
                 . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T IndelRealigner' . " -I $runfolder/$Pfolder -o $runfolder/gatkLocalRealign/$sampleID.$postprocID.realigned.rmduped.mapq.bam -R $reference -l INFO -targetIntervals  $runfolder/gatkLocalRealign/forRealigner.intervals -compress 0 $maxReadsForRealignment &&" . " \\\n"
                   . 'samtools index' . " $runfolder/gatkLocalRealign/$sampleID.$postprocID.realigned.rmduped.mapq.bam ; "
-                    . "\'| jsub -j gatkLocalRealign -b $runfolder  -nm 32000 -np 1 -nn 1 -nw 08:00:00 -ng localhd:100 $depend";
+                    . "\'| jsub -j gatkLocalRealign -b $runfolder  -nm 32000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:100 $depend";
   print "\n\n************\ngatkLocalRealign:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -1453,7 +1452,7 @@ sub muTect {
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+\[\])\n/) {
     $jobID = $1;
-    return($jobID,"mutect",$normal_sampleID,$normal_postprocID);
+    return($jobID,"mutect");
   } else {
     die "mutect for $runfolder failed to be submitted!\n";
   }
@@ -1501,7 +1500,7 @@ sub muTect2 {
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+\[\])\n/) {
     $jobID = $1;
-    return($jobID,"mutect2",$normal_sampleID,$normal_postprocID);
+    return($jobID,"mutect2");
   } else {
     die "mutect2 for $runfolder failed to be submitted!\n";
   }
@@ -1509,7 +1508,9 @@ sub muTect2 {
 }
 
 sub muTectCombine {
-  my ($jobID, $Pfolder, $normal_sampleID, $normal_postprocID) = @_;
+  my ($jobID, $Pfolder1, $Pfolder2) = @_;
+  my $normal_bam_file = (split(/\//, $Pfolder2))[-1];
+  my ($normal_sampleID, $normal_postprocID) = split(/\./, $normal_bam_file);
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/mutectCombine") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/mutectCombine\n";
@@ -1542,14 +1543,16 @@ sub muTectCombine {
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+)\n/) {
     $jobID = $1;
-    return($jobID,"mutectCombine/$sampleID.$postprocID.snv.csv");
+    return($jobID,"mutectCombine/sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.csv");
   } else {
     die "mutectCombine for $runfolder failed to be submitted!\n";
   }
 }
 
 sub muTect2Combine {
-  my ($jobID, $Pfolder, $normal_sampleID, $normal_postprocID) = @_;
+  my ($jobID, $Pfolder1, $Pfolder2) = @_;
+  my $normal_bam_file = (split(/\//, $Pfolder2))[-1];
+  my ($normal_sampleID, $normal_postprocID) = split(/\./, $normal_bam_file);
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/mutect2Combine") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/mutect2Combine\n";
@@ -1578,7 +1581,7 @@ sub muTect2Combine {
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+)\n/) {
     $jobID = $1;
-    return($jobID,"mutect2Combine/$sampleID.$postprocID.indel.csv");
+    return($jobID,"mutect2Combine/sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.csv");
   } else {
     die "mutect2Combine for $runfolder failed to be submitted!\n";
   }
@@ -1598,11 +1601,11 @@ sub annovarMutect {
           . "\\\n"
             . "table_annovar.pl $runfolder/$Pfolder /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hg19/annovar/humandb --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile $runfolder/annovarMutect/$sampleID.$postprocID; \\\n"
               . "\\\n"
-                . "Rscript /hpf/largeprojects/adam/local/bin/run_annotation_pipeline.R --directory $runfolder/annovarMutect/ --sample $sampleID.$postprocID && \\\n"
+                . "Rscript /hpf/largeprojects/adam/local/bin/run_annotation_pipeline.R --directory $runfolder/annovarMutect/ --sample $sampleID.$postprocID ;\\\n"
                   . "\\\n"
-                    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/annovarMutect/$sampleID.$postprocID\_annotated.rda $runfolder/annovarMutect/$sampleID.$postprocID.csv && "
+                    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/annovarMutect/$sampleID.$postprocID\_annotated.rda $runfolder/annovarMutect/$sampleID.$postprocID.csv ; "
                       . "\\\n"
-                        . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/annovarMutect/$sampleID.$postprocID.snv.csv"
+                        . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/annovarMutect/$sampleID.$postprocID.csv"
                           . "\\\n"
                             . "\'| jsub -j annovarMutect -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 08:00:00 -ng localhd:1 $depend";
   print "\n\n************\nannovarMutect:\n$cmd\n************\n\n";
