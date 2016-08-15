@@ -14,7 +14,7 @@ use Mail::Sender;
 #read in from a config file
 my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5_test.txt";
 
-my ($RSYNCFILE, $HPF_BACKUP_FOLDER, $THING1_BACKUP_DIR,$VARIANTS_EXCEL_DIR,$host,$port,$user,$pass,$db, $msg,$cvgVarCutoff, $hetRatioHigh, $hetRatioLow) = &read_in_config($configFile);
+my ($RSYNCFILE, $HPF_BACKUP_FOLDER, $THING1_BACKUP_DIR,$VARIANTS_EXCEL_DIR,$host,$port,$user,$pass,$db, $msg,$cvgHomCutoff,$cvgHetCutoff, $hetRatioHigh, $hetRatioLow, $homRatioLow) = &read_in_config($configFile);
 
 my $RSYNCCMD = "rsync -Lav -e '" . $RSYNCFILE ."' ";
 # my $HPF_BACKUP_FOLDER = '/hpf/largeprojects/pray/clinical/backup_files_v5/variants';
@@ -257,7 +257,7 @@ sub loadVariants2DB {
     $sth->execute(@splitFilter) or die "Can't execute insert: " . $dbh->errstr() . "\n";
     $interID = $sth->{'mysql_insertid'}; #LAST_INSERT_ID(); or try $dbh->{'mysql_insertid'}
 
-    
+
     print ALLFILE "$postprocID\t" . $lines_ref->{'Chrom'} . "\t" . $lines_ref->{'Position'} . "\t$gEnd\t$typeVer\t" . $lines_ref->{'Genotype'} . "\t" . $lines_ref->{'Reference'} . "\t$altAllele\t$cDNA\t$aaChange\t" . $lines_ref->{'Effect'}
       . "\t" . $lines_ref->{'Quality By Depth'} . "\t" . $lines_ref->{"Fisher's Exact Strand Bias Test"} . "\t" . $lines_ref->{'RMS Mapping Quality'} . "\t" . $lines_ref->{'Haplotype Score'} . "\t" . $lines_ref->{'Mapping Quality Rank Sum Test'}
         . "\t" . $lines_ref->{'Read Pos Rank Sum Test'} . "\t" . $lines_ref->{'Filtered Depth'} . "\t" . $lines_ref->{'dbsnp'} . "\t" . $lines_ref->{'ClinVar SIG'} . "\t" . $lines_ref->{'HGMD SIG SNVs'}
@@ -315,31 +315,40 @@ sub interpretation_note {
 sub add_flag {
   my ($segdup, $homology, $lowCvgExon, $altDP, $refDP, $zygosity) = @_;
   my $flag = 0;
-  
+
   if ($segdup eq "Y") {
     $flag = 1;
   }
   if ($homology eq "Y") {
     $flag = 1;
   }
-  if ($lowCvgExon eq "Y") {
-    $flag = 1;
-  }
-  if (($altDP + $refDP ) <= $cvgVarCutoff) {
-    $flag = 1;
-  }
   if ($zygosity=~/het/) {
-    my $alleleBalance = "";
-    if ($zygosity eq "het") {
-      $alleleBalance = ($altDP/($refDP+$altDP));
-    } else {
-      my @splitC = split(/\,/,$altDP);
-      $alleleBalance = ($splitC[0]/($splitC[1]+$splitC[0]));
-    }
-    if ($alleleBalance < $hetRatioLow || $alleleBalance > $hetRatioHigh) {
+
+    if (($altDP + $refDP ) < $cvgHetCutoff) {
       $flag = 1;
+    } else {
+      my $alleleBalance = 0;
+      if ($zygosity eq "het") {
+        $alleleBalance = ($altDP/($refDP+$altDP));
+      } else {
+        my @splitC = split(/\,/,$altDP);
+        $alleleBalance = ($splitC[0]/($splitC[1]+$splitC[0]));
+      }
+      if ($alleleBalance < $hetRatioLow || $alleleBalance > $hetRatioHigh) {
+        $flag = 1;
+      }
+    }
+  } elsif ($zygosity eq "hom") {
+    if (($altDP + $refDP ) < $cvgHomCutoff) {
+      $flag = 1;
+    } else {
+      my $alleleBalance = ($altDP/($refDP+$altDP));
+      if ($alleleBalance < $homRatioLow) {
+        $flag = 1;
+      }
     }
   }
+
   return $flag;
 }
 
@@ -692,7 +701,7 @@ sub read_in_config {
   #this filename will be passed from thing1 (from the database in the future)
   my ($configFile) = @_;
   my $data = "";
-  my ($RSYNCFILEtmp, $HPF_BACKUP_FOLDERtmp, $THING1_BACKUP_DIRtmp,$VARIANTS_EXCEL_DIRtmp,$hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$cvgVarCutofftmp, $hetRatioHightmp, $hetRatioLowtmp);
+  my ($RSYNCFILEtmp, $HPF_BACKUP_FOLDERtmp, $THING1_BACKUP_DIRtmp,$VARIANTS_EXCEL_DIRtmp,$hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$cvgHomCutofftmp,$cvgHetCutofftmp, $hetRatioHightmp, $hetRatioLowtmp, $homRatioLowtmp);
   my $msgtmp = "";
   open (FILE, "< $configFile") or die "Can't open $configFile for read: $!\n";
   while ($data=<FILE>) {
@@ -720,15 +729,19 @@ sub read_in_config {
       $dbtmp = $value;
     } elsif ($type eq "msg") {
       $msgtmp = $value;
-    } elsif ($type eq "coverageVariantCutoff") {
-      $cvgVarCutofftmp = $value;
+    } elsif ($type eq "coverageHomCutoff") {
+      $cvgHomCutofftmp = $value;
+    } elsif ($type eq "coverageHetCutoff") {
+      $cvgHetCutofftmp = $value;
     } elsif ($type eq "hetRatioHigh") {
       $hetRatioHightmp = $value;
     } elsif ($type eq "hetRatioLow") {
       $hetRatioLowtmp = $value;
+    } elsif ($type eq "homRatioLow") {
+      $homRatioLowtmp = $value;
     }
 
   }
   close(FILE);
-  return ($RSYNCFILEtmp, $HPF_BACKUP_FOLDERtmp, $THING1_BACKUP_DIRtmp,$VARIANTS_EXCEL_DIRtmp,$hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$msgtmp, $cvgVarCutofftmp, $hetRatioHightmp, $hetRatioLowtmp);
+  return ($RSYNCFILEtmp, $HPF_BACKUP_FOLDERtmp, $THING1_BACKUP_DIRtmp,$VARIANTS_EXCEL_DIRtmp,$hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$msgtmp, $cvgHomCutofftmp, $cvgHetCutofftmp, $hetRatioHightmp, $hetRatioLowtmp, $homRatioLowtmp);
 }
