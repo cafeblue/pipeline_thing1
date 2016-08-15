@@ -129,7 +129,7 @@ sub check_sequencer_connections {
 }
 
 sub check_disk_space_on_hpf {
-    my $lastline = `ssh -i /home/wei.wang/.ssh/id_sra_thing1 wei.wang\@data1.ccm.sickkids.ca "df -h /hpf/largeprojects/pray/ |tail -1" 2>/dev/null`;
+    my $lastline = `ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang\@data1.ccm.sickkids.ca "df -h /hpf/largeprojects/pray/ |tail -1" 2>/dev/null`;
     my $percentage = (split(/\s+/, $lastline))[4];
     if ($percentage =~ /(\d+)\%/) {
         if ($1 >= 90) {
