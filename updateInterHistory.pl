@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 #Author: Lynette Lau
-#Date: June 14,2016 - updates the interHistory for all samples
+#Date: June 14,2016 - updates the interHistory for only indels
 
 use strict;
 
