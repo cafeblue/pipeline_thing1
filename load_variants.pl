@@ -12,7 +12,7 @@ use Mail::Sender;
 ##########################################
 
 #read in from a config file
-my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5_test.txt";
+my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5.txt";
 
 my ($RSYNCFILE, $HPF_BACKUP_FOLDER, $THING1_BACKUP_DIR,$VARIANTS_EXCEL_DIR,$host,$port,$user,$pass,$db, $msg,$cvgHomCutoff,$cvgHetCutoff, $hetRatioHigh, $hetRatioLow, $homRatioLow) = &read_in_config($configFile);
 

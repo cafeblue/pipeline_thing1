@@ -13,7 +13,7 @@ my $alleleHetRatioHigh = 0.7;
 my $alleleHomRatio = 0.9;
 
 # open the accessDB file to retrieve the database name, host name, user name and password
-open(ACCESS_INFO, "</home/llau/.thing1test.cnf") || die "Can't access login credentials";
+open(ACCESS_INFO, "</home/llau/.thing1.cnf") || die "Can't access login credentials";
 # assign the values in the accessDB file to the variables
 my $host = <ACCESS_INFO>;
 my $port = <ACCESS_INFO>;
