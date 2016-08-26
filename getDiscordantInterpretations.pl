@@ -14,7 +14,11 @@ use File::stat;
 
 #read in from a config file
 my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5_test.txt";
-my ($host,$port,$user,$pass,$db,$discordantDir) = &read_in_config($configFile);
+my ($host,$port,$user,$pass,$db,$discordantDir,$ignoreFileName) = &read_in_config($configFile);
+
+my %ignoreVar = (); #variants to ignore #key is chrom:gStart:ref:alt:zygosity
+###read them in from the database
+
 
 ##read in the email address
 my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
@@ -34,6 +38,43 @@ my %interDate = ();             #key is interID and value is timestamp
 #perl module to connect to database
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
                        $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
+
+###get all the discordant variants
+my $getDiscordVar = "SELECT chrom,gStart,gEnd,ref,alt,zygosity FROM discordantVariants";
+print STDERR "getDiscordVar=$getDiscordVar\n";
+my $sthDV = $dbh->prepare($getDiscordVar) or die "Can't query database for discordant variants: ". $dbh->errstr() . "\n";
+$sthDV->execute() or die "Can't execute query for discordant variants: " . $dbh->errstr() . "\n";
+my @dataDV = ();
+while (@dataDV = $sthDV->fetchrow_array()) {
+  my $chrom = $dataDV[0];
+  my $gStart = $dataDV[1];
+  my $gEnd = $dataDV[2];
+  my $ref = $dataDV[3];
+  my $alt = $dataDV[4];
+  my $zyg = $dataDV[6];
+
+  if ($chrom eq "X") {
+    $chrom = 24;
+  } elsif ($chrom eq "Y") {
+    $chrom = 25;
+  } elsif ($chrom eq "MT" || $chrom eq "M") {
+    $chrom = 26;
+  }
+
+  if ($zyg eq "het") {
+    $zyg = 1;
+  } elsif ($zyg eq "hom") {
+    $zyg = 2;
+  } elsif ($zyg eq "het-alt") {
+    $zyg = 3;
+  } else {
+    print STDERR "zygosity=$zyg has no known encoding\n";
+  }
+
+  my $key = $chrom . ":" . $gStart . ":" . $gEnd . ":" . $ref . ":" . $alt . ":" . $zyg;
+
+  $ignoreVar{$key} = 0;
+}
 
 ##go through interHistory and get the date of interpretation
 my $getInterTime = "SELECT interID, time FROM interHistory";
@@ -86,7 +127,7 @@ while (@dataS = $sthVar->fetchrow_array()) {
   #get the genomic location, alleles of the interID
   my $interID = $dataS[0];
   my $interpret = $dataS[1];
-  my $getInfo = "SELECT postprocID, chrom, genomicStart, genomicEnd, variantType, zygosity, refAllele, altAllele, cDNA, aaChange, geneSymbol FROM variants_sub WHERE interID = '" . $interID . "'";
+  my $getInfo = "SELECT postprocID, chrom, genomicStart, genomicEnd, variantType, zygosity, refAllele, altAllele, cDNA, aaChange, geneSymbol, effect FROM variants_sub WHERE interID = '" . $interID . "'";
 
   #print STDERR "getInfo=$getInfo\n";
   my $sthInfo = $dbh->prepare($getInfo) or die "Can't query database for interID info: ". $dbh->errstr() . "\n";
@@ -106,15 +147,34 @@ while (@dataS = $sthVar->fetchrow_array()) {
     my $cDNA = $dataI[8];
     my $aaChange = $dataI[9];
     my $geneSym = $dataI[10];
+    my $effect = $dataI[11];
 
-    my $key = "$chr:$gStart:$gEnd:$ref:$alt:$vType:$zyg:$cDNA:$aaChange:$geneSym";
+    if ($effect != 29) {        ###ignore all synonymous variants
+      my $inIgnore = 0;
+      foreach my $ignore (keys %ignoreVar) {
+        my @splitDot = split(/\:/,$ignore);
+        my $iChrom = $splitDot[0];
+        my $iStart = $splitDot[1];
+        my $iEnd = $splitDot[2];
+        my $iRef = $splitDot[3];
+        my $iAlt = $splitDot[4];
+        my $iZyg = $splitDot[5];
+        if (($iChrom eq $chr) && ($iStart eq $gStart) && ($iEnd eq $gEnd) && ($iRef eq $ref) && ($iAlt eq $alt) && ($iZyg eq $zyg)) {
+          $inIgnore =1;
+          last;
+        }
+      }
+      if ($inIgnore == 0) {
+        my $key = "$chr:$gStart:$gEnd:$ref:$alt:$vType:$zyg:$cDNA:$aaChange:$geneSym";
 
-    my $val = "$interpret:$postprocID:$interID";
+        my $val = "$interpret:$postprocID:$interID";
 
-    if (defined $interVar{$key}) {
-      $interVar{$key} = $interVar{$key} . "," . $val;
-    } else {
-      $interVar{$key} = $val;
+        if (defined $interVar{$key}) {
+          $interVar{$key} = $interVar{$key} . "," . $val;
+        } else {
+          $interVar{$key} = $val;
+        }
+      }
     }
   }
 }
@@ -241,7 +301,7 @@ if ($sender->OpenMultipart({from => 'notice@thing1.sickkids.ca', to => $recipien
                             subject => "Discordant Interpretations $today",
                             boundary => 'boundary-test-1',
                             type => 'multipart/related'}) > 0) {
-  $sender->Body({msg     => "Hi all,\n\nAttached is the Discordant Interpretation Report for $today.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca\n\nThanks,\nThing1"
+  $sender->Body({msg     => "Hi all,\n\nAttached is the Discordant Interpretation Report for $today.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca\n\nThanks,\nThing1 v5.0"
                 });
   $sender->Attach({description => "discordant_interpretations.$today",
                    ctype => 'text/plain; charset=utf-8',
@@ -271,7 +331,7 @@ sub read_in_config {
   #this filename will be passed from thing1 (from the database in the future)
   my ($configFile) = @_;
   my $data = "";
-  my ($hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$discordantTmp);
+  my ($hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$discordantTmp,$ignoreTmp);
   my $msgtmp = "";
   open (FILE, "< $configFile") or die "Can't open $configFile for read: $!\n";
   while ($data=<FILE>) {
@@ -291,12 +351,15 @@ sub read_in_config {
       $dbtmp = $value;
     } elsif ($type eq "DISCORDANTFOLDER") {
       $discordantTmp = $value;
+    } elsif ($type eq "DISCORDANTIGNORE") {
+      $ignoreTmp = $value;
     }
 
   }
   close(FILE);
-  return ($hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$discordantTmp);
+  return ($hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$discordantTmp,$ignoreTmp);
 }
+
 
 sub email_list {
   my $infile = shift;
