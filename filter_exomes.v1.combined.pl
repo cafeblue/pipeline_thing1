@@ -182,6 +182,7 @@ my $CGDInh = "CGD Inheritance";
 
 my $omimDisease = "OMIM Gene Map";
 my $omimDiseaseMorbidmap = "OMIM Morbidmap";
+my $omimInher = "OMIM Inheritance";
 
 my $cgWell = "cgWellderly all frequency";
 my $mutass = "Mutation Assessor Prediction";
@@ -197,8 +198,8 @@ my $rareFreqInternal = 0.1;     #rare frequency we want to filter on
 my $qdThreshold = 2.0;
 my $snpFS = 60.0;
 my $snpMQ = 40.0;
-my $snpHapScore = 13.0;
-my $HSlg13 = 0;
+#my $snpHapScore = 13.0;
+#my $HSlg13 = 0;
 my $snpMQRankSum = -12.5;
 my $snpReadPosRankSum = -8.0;
 my $indelFS = 200.0;
@@ -294,7 +295,7 @@ while ($data=<FILE>) {
   if ($data=~/##Chrom/) {       #grab the header
 
     #print the text file's header
-    print "Coordinator's Interpretation\tSanger Validation\tCoordinator's Comments\tGene Name\tTranscript ID\tReference Allele\tAlternative Allele\tZygosity\tType of Variant\tGenomic Location\tCoding HGVS\tProtein Change\tEffect\tPanel\tCGD Inheritance\t1 > variant/gene\tOMIM Disease\tClinVar Significance\tClinVar CLNDBN\tClinVar Indels within 20bp window\tHGMD Significance\tHGMD Disease\tHGMD Indels within 20bp window\tdbsnp 144\t1000G All Allele Frequency\tESP ALL Allele Frequency\tInternal All Allele Frequency SNVs\tInternal All Allele Frequency Indels\tInternal Gene Panel Allele Frequency SNVs\tInternal Gene Panel Allele Frequency Indels\tWellderly All 597 Allele Frequency\tCG 46 Unrelated Allele Frequency\tESP African Americans Allele Frequency\tESP European American Allele Frequency\t1000G African Allele Frequency\t1000G American Allele Frequency\t1000G East Asian Allele Frequency\t1000G South Asian Allele Frequency\t1000G European Allele Frequency\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tSift Prediction\tPolyPhen Prediction\tMutation Assessor Prediction\tCAAD prediction\tMutation Taster Prediction\t\% CDS Affected\t\% Transcripts Affected\tSegmental Duplication\tRegion of Homology\tOn Low Coverage Exon\tAlternative Allele(s) Depth of Coverage\tReference Allele Depth of Coverage\tACMG Incidental Gene\n";
+    print "Coordinator's Interpretation\tSanger Validation\tCoordinator's Comments\tGene Name\tTranscript ID\tReference Allele\tAlternative Allele\tZygosity\tType of Variant\tGenomic Location\tCoding HGVS\tProtein Change\tEffect\tPanel\tCGD Inheritance\t1 > variant/gene\tOMIM Disease\tClinVar Significance\tClinVar CLNDBN\tClinVar Indels within 20bp window\tHGMD Significance\tHGMD Disease\tHGMD Indels within 20bp window\tdbsnp 144\t1000G All Allele Frequency\tESP ALL Allele Frequency\tInternal All Allele Frequency SNVs\tInternal All Allele Frequency Indels\tInternal Gene Panel Allele Frequency SNVs\tInternal Gene Panel Allele Frequency Indels\tWellderly All 597 Allele Frequency\tCG 46 Unrelated Allele Frequency\tESP African Americans Allele Frequency\tESP European American Allele Frequency\t1000G African Allele Frequency\t1000G American Allele Frequency\t1000G East Asian Allele Frequency\t1000G South Asian Allele Frequency\t1000G European Allele Frequency\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tSift Prediction\tPolyPhen Prediction\tMutation Assessor Prediction\tCAAD prediction\tMutation Taster Prediction\t\% CDS Affected\t\% Transcripts Affected\tSegmental Duplication\tRegion of Homology\tOn Low Coverage Exon\tAlternative Allele(s) Depth of Coverage\tReference Allele Depth of Coverage\tACMG Incidental Gene\tOMIM Inheritance\n";
 
     #print the excel file's header
     my @groupHeader = ();
@@ -395,6 +396,7 @@ while ($data=<FILE>) {
     $colHeader[57] = "Alternative Allele(s) Depth of Coverage";
     $colHeader[58] = "Reference Allele Depth of Coverage";
     $colHeader[59] = "ACMG Incidental Gene";
+    $colHeader[60] = "OMIM Inheritance";
 
     for (my $i=0; $i < scalar(@colHeader); $i++) {
       $worksheet->write($rowNum, $i, "$colHeader[$i]", $titleFormat);
@@ -519,6 +521,8 @@ while ($data=<FILE>) {
       } elsif ($header[$i] eq $omimDisease) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $omimDiseaseMorbidmap) {
+        $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $omimInher) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $cgWell) {
         $colNum{$header[$i]} = $i;
@@ -692,12 +696,12 @@ while ($data=<FILE>) {
             #print STDERR "SNP MQ filtered out\n";
           }
 
-          if ($varHapScore > $snpHapScore) {
-            #############  Wei comment start ###############
-            #   $qualFilter = 0;
-            $HSlg13++;
-            #############  Wei comment stop  ###############
-          }
+          # if ($varHapScore > $snpHapScore) {
+          #   #############  Wei comment start ###############
+          #   #   $qualFilter = 0;
+          #   $HSlg13++;
+          #   #############  Wei comment stop  ###############
+          # }
           if (defined $varMQRankSum && $varMQRankSum ne "") {
             if ($varMQRankSum < $snpMQRankSum) {
               #$filter = 0;
@@ -885,19 +889,38 @@ sub printformat {
         $outputArray[54] = $colI;
         #print STDERR "altDepth found again\n";
       } else {                  #alternative alleles
-        my @splitLine = split(/\|/,$colI);
-        $outputArray[3] = $splitLine[1];
+        #my @splitLine = split(/\|/,$colI);
+        $outputArray[3] = $colI;
       }
     } elsif ($colHeader eq $zyg) { #zygosity
       #$counter = 4;
       $outputArray[4] = $colI;
+      if ($colI!~/alt/) {
+        my @splitLine = split(/\|/,$outputArray[3]);
+        $outputArray[3]= $splitLine[1];
+      }
     } elsif ($colHeader eq $variantType) { #type of variant
       #$counter = 5;
       $outputArray[5] = $colI;
       #$varType = $colI;
     } elsif ($colHeader eq $effect) {
       #$counter = 9;
-      $outputArray[9] = $colI;
+
+      if ($colI=~/\|/) { #alt-het check to see if the effect is the same if it is only use one
+        my @splitLine=split(/\|/,$colI);
+        my $same = 1;
+        for (my $i=1; $i < scalar(@splitLine); $i++) {
+          if ($splitLine[0] ne $splitLine[$i]) {
+            $same = 0;
+          }
+        }
+        if ($same == 1) {
+          $outputArray[9]= $splitLine[0];
+        }
+      } else {
+        $outputArray[9] = $colI;
+      }
+
     } elsif ($colHeader eq $snpEffAnnAA) {
       print STDERR "snpEFF AA = $colI\n";
       if ((defined $colI) && ($colI ne "")) {
@@ -1313,15 +1336,13 @@ sub printformat {
       #print STDERR "in colHeader= $colHeader, segdup=$segdup, colI=$colI|\n";
 
       if ((!defined $colI) || ($colI eq "")) {
-        $outputArray[51] = "NA";
+        $outputArray[51] = "N";
       } else {
         my @splitSD = split(/\|/,$colI);
         my $sgTmp = "N";
         foreach my $sg (@splitSD) {
           if ($sg eq ".") {
-            if ($sgTmp eq "N") {
-              $sgTmp = "NA";
-            }
+            $sgTmp = "N";
           } elsif ($sg > 0) {
             $sgTmp = "Y";
           }
@@ -1372,6 +1393,12 @@ sub printformat {
         $outputArray[13] = $colI;
       }
       ###forexcel only
+    } elsif ($colHeader eq $omimInher) { #OMIM disease
+      if (defined $colI && $colI ne "") {
+        $outputArray[57] = $colI;
+      } else {
+        $outputArray[57] = "NA";       
+      }
     } elsif ($colHeader eq $cgWell) { #cgWellerdly
       if (defined $colI && $colI ne "") {
         $outputArray[27] = $colI;

@@ -6,7 +6,15 @@ use HPF::pipeline;
 use Time::localtime;
 use Time::Piece;
 
-#perl ./call_pipeline.pl -s 202214 -a 3142 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHK22CBCXX/Sample_202214 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-3142-20165555555555-exome.gp10-b37 -p exome
+#perl ./call_pipeline.pl -s 251877 -a 3518 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHGMT3ADXX-BHJMVLADXX/Sample_251877 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/251877-3518-20161111111111-exome.gp10-b37 -p exome
+
+#perl ./call_pipeline.pl -s 246128 q-a 3585 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHT53GBCXX/Sample_246128 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/246128-3585-20161111111111-exome.gp10-b37 -p exome
+
+
+#perl ./call_pipeline.pl -s 246128 -a 3585 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHT53GBCXX/Sample_246128 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/246128-3585-20161111111111-exome.gp10-b37 -p exome
+
+#perl ./call_pipeline.pl -s 202214 -a 3142 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHK22CBCXX/Sample_202214 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-3142-20166666666666-exome.gp10-b37 -p exome
+#perl ./call_pipeline.pl -s 273300 -a 2975 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH2KG5ADXY/Sample_273300 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/273300-2975-20161111111111-exome.gp10-b37 -p exome
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 
@@ -858,11 +866,11 @@ sub gatkCovCalGP {
         . 'module load ' . $GATK . ' && ' . " \\\n"
           . "module load $PERL && \\\n"
             . "\\\n"
-              . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T DepthOfCoverage --printBaseCounts --includeRefNSites --minMappingQuality 20 --minBaseQuality 20 ' . $depthct
+              . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx8G $GATK -T DepthOfCoverage --printBaseCounts --includeRefNSites --minMappingQuality 20 --minBaseQuality 20 ' . $depthct
                 . " -L " . $panelExon10bpPadFull . " -I $runfolder/$Pfolder -o $runfolder/gatkCovCalGP/$sampleID.$postprocID" . '.genepanel.dp' . " -R $reference &&" . " \\\n"
                   . "ln -f $runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp* $BACKUP_BASEDIR/matrics/ && \\\n"
                     . "perl $SCRIPTDIR/calculate_qual_cvg_gp.pl $runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp.sample_summary $sampleID $postprocID $runfolder/gatkCovCalGP/ $panelExon10bpPadFull > $runfolder/gatkCovCalGP/$sampleID.$postprocID.qualCvgGP.sql; \\\n"
-                      . "\'| jsub -j gatkCovCalGP -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:1 $depend";
+                      . "\'| jsub -j gatkCovCalGP -b $runfolder  -nm 12000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:1 $depend";
   print "\n\n************\ngatkCovCalExomeGP:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -1126,12 +1134,6 @@ sub annovar {
                                   . "$ANNOVAR/$ANNOVARANN --regionanno --colsWanted 4 -buildver hg19_disease_associations -dbtype bed --bedfile $panelBedFile \\\n"
                                     . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
                                       . "\\\n"
-                                        # . "$ANNOVAR/$ANNOVARANN --regionanno -buildver hg19_genemap -dbtype bed --colsWanted 4 --bedfile hg19_genemap.bed \\\n"
-                                        #   . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
-                                        #     . "\\\n"
-                                        #       . "$ANNOVAR/$ANNOVARANN --regionanno --buildver hg19_morbidmap --dbtype bed --colsWanted 4 --bedfile hg19_morbidmap.bed\\\n"
-                                        #         . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
-                                        #           . "\\\n"
                                         . "$ANNOVAR/$ANNOVARANN -filter -buildver hg19_cgWellderly -dbtype generic --genericdbfile hg19_cgWellderly.txt \\\n"
                                           . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
                                             . "\\\n"
