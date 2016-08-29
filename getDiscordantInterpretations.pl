@@ -26,49 +26,52 @@ my ($today, $yesterday) = &print_time_stamp();
 
 my $outputFile = $discordantDir . "discordant_intepretations." . $today . ".txt";
 
-print STDERR "outputFile=$outputFile\n";
+print "outputFile=$outputFile\n";
 unless (open DISCORDFILE, '>' . $outputFile) {
   die "unable to create $outputFile\n";
 }
 
 my %interVar = (); #key is chrom:start:end:allele:type:zygosity, value is the interprertation:postprocID separated by comma
 my %sampleName = (); #key is the postprocID and the value is the sampleName;
-
-my %interDate = ();             #key is interID and value is timestamp
+my %interDate = ();  #key is interID and value is timestamp
 #perl module to connect to database
 my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
                        $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
 
 ###get all the discordant variants
-my $getDiscordVar = "SELECT chrom,gStart,gEnd,ref,alt,zygosity FROM discordantVariants";
-print STDERR "getDiscordVar=$getDiscordVar\n";
+my $getDiscordVar = "SELECT chrom, gStart, gEnd, ref, alt, zygosity FROM discordantVariants";
+print "getDiscordVar=$getDiscordVar\n";
 my $sthDV = $dbh->prepare($getDiscordVar) or die "Can't query database for discordant variants: ". $dbh->errstr() . "\n";
 $sthDV->execute() or die "Can't execute query for discordant variants: " . $dbh->errstr() . "\n";
 my @dataDV = ();
 while (@dataDV = $sthDV->fetchrow_array()) {
-  my $chrom = $dataDV[0];
+  my $chrom = "";
+  my $zyg = "";
+  my $chromTmp = $dataDV[0];
   my $gStart = $dataDV[1];
   my $gEnd = $dataDV[2];
   my $ref = $dataDV[3];
   my $alt = $dataDV[4];
-  my $zyg = $dataDV[6];
+  my $zygTmp = $dataDV[5];
 
-  if ($chrom eq "X") {
+  if ($chromTmp eq "X") {
     $chrom = 24;
-  } elsif ($chrom eq "Y") {
+  } elsif ($chromTmp eq "Y") {
     $chrom = 25;
-  } elsif ($chrom eq "MT" || $chrom eq "M") {
+  } elsif ($chromTmp eq "MT" || $chromTmp eq "M") {
     $chrom = 26;
+  } else {
+    $chrom = $chromTmp;
   }
 
-  if ($zyg eq "het") {
+  if ($zygTmp eq "het") {
     $zyg = 1;
-  } elsif ($zyg eq "hom") {
+  } elsif ($zygTmp eq "hom") {
     $zyg = 2;
-  } elsif ($zyg eq "het-alt") {
+  } elsif ($zygTmp eq "het-alt") {
     $zyg = 3;
   } else {
-    print STDERR "zygosity=$zyg has no known encoding\n";
+    print "zygosity=$zygTmp has no known encoding\n";
   }
 
   my $key = $chrom . ":" . $gStart . ":" . $gEnd . ":" . $ref . ":" . $alt . ":" . $zyg;
@@ -97,7 +100,7 @@ while (@dataIT = $sthIT->fetchrow_array()) {
 # get the sampleID with the postprocess ID
 
 my $getSampleN = "SELECT sampleID, postprocID, currentStatus FROM sampleInfo"; #no validation samples
-print STDERR "getSampleN=$getSampleN\n";
+print "getSampleN=$getSampleN\n";
 my $sthSName = $dbh->prepare($getSampleN) or die "Can't query database for sample name info: ". $dbh->errstr() . "\n";
 $sthSName->execute() or die "Can't execute query for sample name info: " . $dbh->errstr() . "\n";
 
@@ -108,7 +111,7 @@ while (@dataN = $sthSName->fetchrow_array()) {
   my $currentStatus = $dataN[2];
   if (defined $sampleName{$postprocID}) {
     $sampleName{$postprocID} = $sampleName{$postprocID} . ";" . $sampleID . "|" . $currentStatus;
-    print STDERR "$sampleID with ppID=$postprocID in the database twice?!\n";
+    print "$sampleID with ppID=$postprocID in the database twice?!\n";
   } else {
     $sampleName{$postprocID} = $sampleID . "|" . $currentStatus;
   }
@@ -136,6 +139,7 @@ while (@dataS = $sthVar->fetchrow_array()) {
   my @dataI = ();
   while (@dataI = $sthInfo->fetchrow_array()) {
     #make a join from postprocID to sampleID
+    print "dataI=@dataI\n";
     my $postprocID = $dataI[0];
     my $chr = $dataI[1];
     my $gStart = $dataI[2];
@@ -153,6 +157,7 @@ while (@dataS = $sthVar->fetchrow_array()) {
       my $inIgnore = 0;
       foreach my $ignore (keys %ignoreVar) {
         my @splitDot = split(/\:/,$ignore);
+        print "ignore=$ignore\n";
         my $iChrom = $splitDot[0];
         my $iStart = $splitDot[1];
         my $iEnd = $splitDot[2];
@@ -160,15 +165,16 @@ while (@dataS = $sthVar->fetchrow_array()) {
         my $iAlt = $splitDot[4];
         my $iZyg = $splitDot[5];
         if (($iChrom eq $chr) && ($iStart eq $gStart) && ($iEnd eq $gEnd) && ($iRef eq $ref) && ($iAlt eq $alt) && ($iZyg eq $zyg)) {
-          $inIgnore =1;
+          $inIgnore = 1;
+          print "ignore=$ignore!\n";
           last;
         }
       }
       if ($inIgnore == 0) {
         my $key = "$chr:$gStart:$gEnd:$ref:$alt:$vType:$zyg:$cDNA:$aaChange:$geneSym";
-
         my $val = "$interpret:$postprocID:$interID";
 
+        print "added into interVar\n";
         if (defined $interVar{$key}) {
           $interVar{$key} = $interVar{$key} . "," . $val;
         } else {
@@ -219,6 +225,7 @@ foreach my $variant (keys %interVar) {
         }
       }
     }
+
   }
 
   if ($same eq "N") {
@@ -260,31 +267,35 @@ foreach my $variant (keys %interVar) {
 
       #my $sN = $sampleName{$postprocID};
       my $sampleInfo = $sampleName{$postprocID};
-      my @splitSemiColon = split(/\;/,$sampleInfo);
-      foreach my $sampleI (@splitSemiColon) {
-        my @splitLine = split(/\|/,$sampleI);
+      if (defined $sampleInfo) {
+        my @splitSemiColon = split(/\;/,$sampleInfo);
+        foreach my $sampleI (@splitSemiColon) {
+          my @splitLine = split(/\|/,$sampleI);
 
-        my $sN = $splitLine[0];
-        my $currentStatus = $splitLine[1];
-        if ($currentStatus != 12 ) { # don't report out validation samples
-          my $time = $interDate{$interID};
-          my $stringInter = "";
-          if ($interpret == 2) {
-            $stringInter = "pathogenic";
-          } elsif ($interpret == 3) {
-            $stringInter = "likely pathogenic";
-          } elsif ($interpret == 4) {
-            $stringInter = "VUS";
-          } elsif ($interpret == 5) {
-            $stringInter = "likely benign";
-          } elsif ($interpret == 6) {
-            $stringInter = "benign";
-          } elsif ($interpret == 7) {
-            $stringInter = "unknown";
+          my $sN = $splitLine[0];
+          my $currentStatus = $splitLine[1];
+          if ($currentStatus != 12 ) { # don't report out validation samples
+            my $time = $interDate{$interID};
+            my $stringInter = "";
+            if ($interpret == 2) {
+              $stringInter = "pathogenic";
+            } elsif ($interpret == 3) {
+              $stringInter = "likely pathogenic";
+            } elsif ($interpret == 4) {
+              $stringInter = "VUS";
+            } elsif ($interpret == 5) {
+              $stringInter = "likely benign";
+            } elsif ($interpret == 6) {
+              $stringInter = "benign";
+            } elsif ($interpret == 7) {
+              $stringInter = "unknown";
+            }
+            print DISCORDFILE "$sN|$stringInter|$today|$interID|$postprocID";
+            print DISCORDFILE "\t";
           }
-          print DISCORDFILE "$sN|$stringInter|$time|$interID|$postprocID";
-          print DISCORDFILE "\t";
         }
+      } else {
+        print "no postprocID = $postprocID found\n";
       }
     }
     print DISCORDFILE "\n";
