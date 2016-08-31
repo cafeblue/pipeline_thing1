@@ -13,7 +13,7 @@ use Mail::Sender;
 use File::stat;
 
 #read in from a config file
-my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5_test.txt";
+my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5.txt";
 my ($host,$port,$user,$pass,$db,$discordantDir,$ignoreFileName) = &read_in_config($configFile);
 
 my %ignoreVar = (); #variants to ignore #key is chrom:gStart:ref:alt:zygosity
