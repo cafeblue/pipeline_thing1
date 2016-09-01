@@ -306,7 +306,7 @@ close(DISCORDFILE);
 
 #my $sender = Mail::Sender->new();
 #my $recipients= 'lynette.lau@sickkids.ca';
-my $recipients = $email_lst_ref->{'WARNINGS'};
+my $recipients = $email_lst_ref->{'FINISHED'};
 my $sender = new Mail::Sender {smtp => 'localhost'};
 if ($sender->OpenMultipart({from => 'notice@thing1.sickkids.ca', to => $recipients,
                             subject => "Discordant Interpretations $today",
