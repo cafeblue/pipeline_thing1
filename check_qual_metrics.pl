@@ -24,9 +24,9 @@ my %FILTERS = (
     "perbasesAbove20XGP"    => { "hiseq2500" => [" >= 90"],              "nextseq500" => [" >= 90"],              "miseqdx" => [" >= 96"]}, 
     "perbasesAbove10XExome" => { "hiseq2500" => [" >= 95"],              "nextseq500" => [" >= 95"],              "miseqdx" => [" >= 0"]}, 
     "perbasesAbove20XExome" => { "hiseq2500" => [" >= 90"],              "nextseq500" => [" >= 90"],              "miseqdx" => [" >= 0"]}, 
-    "meanCvgGP"             => { "hiseq2500" => [" >= 80", " <= 200"],   "nextseq500" => [" >= 80", " <= 200"],   "miseqdx" => [" >= 120"]}, 
+    "meanCvgExome"          => { "hiseq2500" => [" >= 80", " <= 200"],   "nextseq500" => [" >= 80", " <= 200"],   "miseqdx" => [" >= 120"]}, 
     "lowCovExonNum"         => { "hiseq2500" => [" <= 6000"],            "nextseq500" => [" <= 6000"],            "miseqdx" => [" >= 0"]}, 
-    "meanCvgExome"          => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 80"],              "miseqdx" => [" >= 120"]}); 
+    "meanCvgGP"             => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 80"],              "miseqdx" => [" >= 120"]}); 
 
 my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 
@@ -114,6 +114,7 @@ sub check_qual {
     my $sth_qual = $dbh->prepare($query) or die "Failed to prepare the query: $query\n";
     $sth_qual->execute();
     my $qual_ref = $sth_qual->fetchrow_hashref;
+    my $machine = $qual_ref->{"machine"};
     $qual_ref->{"machine"} =~ s/_.+//;
 
     ######  ignore all the cancer samples   #######
@@ -135,7 +136,7 @@ sub check_qual {
     }
     
     if ($msg ne '') {
-        $msg = "sampleID $sampleID postprocID $postprocID has finished analysis using gene panel, $qual_ref->{genePanelVer}. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through. Please check the following linkage\nhttp://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary\n\n" . $msg;
+        $msg = "sampleID $sampleID postprocID $postprocID on machine $machine flowcellID $qual_ref->{flowcellID} has finished analysis using gene panel, $qual_ref->{genePanelVer}. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through. Please check the following linkage\nhttp://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary\n\n" . $msg;
         email_error($msg, "quality");
         return 7;
     }
