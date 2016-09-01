@@ -317,13 +317,13 @@ sub add_flag {
   my ($segdup, $homology, $lowCvgExon, $altDP, $refDP, $zygosity) = @_;
   my $flag = 0;
 
-  if ($segdup eq "Y") {
+  if ($segdup eq "Y" || $segdup == 1) {
     $flag = 1;
   }
-  if ($homology eq "Y") {
+  if ($homology eq "Y" || $homology == 1) {
     $flag = 1;
   }
-  if ($zygosity=~/het/) {
+  if ($zygosity=~/het/ || $zygosity == 1 || $zygosity == 3) {
 
     if (($altDP + $refDP ) < $cvgHetCutoff) {
       $flag = 1;
@@ -339,7 +339,7 @@ sub add_flag {
         $flag = 1;
       }
     }
-  } elsif ($zygosity eq "hom") {
+  } elsif ($zygosity eq "hom" || $zygosity == 2) {
     if (($altDP + $refDP ) < $cvgHomCutoff) {
       $flag = 1;
     } else {
