@@ -5,19 +5,18 @@ use warnings;
 use lib './lib';
 use DBI;
 use Thing1::Common qw(:All);
+use Carp qw(croak);
 
 use Time::localtime;
 use Time::ParseDate;
 use Time::Piece;
-#use Mail::Sender;
 
 #### Database connection ###################
-open(ACCESS_INFO, "</home/pipeline/.clinicalB.cnf") || die "Can't access login credentials";
+open(ACCESS_INFO, "</home/pipeline/.clinicalB.cnf") || croak"Can't access login credentials";
 my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
 close(ACCESS_INFO);
 chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
-
+my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or croak "Couldn't connect to database: " . DBI->errstr;
 
 #### constant variables for HPF ############
 my $SAMPLE_INFO = Common::get_config($dbh, "SAMPLE_INFO");
@@ -29,11 +28,9 @@ my %ilmnBarcodes = ();
 my $queryBarcodes = "SELECT code, value FROM encoding WHERE tablename='sampleSheet' AND fieldname = 'barcode'";
 print STDERR "queryBarcodes=$queryBarcodes\n";
 my $sthBC = $dbh->prepare($queryBarcodes) or die "Can't query database for barcode encoding : ". $dbh->errstr() . "\n";
-$sthBC->execute() or die "Can't execute query for barcode encoding : " . $dbh->errstr() . "\n";
+$sthBC->execute() or croak "Can't execute query for barcode encoding : " . $dbh->errstr() . "\n";
 if ($sthBC->rows() == 0) {
-  print STDERR "ERROR can't find barcode code\n";
-  return "ERROR_MSG_1";
-  ###thing of the best way to return errors
+  croak "ERROR $queryBarcodes";
 } else {
   my @dataBC = ();
   while (@dataBC = $sthBC->fetchrow_array()) {
@@ -59,7 +56,7 @@ foreach my $file (@new_fl) {
   my @header = ();
   my $cancer_samples_msg = '';
   my @file_content = ();
-  open (FILE, "< $file") or die "Can't open $file for read: $!\n";
+  open (FILE, "< $file") or croak "Can't open $file for read: $!\n";
   my $tmphead = <FILE>;
   chomp($tmphead);
   $tmphead =~ s/\r//;
@@ -95,7 +92,7 @@ foreach my $file (@new_fl) {
       $machine = $lines_ref->{"machine"};
       ###check machine name
       if (Common::check_name($dbh, "machine","sequencers","active","1",$lines_ref->{"machine"}) == 0) {
-        $errorMsg .= "ERROR: " . $lines_ref->{'machine'} . " and is not active or the machine name is incorrect.\n";
+        $errorMsg .= "ERROR: " . $lines_ref->{'machine'} . " is not active or the machine name is incorrect.\n";
       }
     } else {
       if ($machine ne $lines_ref->{'machine'}) {
@@ -104,10 +101,10 @@ foreach my $file (@new_fl) {
     }
 
     if (Common::check_name($dbh, "value","encoding","fieldname","specimen",$lines_ref->{"specimen"}) == 0) {
-      $errorMsg .= "ERROR: specimen is incorrect. please use either blood, cell, ffpf, or tissue in line $..\n";
+      $errorMsg .= "ERROR: Specimen is incorrect. Please use either blood, cell, ffpf, or tissue in line $..\n";
     }
 
-    if (Common::check_names($dbh, "value","encoding","fieldname","sampleType",$lines_ref->{"sample_type"}) == 0) {
+    if (Common::check_name($dbh, "value","encoding","fieldname","sampleType",$lines_ref->{"sample_type"}) == 0) {
       $errorMsg .= "ERROR: sampleType not recognized, please use either normal or tumour in line $..\n";
     }
 
@@ -128,15 +125,15 @@ foreach my $file (@new_fl) {
       $errorMsg .= "ERROR: FlowcellID is missing A or B in line $..\n";
     }
 
-    if (Common::check_names($dbh,"value","encoding","fieldname","capture_kit", $lines_ref->{"capture_kit"}) == 0) {
-      $errorMsg .= "ERROR: capture kit is not recognized in line $..\n";
+    if (Common::check_name($dbh,"value","encoding","fieldname","capture_kit", $lines_ref->{"capture_kit"}) == 0) {
+      $errorMsg .= "ERROR: Capture kit is not recognized in line $..\n";
     }
 
-    if (Common::check_names($dbh,"value","encoding","fieldname","pooling", $lines_ref->{"pooling"}) == 0) {
-      $errorMsg .= "ERROR: pooling is not recognized in line $..\n";
+    if (Common::check_name($dbh,"value","encoding","fieldname","pooling", $lines_ref->{"pooling"}) == 0) {
+      $errorMsg .= "ERROR: Pooling is not recognized in line $..\n";
     }
 
-    if (Common::check_names($dbh,"value","encoding","fieldname","jbravo_used",$lines_ref->{"jbravo_used"}) == 0) {
+    if (Common::check_name($dbh,"value","encoding","fieldname","jbravo_used",$lines_ref->{"jbravo_used"}) == 0) {
       $errorMsg .= "ERROR: jbravo is not recognized in line $..\n";
     }
 
@@ -147,8 +144,8 @@ foreach my $file (@new_fl) {
       $errorMsg .= "ERROR: sampleID can not contain \"_\" in line $..\n";
     }
 
-    if (Common::check_names($dbh,"username","login","position","coordinator",$lines_ref->{"ran_by"}) == 0) {
-      $errorMsg .= "ERROR: ranby is not defined in line $..\n";
+    if (Common::check_name($dbh,"username","login","position","coordinator",$lines_ref->{"ran_by"}) == 0) {
+      $errorMsg .= "ERROR: You must used your NGS login username for ranby in line $..\n";
     }
 
     if ( $lines_ref->{'gene_panel'} eq "" ) {
@@ -157,8 +154,8 @@ foreach my $file (@new_fl) {
 
     my $genePanel = lc($lines_ref->{'gene_panel'});
 
-    if (Common::check_names($dbh,"genePanelID","gpConfig","captureKit",$lines_ref->{"capture_kit"},$genePanel) == 0) {
-      $errorMsg .= "ERROR: gene-panel=$genePanel is not recognized in line for the capture kit given $..\n";
+    if (Common::check_name($dbh,"genePanelID","gpConfig","captureKit",$lines_ref->{"capture_kit"},$genePanel) == 0) {
+      $errorMsg .= "ERROR: $genePanel is not recognized in line for the capture kit, " . $lines_ref->{"capture_kit"}."$..\n";
     }
 
     if ($genePanel =~ /cancer/ && $lines_ref->{'pairedSampleID'} !~ /\d/) {
@@ -166,8 +163,7 @@ foreach my $file (@new_fl) {
     }
   }
   close(FILE);
-
-  my $emailList = Common::get_config($dbh, "EMAIL_SAMPLESHEET");
+  my $emailList = Common::get_config($dbh, "EMAIL_WARNINGS");
   print STDERR "emailList=$emailList\n";
 
   if ($errorMsg eq "") {
@@ -181,9 +177,9 @@ foreach my $file (@new_fl) {
     $dbh->do($delete_sql);
 
     write_database(@file_content);
-    #print LST $file,"\n";
+    #print LST $file,"\n";       ##unsure of what this does
 
-    my $info = "The sample sheet has been generated successfully and can be found: /" . $machine . "_desktop/"  . $today . ".flowcell_" . $flowcellID . ".sample_sheet.csv OR\n /localhd/data/sequencers/$machine/$machine\_desktop/" . $today     . ".flowcell_" . $flowcellID . ".sample_sheet.csv";
+    my $info = "The sample sheet has been generated successfully and can be found: /" . $machine . "_desktop/"  . $today . ".flowcell_" . $flowcellID . ".sample_sheet.csv OR\n ".  Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine). "/" . $today     . ".flowcell_" . $flowcellID . ".sample_sheet.csv";
 
     Common::email_error("$flowcellID samplesheet" ,$info, $machine, $today, $flowcellID, $emailList);
   } else {
@@ -193,11 +189,22 @@ foreach my $file (@new_fl) {
   }
 
   if ($cancer_samples_msg ne '') {
-    my $emailListCancer = Common::get_config($dbh, "EMAIL_CANCERSAMPLE");
+    my $emailListCancer = Common::get_config($dbh, "EMAIL_WARNINGS");
     Common::email_error("$flowcellID samplesheet", $cancer_samples_msg, $machine, $today, $flowcellID, $emailListCancer);
   }
 
-  ###MOVE FILE INTO DONE OR ERROR FOLDER
+  print STDERR "errorMsg=$errorMsg\n";
+  if ($errorMsg eq "") {
+    my $moveCmd = "mv $file $SAMPLE_INFO/done";
+    print STDERR "moveCmd=$moveCmd\n";
+    my $moveCmdOut = `$moveCmd`;
+    print STDERR "moveCmdOut=$moveCmdOut\n";
+  } else {
+    my $moveCmd = "mv $file $SAMPLE_INFO/error";
+    print STDERR "moveCmd=$moveCmd\n";
+    my $moveCmdOut = `$moveCmd`;
+    print STDERR "moveCmdOut=$moveCmdOut\n";
+  }
 }
 
 sub write_samplesheet {
@@ -213,7 +220,7 @@ sub write_samplesheet {
   my $file = Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
   print $file,"\n";
   print $output;
-  open (CSV, ">$file") or die "failed to open file $file\n";
+  open (CSV, ">$file") or croak "failed to open file $file";
   print CSV $output;
   close(CSV);
 }
@@ -232,7 +239,7 @@ sub write_samplesheet_miseq {
 
   print $file,"\n";
   print $output;
-  open (CSV, ">$file") or die "failed to open file $file\n";
+  open (CSV, ">$file") or croak "failed to open file $file";
   print CSV $output;
   close(CSV);
 }
@@ -250,7 +257,7 @@ sub write_database {
     print "insert sampleSheet: $insertSampleSheet\n";
 
     #insert into clinicalA
-    my $sth = $dbh->prepare($insertSampleSheet) or die "Can't prepare ngsSample table insert: ". $dbh->errstr() . "\n";
+    my $sth = $dbh->prepare($insertSampleSheet) or croak "Can't prepare ngsSample table insert: ". $dbh->errstr() . "\n";
     $sth->execute() or die "Can't execute ngsSample table insert: " . $dbh->errstr() . "\n";
   }
 }

@@ -2,6 +2,7 @@ package Common;
 
 use strict;
 use Exporter qw(import);
+use Carp qw(croak);
 use DBI;
 use Time::localtime;
 use Time::ParseDate;
@@ -12,7 +13,6 @@ our $VERSION = 1.00;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(print_time_stamp check_name email_error get_config);
 our @EXPORT_TAGS = ( All => [qw(&print_time_stamp &checkName &email_error &get_config &get_value)],);
-
 
 sub print_time_stamp {
   my $retval = time();
@@ -32,9 +32,7 @@ sub check_name {
   my $sthCheck = $dbh->prepare($queryCheck) or die "Can't check query : ". $dbh->errstr() . "\n";
   $sthCheck->execute() or die "Can't check : " . $dbh->errstr() . "\n";
   if ($sthCheck->rows() == 0) {
-    print STDERR "ERROR in query $queryCheck\n";
-    return "ERROR_MSG_1";
-    ###thing of the best way to return errors
+    croak("ERROR $queryCheck");
   } else {
     my @dataFV = ();
     while (@dataFV = $sthCheck->fetchrow_array()) {
@@ -71,9 +69,7 @@ sub get_config {
   my $sthQC = $dbh->prepare($queryConfig) or die "Can't query database for config : ". $dbh->errstr() . "\n";
   $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
   if ($sthQC->rows() == 0) {
-    print STDERR "ERROR can't find value for vName=$vName\n";
-    return "ERROR_MSG_1";
-    ###think of the best way to return errors
+    croak("ERROR $queryConfig");
   } else {
     my ($vValue) = $sthQC->fetchrow_array();
     return $vValue;
@@ -86,9 +82,7 @@ sub get_value {
   my $sthCheck = $dbh->prepare($queryCheck) or die "Can't check query : ". $dbh->errstr() . "\n";
   $sthCheck->execute() or die "Can't check : " . $dbh->errstr() . "\n";
   if ($sthCheck->rows() == 0) {
-    print STDERR "ERROR in query $queryCheck\n";
-    return "ERROR_MSG_1";
-    ###thing of the best way to return errors
+    croak("ERROR $queryCheck");
   } else {
     my $fvalue = $sthCheck->fetchrow_array();
     return $fvalue;
