@@ -11,7 +11,7 @@ use Mail::Sender;
 #### constant variables for HPF ############
 my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/cancer/samples/illumina';
 my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5_cancer';
-my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
+my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5_cancer';
 my $SQL_JOBLST        = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
 my $SSHDATA           = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
 my $GET_JSUBID        = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_jsub_pl.sh ';
