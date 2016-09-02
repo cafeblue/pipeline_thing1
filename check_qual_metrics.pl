@@ -8,9 +8,9 @@ use Time::Piece;
 use Mail::Sender;
 
 #### constant variables for HPF ############
-my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/clinical/samples/illumina';
-my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
-my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
+my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/cancer/samples/illumina';
+my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5_cancer';
+my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5_cancer';
 my $SSHDATA    = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
 my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
 #my %FILTERS_MAP = ( "meanCvgExome"          => " >= 80", "lowCovExonNum"         => " <= 6000", 
@@ -28,9 +28,9 @@ my %FILTERS = (
     "lowCovExonNum"         => { "hiseq2500" => [" <= 6000"],            "nextseq500" => [" <= 6000"],            "miseqdx" => [" >= 0"]}, 
     "meanCvgExome"          => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 80"],              "miseqdx" => [" >= 120"]}); 
 
-my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
+my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list1.txt");
 
-open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
+open(ACCESS_INFO, "</home/pipeline/.clinicalC.cnf") || die "Can't access login credentials";
 # assign the values in the accessDB file to the variables
 my $host = <ACCESS_INFO>;
 my $port = <ACCESS_INFO>;
