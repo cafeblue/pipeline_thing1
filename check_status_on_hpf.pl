@@ -9,8 +9,8 @@ use Time::Piece;
 use Mail::Sender;
 
 #### constant variables for HPF ############
-my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/clinical/samples/illumina';
-my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
+my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/cancer/samples/illumina';
+my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5_cancer';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SQL_JOBLST        = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
 my $SSHDATA           = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
@@ -28,7 +28,7 @@ my %TRUNK_LIST = ( 'bwaAlign' => 0, 'picardMardDup' => 0, 'picardMarkDupIdx' => 
                     'gatkdwFilteredRecalINDEL' => 0, 'gatkFilteredRecalVariant' => 0, 'windowBed' => 0, 'annovar' => 0, 'snpEff' => 0);
 
 # open the accessDB file to retrieve the database name, host name, user name and password
-open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
+open(ACCESS_INFO, "</home/pipeline/.clinicalC.cnf") || die "Can't access login credentials";
 # assign the values in the accessDB file to the variables
 my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
 close(ACCESS_INFO);
@@ -359,7 +359,7 @@ sub email_error {
     my $mail   = {
         smtp                 => 'localhost',
         from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
+        to                   => 'weiw.wang@sickkids.ca',
         subject              => "Job Status on HPF",
         ctype                => 'text/plain; charset=utf-8',
         skip_bad_recipients  => 1,
