@@ -1,0 +1,2 @@
+package Thing1::common;
+use strict;
