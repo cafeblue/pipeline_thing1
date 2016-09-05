@@ -169,10 +169,10 @@ sub email_error {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
                 to                   => $email_lst_ref->{'WARNINGS'}, 
-                subject              => $msg . "Variants loading status...",
+                subject              => "Cancer sample variants loading status...",
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
-                msg                  => $msg . $errorMsg
+                msg                  => $errorMsg
                };
   my $ret =  $sender->MailMsg($mail);
 }
@@ -184,10 +184,10 @@ sub email_finished {
                 smtp                 => 'localhost',
                 from                 => 'notice@thing1.sickkids.ca',
                 to                   => $email_lst_ref->{'FINISHED'}, 
-                subject              => $msg . "$sampleID ($flowcellID $machine) completed analysis",
+                subject              => "$sampleID ($flowcellID $machine) completed analysis",
                 ctype                => 'text/plain; charset=utf-8',
                 skip_bad_recipients  => 1,
-                msg                  => $msg . "$sampleID ($flowcellID $machine) has finished analysis using gene panel $genePanelVer with no errors. The sample can be viewed through the website. http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary The filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$genePanelVer.$todayDate.sid_$sampleID.annotated.filter.pID_$postprocID.xlsx.\n\nPlease login to thing1 using your Samba account in order to view this file.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca\n\nThanks,\n\nThing1\n"
+                msg                  => "$sampleID ($flowcellID $machine) has finished analysis using gene panel $genePanelVer with no errors. The sample can be viewed through the website. http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary The filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$genePanelVer.$todayDate.sid_$sampleID.annotated.filter.pID_$postprocID.xlsx.\n\nPlease login to thing1 using your Samba account in order to view this file.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca\n\nThanks,\n\nThing1\n"
                };
   my $ret =  $sender->MailMsg($mail);
 }
