@@ -28,7 +28,7 @@ my %FILTERS = (
     "lowCovExonNum"         => { "hiseq2500" => [" <= 6000"],            "nextseq500" => [" <= 6000"],            "miseqdx" => [" >= 0"]}, 
     "meanCvgExome"          => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 80"],              "miseqdx" => [" >= 120"]}); 
 
-my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list1.txt");
+my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list_cancer.txt");
 
 open(ACCESS_INFO, "</home/pipeline/.clinicalC.cnf") || die "Can't access login credentials";
 # assign the values in the accessDB file to the variables
