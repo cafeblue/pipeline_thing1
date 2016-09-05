@@ -704,7 +704,7 @@ sub gatkLocalRealign {
               . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T RealignerTargetCreator' . " -I $runfolder/$Pfolder -o $runfolder/gatkLocalRealign/forRealigner.intervals -R $reference -l INFO &&" . " \\\n"
                 . '/usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java  -jar -Djava.io.tmpdir=$TMPDIR -Xmx26G $GATK -T IndelRealigner' . " -I $runfolder/$Pfolder -o $runfolder/gatkLocalRealign/$sampleID.$postprocID.realigned.rmduped.mapq.bam -R $reference -l INFO -targetIntervals  $runfolder/gatkLocalRealign/forRealigner.intervals -compress 0 $maxReadsForRealignment &&" . " \\\n"
                   . 'samtools index' . " $runfolder/gatkLocalRealign/$sampleID.$postprocID.realigned.rmduped.mapq.bam ; "
-                    . "\'| jsub -j gatkLocalRealign -b $runfolder  -nm 32000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:100 $depend";
+                    . "\'| jsub -j gatkLocalRealign -b $runfolder  -nm 32000 -np 1 -nn 1 -nw 16:00:00 -ng localhd:100 $depend";
   print "\n\n************\ngatkLocalRealign:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
