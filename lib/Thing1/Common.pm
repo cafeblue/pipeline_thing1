@@ -48,7 +48,7 @@ sub check_name {
 sub email_error {
   my ($email_subject, $info, $machine, $today, $flowcellID, $mail_lst) = @_;
   my $sender = Mail::Sender->new();
-  if ($mail_lst=~"ERROR" || !defined($mail_lst)) {
+  if ($mail_lst=~"EMAIL_ERROR" || !defined($mail_lst)) {
     $mail_lst = get_config("EMAIL_WARNINGS");
   }
   my $mail = {
