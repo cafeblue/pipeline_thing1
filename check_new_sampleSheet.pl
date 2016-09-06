@@ -179,8 +179,12 @@ foreach my $file (@new_fl) {
     write_database(@file_content);
     #print LST $file,"\n";       ##unsure of what this does
 
-    my $info = "The sample sheet has been generated successfully and can be found: /" . $machine . "_desktop/"  . $today . ".flowcell_" . $flowcellID . ".sample_sheet.csv OR\n ".  Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine). "/" . $today     . ".flowcell_" . $flowcellID . ".sample_sheet.csv";
-
+    my $info = "";
+    if ($machine=~ /nextseq/) {
+      $info = "The sample sheet has been inputted into the database successfully";
+    } else {
+      $info = "The sample sheet has been generated successfully and can be found: /" . $machine . "_desktop/"  . $today . ".flowcell_" . $flowcellID . ".sample_sheet.csv OR\n ".  Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine). "/" . $today     . ".flowcell_" . $flowcellID . ".sample_sheet.csv";
+    }
     Common::email_error("$flowcellID samplesheet" ,$info, $machine, $today, $flowcellID, $emailList);
   } else {
 

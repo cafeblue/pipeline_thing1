@@ -58,7 +58,7 @@ sub email_error {
               subject              => $email_subject,
               ctype                => 'text/plain; charset=utf-8',
               skip_bad_recipients  => 1,
-              msg                  => $info . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1"
+              msg                  => $info . "\n\nmachine : " .$machine. "\nflowcell :" . $flowcellID . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1"
              };
   my $ret =  $sender->MailMsg($mail);
 }
