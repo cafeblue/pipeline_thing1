@@ -48,11 +48,17 @@ sub check_name {
 sub email_error {
   my ($email_subject, $info, $machine, $today, $flowcellID, $mail_lst) = @_;
   my $sender = Mail::Sender->new();
-  if ($mail_lst=~"EMAIL_ERROR" || !defined($mail_lst)) {
+
+  if ($mail_lst=~"ERROR" || !defined($mail_lst)) {
     $mail_lst = get_config("EMAIL_WARNINGS");
   }
-  $info = $info  . "\n\nmachine : " .$machine. "\nflowcell :" . $flowcellID . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
-
+  if ($machine eq "NA" || $flowcellID eq "NA") {
+    #$info = $info . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
+  } else {
+    $info = $info . "\n\nmachine : " .$machine. "\nflowcell :" . $flowcellID . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
+  }
+  $info = $info . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
+  print STDERR "COMMON EMAIL info=$info\n";
   my $mail = {
               smtp                 => 'localhost',
               from                 => 'notice@thing1.sickkids.ca',

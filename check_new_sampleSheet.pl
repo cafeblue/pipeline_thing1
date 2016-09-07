@@ -7,9 +7,6 @@ use DBI;
 use Thing1::Common qw(:All);
 use Carp qw(croak);
 
-use Time::localtime;
-use Time::ParseDate;
-use Time::Piece;
 
 #### Database connection ###################
 open(ACCESS_INFO, "</home/pipeline/.clinicalB.cnf") || croak"Can't access login credentials";
