@@ -12,7 +12,17 @@ use Mail::Sender;
 our $VERSION = 1.00;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(print_time_stamp check_name email_error get_config);
-our @EXPORT_TAGS = ( All => [qw(&print_time_stamp &checkName &email_error &get_config &get_value)],);
+our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_config &get_value)],);
+
+sub connect_db {
+  my ($dbCFile) = @_;
+  open(ACCESS_INFO, "< $dbCFile") || die "Can't access login credentials";
+  my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
+  close(ACCESS_INFO);
+  chomp($port, $host, $user, $pass, $db);
+  my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or croak ( "Couldn't connect to database: " . DBI->errstr );
+  return $dbh;
+}
 
 sub print_time_stamp {
   my $retval = time();

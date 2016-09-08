@@ -11,12 +11,14 @@ use Carp qw(croak);
 #use Time::Piece;
 #use Mail::Sender;
 
+my $dbConfigFile = $ARGV[0];
 #### Database connection ###################
-open(ACCESS_INFO, "</home/pipeline/.clinicalB.cnf") || croak"Can't access login credentials";
-my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
-close(ACCESS_INFO);
-chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or croak "Couldn't connect to database: " . DBI->errstr;
+# open(ACCESS_INFO, "</home/pipeline/.clinicalB.cnf") || croak"Can't access login credentials";
+# my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
+# close(ACCESS_INFO);
+# chomp($port, $host, $user, $pass, $db);
+# my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or croak "Couldn't connect to database: " . DBI->errstr;
+my $dbh = Common::connect_db($dbConfigFile);
 
 my $sub_status = 1;
 my ($today, $yesterday) = Common::print_time_stamp();

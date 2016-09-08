@@ -1,20 +1,41 @@
-#! /bin/env perl
+#! /usr/bin/env perl
 
 use strict;
+use warnings;
+use lib './lib';
 use DBI;
-use Time::localtime;
-use Time::ParseDate;
-use Time::Piece;
-use Mail::Sender;
+use Thing1::Common qw(:All);
+use Carp qw(croak);
+
+my $dbConfigFile = $ARGV[0];
+#######DATABASE CONNECTION##################
+# open(ACCESS_INFO, "</home/pipeline/.clinicalB.cnf") || die "Can't access login credentials";
+# # assign the values in the accessDB file to the variables
+# my $host = <ACCESS_INFO>;
+# my $port = <ACCESS_INFO>;
+# my $user = <ACCESS_INFO>;
+# my $pass = <ACCESS_INFO>;
+# my $db = <ACCESS_INFO>;
+# close(ACCESS_INFO);
+# chomp($port, $host, $user, $pass, $db);
+# my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
+#                        $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
+my $dbh = Common::connect_db($dbConfigFile);
 
 #### constant variables for HPF ############
-my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/clinical/samples/illumina';
-my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
-my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
-my $SSHDATA    = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
+my $HPF_RUNNING_FOLDER = Common::get_config($dbh,"HPF_RUNNING_FOLDER"); #'/hpf/largeprojects/pray/clinical/samples/illumina';
+my $PIPELINE_THING1_ROOT = Common::get_config($dbh, "PIPELINE_THING1_ROOT"); #'/home/pipeline/pipeline_thing1_v5';
+my $PIPELINE_HPF_ROOT = Common::get_config($dbh, "PIPELINE_HPF_ROOT"); #'/home/wei.wang/pipeline_hpf_v5';
+my $RSYNCCMD_FILE = Common::get_config($dbh, "RSYNCCMDFILE");
+my $HPF_USER = Common::get_config($dbh,"HPF_USERNAME");
+my $HPF_DATA_NODE = Common::get_config($dbh,"HPF_DATA_NODE");
+my $SSHDATAcmd    = "ssh -i " . $RSYNCCMD_FILE . " " . $HPF_USER . "@" . $HPF_DATA_NODE . " \"" . $PIPELINE_HPF_ROOT . "/cat_sql.sh ";
+my $SSHDATA    = `$SSHDATAcmd`; #'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
+
 my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
 #my %FILTERS_MAP = ( "meanCvgExome"          => " >= 80", "lowCovExonNum"         => " <= 6000", 
 #"meanCvgGP"             => " >= 80" );
+
 my %FILTERS = ( 
     "yieldMB"               => { "hiseq2500" => [" >= 6000"],            "nextseq500" => [" >= 6000"],            "miseqdx" => [" >= 20"]},
     "perQ30Bases"           => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 75"],              "miseqdx" => [" >= 80"]},
@@ -28,20 +49,9 @@ my %FILTERS = (
     "lowCovExonNum"         => { "hiseq2500" => [" <= 6000"],            "nextseq500" => [" <= 6000"],            "miseqdx" => [" >= 0"]}, 
     "meanCvgGP"             => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 80"],              "miseqdx" => [" >= 120"]}); 
 
-my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
+#my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
 
-open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
-# assign the values in the accessDB file to the variables
-my $host = <ACCESS_INFO>;
-my $port = <ACCESS_INFO>;
-my $user = <ACCESS_INFO>;
-my $pass = <ACCESS_INFO>;
-my $db = <ACCESS_INFO>;
-close(ACCESS_INFO);
-chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
-                       $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
-
+################ MAIN #################
 my $idpair_ref = &check_finished_samples;
 my ($today, $yesterday) = &print_time_stamp();
 foreach my $idpair (@$idpair_ref) {
