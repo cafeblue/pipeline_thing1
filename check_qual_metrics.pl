@@ -29,8 +29,7 @@ my $PIPELINE_HPF_ROOT = Common::get_config($dbh, "PIPELINE_HPF_ROOT"); #'/home/w
 my $RSYNCCMD_FILE = Common::get_config($dbh, "RSYNCCMDFILE");
 my $HPF_USER = Common::get_config($dbh,"HPF_USERNAME");
 my $HPF_DATA_NODE = Common::get_config($dbh,"HPF_DATA_NODE");
-my $SSHDATAcmd    = "ssh -i " . $RSYNCCMD_FILE . " " . $HPF_USER . "@" . $HPF_DATA_NODE . " \"" . $PIPELINE_HPF_ROOT . "/cat_sql.sh ";
-my $SSHDATA    = `$SSHDATAcmd`; #'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
+my $SSHDATA = "ssh -i " . $RSYNCCMD_FILE . " " . $HPF_USER . "@" . $HPF_DATA_NODE . " \"" . $PIPELINE_HPF_ROOT . "/cat_sql.sh "; #'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
 
 my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
 #my %FILTERS_MAP = ( "meanCvgExome"          => " >= 80", "lowCovExonNum"         => " <= 6000", 

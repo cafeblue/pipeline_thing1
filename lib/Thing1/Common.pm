@@ -24,6 +24,7 @@ sub connect_db {
   return $dbh;
 }
 
+
 sub print_time_stamp {
   my $retval = time();
   my $yetval = $retval - 86400;
@@ -33,7 +34,7 @@ sub print_time_stamp {
   my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
   print "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
   print STDERR "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-  return ($localTime->strftime('%Y%m%d'), $yetval->strftime('%Y%m%d'));
+  return ($localTime->strftime('%Y%m%d'), $yetval->strftime('%Y%m%d'), $localTime->strftime('%Y%m%d%H%M%S'), $localTime->strftime('%m/%d/%Y'));
 }
 
 sub check_name {
