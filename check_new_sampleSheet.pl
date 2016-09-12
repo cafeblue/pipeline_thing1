@@ -22,22 +22,22 @@ my $SAMPLE_INFO = Common::get_config($dbh, "SAMPLE_INFO");
 
 print STDERR "SAMPLE_INFO=$SAMPLE_INFO\n";
 #### Read the barcodes #####################
-my %ilmnBarcodes = ();
+my $ilmnBarcodes = Common::get_barcode($dbh);
 
-my $queryBarcodes = "SELECT code, value FROM encoding WHERE tablename='sampleSheet' AND fieldname = 'barcode'";
-print STDERR "queryBarcodes=$queryBarcodes\n";
-my $sthBC = $dbh->prepare($queryBarcodes) or die "Can't query database for barcode encoding : ". $dbh->errstr() . "\n";
-$sthBC->execute() or croak "Can't execute query for barcode encoding : " . $dbh->errstr() . "\n";
-if ($sthBC->rows() == 0) {
-  croak "ERROR $queryBarcodes";
-} else {
-  my @dataBC = ();
-  while (@dataBC = $sthBC->fetchrow_array()) {
-    my $id = $dataBC[0];
-    my $ntCode = $dataBC[1];
-    $ilmnBarcodes{$id} = $ntCode;
-  }
-}
+#my $queryBarcodes = "SELECT code, value FROM encoding WHERE tablename='sampleSheet' AND fieldname = 'barcode'";
+#print STDERR "queryBarcodes=$queryBarcodes\n";
+#my $sthBC = $dbh->prepare($queryBarcodes) or die "Can't query database for barcode encoding : ". $dbh->errstr() . "\n";
+#$sthBC->execute() or croak "Can't execute query for barcode encoding : " . $dbh->errstr() . "\n";
+#if ($sthBC->rows() == 0) {
+#  croak "ERROR $queryBarcodes";
+#} else {
+#  my @dataBC = ();
+#  while (@dataBC = $sthBC->fetchrow_array()) {
+#    my $id = $dataBC[0];
+#    my $ntCode = $dataBC[1];
+#    $ilmnBarcodes{$id} = $ntCode;
+#  }
+#}
 
 #### Get the new file list #################
 my @new_fl = `find $SAMPLE_INFO/*.txt $SAMPLE_INFO/done/*.txt -mmin -10`;
@@ -107,7 +107,7 @@ foreach my $file (@new_fl) {
       $errorMsg .= "ERROR: sampleType not recognized, please use either normal or tumour in line $..\n";
     }
 
-    if ( ! defined $ilmnBarcodes{$lines_ref->{'barcode'}} ) {
+    if ( ! defined $ilmnBarcodes->{$lines_ref->{'barcode'}} ) {
       $errorMsg .= "ERROR: Ilumina Barcode doesn't exist in line $..\n";
     }
     ##  Uncomment if double barcode required
@@ -143,9 +143,9 @@ foreach my $file (@new_fl) {
       $errorMsg .= "ERROR: sampleID can not contain \"_\" in line $..\n";
     }
 
-    if (Common::check_name($dbh,"username","login","position","coordinator",$lines_ref->{"ran_by"}) == 0) {
-      $errorMsg .= "ERROR: You must used your NGS login username for ranby in line $..\n";
-    }
+    #if (Common::check_name($dbh,"username","login","position","coordinator",$lines_ref->{"ran_by"}) == 0) {
+    #  $errorMsg .= "ERROR: You must used your NGS login username for ranby in line $..\n";
+    #}
 
     if ( $lines_ref->{'gene_panel'} eq "" ) {
       $errorMsg .= "ERROR: gene_panel is not defined in line $..\n";
@@ -166,11 +166,11 @@ foreach my $file (@new_fl) {
   print STDERR "emailList=$emailList\n";
 
   if ($errorMsg eq "") {
-    if ($machine =~ /hiseq/) {
-      write_samplesheet($machine, @file_content);
-    } elsif ($machine =~ /miseq/) {
-      write_samplesheet_miseq($machine, @file_content);
-    }
+      #if ($machine =~ /hiseq/) {
+      #write_samplesheet($machine, @file_content);
+      #} elsif ($machine =~ /miseq/) {
+      #write_samplesheet_miseq($machine, @file_content);
+      #}
 
     my $delete_sql = "DELETE FROM sampleSheet WHERE flowcell_ID = '$flowcellID'";
     $dbh->do($delete_sql);
@@ -216,7 +216,7 @@ sub write_samplesheet {
   my $flowcellID;
   foreach my $line (@cont_tmp) {
     foreach my $lane (split(/,/, $line->{'lane'})) {
-      $output .= $line->{'flowcell_ID'} . ",$lane," . $line->{'sampleID'} . ",b37," . $ilmnBarcodes{$line->{'barcode'}} . "," . $line->{'capture_kit'} . "_" . $line->{'sample_type'} . ",N,R1," . $line->{'ran_by'} . "," . $line->{'machine'} . "_" . $line->{'flowcell_ID'} . "\r\n";
+      $output .= $line->{'flowcell_ID'} . ",$lane," . $line->{'sampleID'} . ",b37," . $ilmnBarcodes->{$line->{'barcode'}} . "," . $line->{'capture_kit'} . "_" . $line->{'sample_type'} . ",N,R1," . $line->{'ran_by'} . "," . $line->{'machine'} . "_" . $line->{'flowcell_ID'} . "\r\n";
       $flowcellID = $line->{'flowcell_ID'};
     }
   }
@@ -234,7 +234,7 @@ sub write_samplesheet_miseq {
   my $output =  "[Header]\nIEMFileVersion,4\nDate,$today\nWorkflow,GenerateFASTQ\nApplication,MiSeq FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n151\n151\n\n[Settings]\nAdapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA\nAdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT\n\n[Data]\nSample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description\n";
 
   foreach my $line (@cont_tmp) {
-    $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes{$line->{'barcode'}} . ",,\n";
+    $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes->{$line->{'barcode'}} . ",,\n";
     $flowcellID = $line->{'flowcell_ID'};
   }
 

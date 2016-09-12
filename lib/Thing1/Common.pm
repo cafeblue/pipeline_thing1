@@ -106,4 +106,24 @@ sub get_value {
   }
 }
 
+sub get_barcode {
+  my $dbh = shift; 
+  my %tmpBC;
+  my $queryBarcodes = "SELECT code, value FROM encoding WHERE tablename='sampleSheet' AND fieldname = 'barcode'";
+  print STDERR "queryBarcodes=$queryBarcodes\n";
+  my $sthBC = $dbh->prepare($queryBarcodes) or die "Can't query database for barcode encoding : ". $dbh->errstr() . "\n";
+  $sthBC->execute() or croak "Can't execute query for barcode encoding : " . $dbh->errstr() . "\n";
+  if ($sthBC->rows() == 0) {
+    croak "ERROR $queryBarcodes";
+  } else {
+    my @dataBC = ();
+    while (@dataBC = $sthBC->fetchrow_array()) {
+      my $id = $dataBC[0];
+      my $ntCode = $dataBC[1];
+      $tmpBC{$id} = $ntCode;
+    }
+  }
+  return(\%tmpBC);
+}
+
 1;
