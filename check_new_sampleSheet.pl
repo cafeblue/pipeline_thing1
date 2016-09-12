@@ -197,17 +197,17 @@ foreach my $file (@new_fl) {
   }
 
   print STDERR "errorMsg=$errorMsg\n";
-  if ($errorMsg eq "") {
-    my $moveCmd = "mv $file $SAMPLE_INFO/done";
-    print STDERR "moveCmd=$moveCmd\n";
-    my $moveCmdOut = `$moveCmd`;
-    print STDERR "moveCmdOut=$moveCmdOut\n";
-  } else {
-    my $moveCmd = "mv $file $SAMPLE_INFO/error";
-    print STDERR "moveCmd=$moveCmd\n";
-    my $moveCmdOut = `$moveCmd`;
-    print STDERR "moveCmdOut=$moveCmdOut\n";
-  }
+  #if ($errorMsg eq "") {
+  #  my $moveCmd = "mv $file $SAMPLE_INFO/done";
+  #  print STDERR "moveCmd=$moveCmd\n";
+  #  my $moveCmdOut = `$moveCmd`;
+  #  print STDERR "moveCmdOut=$moveCmdOut\n";
+  #} else {
+  #  my $moveCmd = "mv $file $SAMPLE_INFO/error";
+  #  print STDERR "moveCmd=$moveCmd\n";
+  #  my $moveCmdOut = `$moveCmd`;
+  #  print STDERR "moveCmdOut=$moveCmdOut\n";
+  #}
 }
 
 sub write_samplesheet {
