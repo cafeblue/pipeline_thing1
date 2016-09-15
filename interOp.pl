@@ -7,16 +7,13 @@ use DBI;
 use Thing1::Common qw(:All);
 use Carp qw(croak);
 
-#### Database connection ###################
-open(ACCESS_INFO, "</home/pipeline/.clinicalB.cnf") || die "Can't access login credentials";
-my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
-close(ACCESS_INFO);
-chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
 
-my $flowcellRunDir = $ARGV[0];
-my $flowcellID = $ARGV[1];
-my $interOpFile = $ARGV[2];
+my $dbConfigFile = $ARGV[0];
+my $flowcellRunDir = $ARGV[1];
+my $flowcellID = $ARGV[2];
+my $interOpFile = $ARGV[3];
+
+my $dbh = Common::connect_db($dbConfigFile);
 
 my $interCmd = "summary " . $flowcellRunDir . " > " . $interOpFile; ###in the bashrc of pipeline user module load interop
 #print STDERR "interCmd=$interCmd\n";
@@ -185,24 +182,24 @@ while ($data=<FILE>) {
         }
       }
     }
-    print "1 density=$density\n";
-    print "1 clusterPF=$clusterPF\n";
-    print "1 reads=$reads\n";
-    print "1 readsPF=$readsPF\n";
-    print "1 pQ30=$pQ30\n";
-    print "1 aligned=$aligned\n";
-    print "1 error=$error\n";
+    # print "1 density=$density\n";
+    # print "1 clusterPF=$clusterPF\n";
+    # print "1 reads=$reads\n";
+    # print "1 readsPF=$readsPF\n";
+    # print "1 pQ30=$pQ30\n";
+    # print "1 aligned=$aligned\n";
+    # print "1 error=$error\n";
   }
 }
 close(FILE);
 
-print "density=$density\n";
-print "clusterPF=$clusterPF\n";
-print "reads=$reads\n";
-print "readsPF=$readsPF\n";
-print "pQ30=$pQ30\n";
-print "aligned=$aligned\n";
-print "error=$error\n";
+# print "density=$density\n";
+# print "clusterPF=$clusterPF\n";
+# print "reads=$reads\n";
+# print "readsPF=$readsPF\n";
+# print "pQ30=$pQ30\n";
+# print "aligned=$aligned\n";
+# print "error=$error\n";
 
 
 #update thing1JobStatus table

@@ -94,7 +94,7 @@ sub demultiplexInterOp {
   my $interOpJobDir = $jobDir;
   $interOpJobDir=~s/demultiplex/interOp/gi;
   my $outputInterOpFile = $INTEROP_FOLDER . $flowcellID . ".txt";
-  my $interOpCmd = "module load " . Common::get_config($dbh,"INTEROP_MODULE") . " && " . $PIPELINE_THING1_ROOT . "/interOp.pl " . $folder . " " . $flowcellID . " " . $outputInterOpFile;
+  my $interOpCmd = "module load " . Common::get_config($dbh,"INTEROP_MODULE") . " && " . $PIPELINE_THING1_ROOT . "/interOp.pl " . $dbConfigFile . " " . $folder . " " . $flowcellID . " " . $outputInterOpFile;
   my $interOpJobID = `echo "$interOpCmd" | "$JSUB" -b  $JSUB_LOG_FOLDER -j $interOpJobDir -nn 1 -nm 4000`;
   print "echo $interOpCmd | $JSUB -b $JSUB_LOG_FOLDER -j $interOpJobDir -nn 1 -nm 4000\n";
   if ($interOpJobID =~ /(\d+).$THING1_NODE/) {
