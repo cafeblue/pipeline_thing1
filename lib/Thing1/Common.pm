@@ -7,12 +7,13 @@ use DBI;
 use Time::localtime;
 use Time::ParseDate;
 use Time::Piece;
+use DateTime;
 use Mail::Sender;
 
 our $VERSION = 1.00;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(print_time_stamp check_name email_error get_config);
-our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_config &get_value)],);
+our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_config &get_value &month_time_stamp)],);
 
 sub connect_db {
   my ($dbCFile) = @_;
@@ -24,7 +25,15 @@ sub connect_db {
   return $dbh;
 }
 
+sub month_time_stamp {
+  my $now = DateTime->now;
+  my $lastMonth = $now - DateTime::Duration->new( months => 1);
+  my $currentTime = $now->ymd . " " . $now->hms;
+  my $lastMonthTime = $lastMonth->ymd . " " . $lastMonth->hms;
 
+  return ($currentTime, $lastMonthTime);
+  
+}
 sub print_time_stamp {
   my $retval = time();
   my $yetval = $retval - 86400;
