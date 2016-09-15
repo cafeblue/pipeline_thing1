@@ -317,19 +317,19 @@ sub add_flag {
   my ($segdup, $homology, $lowCvgExon, $altDP, $refDP, $zygosity) = @_;
   my $flag = 0;
 
-  if ($segdup eq "Y" || $segdup == 1) {
+  if ($segdup == 1) {
     $flag = 1;
   }
-  if ($homology eq "Y" || $homology == 1) {
+  if ($homology == 1) {
     $flag = 1;
   }
-  if ($zygosity=~/het/ || $zygosity == 1 || $zygosity == 3) {
+  if ($zygosity == 1 || $zygosity == 3) {
 
     if (($altDP + $refDP ) < $cvgHetCutoff) {
       $flag = 1;
     } else {
       my $alleleBalance = 0;
-      if ($zygosity eq "het") {
+      if ($zygosity == 1) {
         $alleleBalance = ($altDP/($refDP+$altDP));
       } else {
         my @splitC = split(/\,/,$altDP);
@@ -339,7 +339,7 @@ sub add_flag {
         $flag = 1;
       }
     }
-  } elsif ($zygosity eq "hom" || $zygosity == 2) {
+  } elsif ($zygosity == 2) {
     if (($altDP + $refDP ) < $cvgHomCutoff) {
       $flag = 1;
     } else {
