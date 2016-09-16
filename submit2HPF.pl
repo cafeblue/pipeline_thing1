@@ -24,7 +24,7 @@ my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickk
 my $CALL_SCREEN = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
 my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/cancer/samples/illumina';
 my $FASTQ_DIR    = '/hpf/largeprojects/pray/clinical/fastq_v5/';
-my $BACKUP_BAM  = '/hpf/largeprojects/pray/cancer/backup_files_v5/bam';
+my $BACKUP_BAM  = '/hpf/largeprojects/pray/cancer/backup_files/bam';
 my $RECYCLE_BIN = '/hpf/largeprojects/pray/recycle.bin/';
 
 my $sample_ref = &get_sample_list;
