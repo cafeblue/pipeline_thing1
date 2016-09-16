@@ -7,12 +7,13 @@ use DBI;
 use Time::localtime;
 use Time::ParseDate;
 use Time::Piece;
+use DateTime;
 use Mail::Sender;
 
 our $VERSION = 1.00;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(print_time_stamp check_name email_error get_config);
-our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_config &get_value)],);
+our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_config &get_value &month_time_stamp)],);
 
 sub connect_db {
   my ($dbCFile) = @_;
@@ -24,7 +25,15 @@ sub connect_db {
   return $dbh;
 }
 
+sub month_time_stamp {
+  my $now = DateTime->now;
+  my $lastMonth = $now - DateTime::Duration->new( months => 1);
+  my $currentTime = $now->ymd . " " . $now->hms;
+  my $lastMonthTime = $lastMonth->ymd . " " . $lastMonth->hms;
 
+  return ($currentTime, $lastMonthTime);
+
+}
 sub print_time_stamp {
   my $retval = time();
   my $yetval = $retval - 86400;
@@ -34,7 +43,7 @@ sub print_time_stamp {
   my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
   print "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
   print STDERR "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-  return ($localTime->strftime('%Y%m%d'), $yetval->strftime('%Y%m%d'), $localTime->strftime('%Y%m%d%H%M%S'), $localTime->strftime('%m/%d/%Y'));
+  return ($localTime->strftime('%Y%m%d'), $yetval->strftime('%Y%m%d'), $localTime->strftime('%Y%m%d%H%M%S'), $localTime->strftime('%m/%d/%Y'), $timestamp);
 }
 
 sub check_name {
@@ -94,20 +103,32 @@ sub get_config {
 }
 
 sub get_value {
-  my ($dbh, $tableValue, $table, $field, $fieldValue) = @_;
-  my $queryCheck = "SELECT $tableValue FROM $table WHERE $field='$fieldValue'";
-  my $sthCheck = $dbh->prepare($queryCheck) or die "Can't check query : ". $dbh->errstr() . "\n";
-  $sthCheck->execute() or die "Can't check : " . $dbh->errstr() . "\n";
-  if ($sthCheck->rows() == 0) {
-    croak("ERROR $queryCheck");
+  my ($dbh, $tableValue, $table, $field, $fieldValue, $field2, $fieldValue2) = @_;
+  if (defined $field2) {
+     my $queryCheck = "SELECT $tableValue FROM $table WHERE $field='$fieldValue' AND $field2 ='$fieldValue2';";
+    my $sthCheck = $dbh->prepare($queryCheck) or die "Can't check query : ". $dbh->errstr() . "\n";
+    $sthCheck->execute() or die "Can't check : " . $dbh->errstr() . "\n";
+    if ($sthCheck->rows() == 0) {
+      croak("ERROR $queryCheck");
+    } else {
+      my $fvalue = $sthCheck->fetchrow_array();
+      return $fvalue;
+    }
   } else {
-    my $fvalue = $sthCheck->fetchrow_array();
-    return $fvalue;
+    my $queryCheck = "SELECT $tableValue FROM $table WHERE $field='$fieldValue'";
+    my $sthCheck = $dbh->prepare($queryCheck) or die "Can't check query : ". $dbh->errstr() . "\n";
+    $sthCheck->execute() or die "Can't check : " . $dbh->errstr() . "\n";
+    if ($sthCheck->rows() == 0) {
+      croak("ERROR $queryCheck");
+    } else {
+      my $fvalue = $sthCheck->fetchrow_array();
+      return $fvalue;
+    }
   }
 }
 
 sub get_barcode {
-  my $dbh = shift; 
+  my $dbh = shift;
   my %tmpBC;
   my $queryBarcodes = "SELECT code, value FROM encoding WHERE tablename='sampleSheet' AND fieldname = 'barcode'";
   print STDERR "queryBarcodes=$queryBarcodes\n";

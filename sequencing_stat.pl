@@ -1,206 +1,299 @@
 #! /bin/env perl
 
 use strict;
+use warnings;
+use lib './lib';
 use DBI;
 use HTML::TableExtract;
 #use File::stat;
-use Time::localtime;
-use Time::ParseDate;
-use Time::Piece;
-use Mail::Sender;
+#use Time::localtime;
+#use Time::ParseDate;
+#use Time::Piece;
+#use Mail::Sender;
 use Data::Dumper;
+use Thing1::Common qw(:All);
+use Carp qw(croak);
 $|++;
 
-#read in from a config file
-my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5.txt";
-my $barcodeFile = "/localhd/data/db_config_files/pipeline_thing1_config/barcodes.txt";
-my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
-# open the accessDB file to retrieve the database name, host name, user name and password
-# open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
-# my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
-# close(ACCESS_INFO);
-# chomp($port, $host, $user, $pass, $db);
-# my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
-# my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
-# my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
-# my $WEB_THING1_ROOT = '/web/www/html/index/clinic/ngsweb.com';
-# my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
-my ($FASTQ_FOLDER, $CONFIG_VERSION_FILE, $PIPELINE_THING1_ROOT, $WEB_THING1_ROOT, $PIPELINE_HPF_ROOT, $SSHFDATAFILE, $host, $port, $user, $pass, $db, $msg) = &read_in_config($configFile);
-my $SSHDATA = 'ssh -i ' . $SSHFDATAFILE . ' wei.wang@data1.ccm.sickkids.ca "';
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
-                       $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
+my $dbConfigFile = $ARGV[0];
+my $dbh = Common::connect_db($dbConfigFile);
+my $FASTQ_FOLDER = Common::get_config($dbh,"FASTQ_FOLDER");
 
+my $PIPELINE_THING1_ROOT = Common::get_config($dbh, "PIPELINE_THING1_ROOT"); #/home/pipeline/pipeline_thing1_v5';
+my $WEB_THING1_ROOT = Common::get_config($dbh, "WEB_THING1_ROOT"); #'/web/www/html/index/clinic/ngsweb.com';
+my $PIPELINE_HPF_ROOT = Common::get_config($dbh, "PIPELINE_HPF_ROOT"); #'/home/wei.wang/pipeline_hpf_v5';
+my $RSYNCCMD_FILE = Common::get_config($dbh,"RSYNCCMD_FILE");
 
-#Sequencing Quality Metrics for HiSeq
-my $hiseqYieldThres = 6000; # yield of greater than 6Gb per sample -> 6000000000 -> 6000Mb
-my $hiseqQ30Thres = 80;     #Q30 >= 80%
-my $hiseqPassReadThres = 30000000; # >= 70 million paired-end reads passing filter per sample ->
-
-#Sequencing Quality Metrics for NextSeq
-my $nextSeqYieldThres = 6000; #100Gb per run / 8 sample -> 12.5Gb per sample -:> 12500000000 -> 12500
-my $nextSeqQ30Thres = 75;     #Q30 >= 75
-my $nextSeqPassReadThres = 25000000; #Up to 800 million / 8 samples -> 100million
-
-#Sequencing Quality Metrics for MiSeq
-my $miSeqYieldThres = 20; # 4.5Gb per run / 16 samples -> 281250000 -> 281Mb
-my $miSeqQ30Thres = 80;   #Q30 >= 80
-my $miSeqPassReadThres = 70000; # 24Million reads / 16 samples -> 1500000 /2 (pairedend)
-
-my %ilmnBarcodes;
-my $data = "";
-open (FILE, "< $barcodeFile") or die "Can't open $barcodeFile for read: $!\n";
-while ($data=<FILE>) {
-  chomp $data;
-  my @splitTab = split(/\t/,$data);
-  my $id = $splitTab[0];
-  my $bc = $splitTab[1];
-  $ilmnBarcodes{$id} = $bc;
-}
-close(FILE);
-# while (<DATA>) {
-#   chomp;
-#   my ($id, $code) = split(/ /);
-
-#   $ilmnBarcodes{$id} = $code;
-# }
-# close(DATA);
-
+my $SSHDATA = "ssh -i " . $RSYNCCMD_FILE . " " . Common::get_config($dbh,"HPF_USERNAME") . "@" . Common::get_config($dbh,"HPF_DATA_NODE") . " \"";
 
 my $chksum_ref = &get_chksum_list;
-my ($today, $currentTime, $currentDate) = &print_time_stamp;
+my ($today, $dummy, $currentTime, $currentDate) = Common::print_time_stamp();
 
 foreach my $ref (@$chksum_ref) {
-  &update_table(&get_qual_stat(@$ref), &read_config);
+  &update_table(&get_qual_stat(@$ref));
 }
 
 sub update_table {
-  my ($flowcellID, $table_ref, $config_ref) = @_;
+  my ($flowcellID, $table_ref) = @_;
 
   foreach my $sampleID (keys %$table_ref) {
-    #delete the possible exists recoreds
-    my $check_exists = "SELECT * FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";
-    my $sthQNS = $dbh->prepare($check_exists) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-    $sthQNS->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() > 0) {
-      my $msg = "sampleID $sampleID on flowcellID $flowcellID already exists in table sampleInfo, the following rows will be deleted!!!\n";
-      my $hash = $sthQNS->fetchall_hashref('sampleID');
-      $msg .= Dumper($hash);
-      email_error($msg);
-      my $delete_sql = "DELETE FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";
-      $dbh->do($delete_sql);
-    }
+    if ($sampleID ne "Undetermined") {
 
-    my $query = "SELECT gene_panel,capture_kit,testType,priority,pairedSampleID,specimen,sample_type,machine from sampleSheet where flowcell_ID = '$flowcellID' and sampleID = '$sampleID'";
-    $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-    $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() == 1) {
-      my ($pipething1ver, $pipehpfver, $webver) = &get_pipelinever;
-      while (my @data_ref = $sthQNS->fetchrow_array) {
-        my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype,$machine) = @data_ref;
-        my $key = $gp . "\t" . $ck;
-        if (defined $ps) {
-          $ps = &get_pairID($ps, $sampleID);
-          my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer ) VALUES ('" . $sampleID . "','$flowcellID','$ps','$gp','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','$specimen', '$sampletype', '$tt','$pt', '0', '$pipething1ver', '$pipehpfver', '$webver')";
-          my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-          $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-        } else {
-          my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer ) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $gp . "','"  . $config_ref->{$key}{'pipeID'} . "','"  . $config_ref->{$key}{'filterID'} . "','"  . $config_ref->{$key}{'annotateID'} . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','" . $specimen . "', '" . $sampletype . "', '" . $tt . "','$pt', '0', '$pipething1ver', '$pipehpfver', '$webver')";
-          my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-          $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-        }
-        #hiseq
-        $machine = lc($machine);
-        my $err = "";
-        my $errString = "";
-        my $thres = "";
-        my $value = "";
-        my $readThres = "";
-        my $q30Thres = "";
-        my $yieldThres = "";
-        if ($machine=~/hiseq/) {
-          $readThres = $hiseqPassReadThres;
-          $q30Thres = $hiseqQ30Thres;
-          $yieldThres = $hiseqYieldThres;
-          print STDERR "hiseq\n";
-        } elsif ($machine=~/miseq/) {
-          $readThres = $miSeqPassReadThres;
-          $q30Thres = $miSeqQ30Thres;
-          $yieldThres = $miSeqYieldThres;
-          print STDERR "miseq\n";
-        } elsif ($machine=~/nextseq/) {
-          $readThres = $nextSeqPassReadThres;
-          $q30Thres = $nextSeqQ30Thres;
-          $yieldThres = $nextSeqYieldThres;
-          print STDERR "nextseq\n";
-        } else {
-          print STDERR "MISSING THIS MACHINE=$machine. NO QC METRICS WILL BE CHECKED!!!\n";
-          $readThres = 0;
-          $q30Thres = 0;
-          $yieldThres = 0;
+      #delete the possible exists recoreds
+      my $check_exists = "SELECT * FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";
+      my $sthQNS = $dbh->prepare($check_exists) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+      $sthQNS->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+      if ($sthQNS->rows() > 0) {
+        my $msg = "sampleID $sampleID on flowcellID $flowcellID already exists in table sampleInfo, the following rows will be deleted!!!\n";
+        my $hash = $sthQNS->fetchall_hashref('sampleID');
+        $msg .= Dumper($hash);
 
-        }
-        print STDERR "reads = " . $table_ref->{$sampleID}{'reads'} . "\n";
-        print STDERR "perQ30 = " . $table_ref->{$sampleID}{'perQ30'} . "\n";
-        print STDERR "Yield = " . $table_ref->{$sampleID}{'Yield'} . "\n";
+        ###get machine
+        my $machine = "";
 
-        if ($table_ref->{$sampleID}{'reads'} < $readThres) {
-          if ($err eq "") {
-            $err = "3";
-            $thres = $readThres;
-            $value = $table_ref->{$sampleID}{'reads'};
-            $errString = "Low Reads";
-          } else {
-            $err = $err . ",3";
-            $thres = $thres . "," . $readThres;
-            $value = $value . "," . $table_ref->{$sampleID}{'reads'};
-            $errString = $errString . ",Low Reads";
-          }
-          #Lock this sample with comment of Q30 doesn't pass our thresholds
-        }
-
-        if ($table_ref->{$sampleID}{'perQ30'} < $q30Thres) {
-          if ($err eq "") {
-            $err = "2";
-            $thres = $q30Thres;
-            $value = $table_ref->{$sampleID}{'perQ30'};
-            $errString = "Low Q30";
-          } else {
-            $err = $err . ",2";
-            $thres = $thres . "," . $q30Thres;
-            $value = $value . "," . $table_ref->{$sampleID}{'perQ30'};
-            $errString = $errString . ", Low Q30";
-          }
-          #Lock this sample with comment of Q30 doesn't pass our thresholds
-        }
-        if ($table_ref->{$sampleID}{'Yield'} < $yieldThres) {
-          if ($err eq "") {
-            $err = "1";
-            $thres = $yieldThres;
-            $value = $table_ref->{$sampleID}{'Yield'};
-            $errString = "Low Yield";
-          } else {
-            $err = $err . ",1";
-            $thres = $thres . "," . $yieldThres;
-            $value = $value . "," . $table_ref->{$sampleID}{'Yield'};
-            $errString = $errString . ",Low Yield";
-          }
-          #Lock this sample with comment of Q30 doesn't pass our thresholds
-        }
-
-        print STDERR "err=$err\n";
-        print STDERR "value=$value\n";
-        print STDERR "thres=$thres\n";
-        print STDERR "machine=$machine\n";
-        if ($err ne "") {
-          email_qc($sampleID, $flowcellID, $err, $value, $thres, $machine);
-        }
+        Common::email_error("Job Status on thing1 for update sample info", $msg, $machine, $today, $flowcellID, Common::get_config($dbh, "EMAIL_WARNINGS"));
+        my $delete_sql = "DELETE FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";
+        $dbh->do($delete_sql);
       }
-    } else {
-      my $msg = "No/multiple sampleID(s) found for $sampleID:\n\n$query\n";
-      email_error($msg);
-      die $msg;
+
+      my $query = "SELECT gene_panel,capture_kit,testType,priority,pairedSampleID,specimen,sample_type,machine from sampleSheet where flowcell_ID = '$flowcellID' and sampleID = '$sampleID'";
+      $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+      $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+      if ($sthQNS->rows() == 1) {
+        my ($pipething1ver, $pipehpfver, $webver) = &get_pipelinever;
+        while (my @data_ref = $sthQNS->fetchrow_array) {
+          my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype,$machine) = @data_ref;
+          my $key = $gp . "\t" . $ck;
+          if (defined $ps) {
+            $ps = &get_pairID($ps, $sampleID);
+            my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer , perIndex ) VALUES ('" . $sampleID . "','$flowcellID','$ps','$gp','" . Common::get_value($dbh,"pipeID", "gpConfig", "genePanelID",$gp) . "','"  . Common::get_value($dbh,"filterID", "gpConfig", "genePanelID",$gp) . "','"  . Common::get_value($dbh, "annotationID", "gpConfig", "genePanelID",$gp) . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','$specimen', '$sampletype', '$tt','$pt', '0', '$pipething1ver', '$pipehpfver', '$webver'" . ",'" . $table_ref->{$sampleID}{'perIndex'} . "')";
+            my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+            $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+
+          } else {
+            my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer, perIndex ) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $gp . "','"  .  Common::get_value($dbh,"pipeID", "gpConfig", "genePanelID",$gp) . "','"  . Common::get_value($dbh,"filterID", "gpConfig", "genePanelID",$gp) . "','"  . Common::get_value($dbh, "annotationID", "gpConfig", "genePanelID",$gp) . "','"  . $table_ref->{$sampleID}{'Yield'} . "','"  . $table_ref->{$sampleID}{'reads'} . "','"  . $table_ref->{$sampleID}{'perQ30'} . "','" . $specimen . "', '" . $sampletype . "', '" . $tt . "','$pt', '0', '$pipething1ver', '$pipehpfver', '$webver'" . ",'" . $table_ref->{$sampleID}{'perIndex'} . "')";
+            my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+            $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+          }
+          #hiseq
+          $machine = lc($machine);
+          my $err = "";
+          my $errString = "";
+          my $thres = "";
+          my $value = "";
+          # my $readThres = "";
+          # my $q30Thres = "";
+          # my $yieldThres = "";
+          # my $fcDensityThres = "";
+          # my $fcErrorThres = "";
+          # my $fcReadsPFThres = "";
+          # my $fcQ30Thres = "";
+          # my $fcTotalReadsThres = "";
+          my $sampleType = "";
+
+          if ($machine=~/miseq/) {
+            my @splitDot = split(/\./,$gp);
+            my $sampleType = $splitDot[0];
+          } elsif ($gp=~/cancer/) {
+            $sampleType = "cancer";
+          } else {
+            $sampleType = "exome";
+          }
+          $sampleType = lc($sampleType);
+          my ($fcDensity,$fcError,$fcReadsPF,$fcQ30,$fcTotalReads,$sYieldMb,$sQ30Bases,$sNumReads);
+
+          my $machineType = "";
+          if ($machine=~/hiseq/) {
+            $machineType = "hiseq";
+          } elsif ($machine=~/miseq/) {
+            $machineType = "miseq";
+          } elsif ($machine=~/nextseq/) {
+            $machineType = "nextseq";
+          } else {
+            print STDERR "MISSING THIS MACHINE=$machine and sampleType=$sampleType. NO QC METRICS WILL BE CHECKED!!!\n";
+          }
+          my $getT = "SELECT fcClusterDensity, fcErrorRate,fcpReadsPF, fcq30Score, fcTotalReads, sYieldMb, spQ30Bases, sNumReads FROM qcMetrics WHERE machine = '$machineType' AND sampleType = '$sampleType'";
+          print STDERR "getT=$getT\n";
+          my $sthT = $dbh->prepare($getT) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+          $sthT->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+          if ($sthT->rows() > 0) {
+            while (my @data_ref = $sthT->fetchrow_array) {
+              ($fcDensity,$fcError,$fcReadsPF,$fcQ30,$fcTotalReads,$sYieldMb,$sQ30Bases,$sNumReads) = @data_ref;
+
+            }
+          } else {
+            print STDERR "MISSING THIS MACHINE=$machine and sampleType=$sampleType. NO QC METRICS WILL BE CHECKED!!!\n";
+          }
+
+          my ($cD, $rPF, $q30S, $eR, $tR);
+          my $getInterOp = "SELECT density, readsPF, pQ30, error, readsNum FROM thing1JobStatus WHERE flowcellID = '$flowcellID'";
+          print STDERR "getInterOp=$getInterOp\n";
+          my $sthInterOp = $dbh->prepare($getInterOp) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+          $sthInterOp->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+          if ($sthInterOp->rows() > 0) {
+            while (my @data_ref = $sthInterOp->fetchrow_array) {
+              ($cD, $rPF, $q30S, $eR, $tR) = @data_ref;
+            }
+          } else {
+            print STDERR "Missing interOp Stats for flowcellID = $flowcellID\n";
+          }
+
+
+          ####Check all per sample sequencing thresholds
+          if (not eval ($table_ref->{$sampleID}{'reads'} . " " .$sNumReads) ) {
+            if ($err eq "") {
+              $err = "3";
+              $thres = $sYieldMb;
+              $value = $table_ref->{$sampleID}{'reads'};
+              $errString = "Low Reads";
+            } else {
+              $err = $err . ",3";
+              $thres = $thres . "," . $sYieldMb;
+              $value = $value . "," . $table_ref->{$sampleID}{'reads'};
+              $errString = $errString . ", Low Reads";
+            }
+          }
+
+          if (not eval ($table_ref->{$sampleID}{'perQ30'} . " " . $sQ30Bases) ) {
+            if ($err eq "") {
+              $err = "2";
+              $thres = $sQ30Bases;
+              $value = $table_ref->{$sampleID}{'perQ30'};
+              $errString = "Low Q30";
+            } else {
+              $err = $err . ",2";
+              $thres = $thres . "," . $sQ30Bases;
+              $value = $value . "," . $table_ref->{$sampleID}{'perQ30'};
+              $errString = $errString . ", Low Q30";
+            }
+          }
+          if (not eval ($table_ref->{$sampleID}{'Yield'} . " " . $sYieldMb) ) {
+            if ($err eq "") {
+              $err = "1";
+              $thres = $sYieldMb;
+              $value = $table_ref->{$sampleID}{'Yield'};
+              $errString = "Low Yield";
+            } else {
+              $err = $err . ",1";
+              $thres = $thres . "," . $sYieldMb;
+              $value = $value . "," . $table_ref->{$sampleID}{'Yield'};
+              $errString = $errString . ",Low Yield";
+            }
+          }
+
+          ###Check all flowcellSample
+          if (check_fcMetrics($cD, $fcDensity) == 0) {
+            if ($err eq "") {
+              $err = "4";
+              $thres = $fcDensity;
+              $value = $cD;
+              #$errString = "Unacceptable Cluster Density Range";
+            } else {
+              $err = $err . ",4";
+              $thres = $thres . "," . $fcDensity;
+              $value = $value . "," . $cD;
+              #$errString = $errString . ",Unacceptable Cluster Density Range";
+            }
+          }
+          if (check_fcMetrics($rPF, $fcReadsPF) == 0) {
+            if ($err eq "") {
+              $err = "5";
+              $thres = $fcReadsPF;
+              $value = $rPF;
+              #$errString = "Unacceptable % Reads Passing Filter";
+            } else {
+              $err = $err . ",5";
+              $thres = $thres . "," . $fcReadsPF;
+              $value = $value . "," . $rPF;
+              #$errString = $errString . ",Unacceptable % Reads Passing Filter";
+            }
+          }
+
+          if (check_fcMetrics($q30S, $fcQ30) == 0) {
+            if ($err eq "") {
+              $err = "6";
+              $thres = $fcQ30;
+              $value = $q30S;
+              #$errString = "Unacceptable % Q30 Score";
+            } else {
+              $err = $err . ",6";
+              $thres = $thres . "," . $fcQ30;
+              $value = $value . "," . $q30S;
+              #$errString = $errString . ",Unacceptable % Q30 Score";
+            }
+          }
+
+          if (check_fcMetrics($eR, $fcError) == 0) {
+            if ($err eq "") {
+              $err = "7";
+              $thres = $fcError;
+              $value = $eR;
+              #$errString = "Unacceptable Error Rate";
+            } else {
+              $err = $err . ",7";
+              $thres = $thres . "," . $fcError;
+              $value = $value . "," . $eR;
+              #$errString = $errString . ",Unacceptable Error Rate";
+            }
+          }
+
+          if (check_fcMetrics($tR, $fcTotalReads) == 0) {
+            if ($err eq "") {
+              $err = "8";
+              $thres = $fcTotalReads;
+              $value = $tR;
+              #$errString = "Unacceptable # of Total Reads";
+            } else {
+              $err = $err . ",8";
+              $thres = $thres . "," . $fcTotalReads;
+              $value = $value . "," . $tR;
+              #$errString = $errString . ",Unacceptable # of Total Reads";
+            }
+          }
+
+          print STDERR "err=$err\n";
+          print STDERR "value=$value\n";
+          print STDERR "thres=$thres\n";
+          print STDERR "machine=$machine\n";
+          if ($err ne "") {
+            email_qc($sampleID, $flowcellID, $err, $value, $thres, $machine);
+          }
+        }
+      } else {
+        my $msg = "No/multiple sampleID(s) found for $sampleID:\n\n$query\n";
+        #email_error($msg);
+        Common::email_error("Job Status on thing1 for update sample info", $msg, "NA", $today, $flowcellID, Common::get_config($dbh, "EMAIL_WARNINGS"));
+        die $msg;
+      }
     }
   }
+}
+
+sub check_fcMetrics {
+  my ($value, $thres) = @_;
+  my @splitComma = split(/\,/,$value);
+  foreach my $v (@splitComma) {
+    my $testV = "";
+    if ($v=~/\+/) {
+      my @splitPlus = split(/\+/,$v);
+      $testV = $splitPlus[0];
+    } else {
+      $testV = $v;
+    }
+    if ($thres=~/\&\&/) {
+      my $rangethres= $thres;
+      $rangethres=~s/\&\&/\&\& $testV/;
+      print STDERR "rangethres=$rangethres\n";
+      if (not eval ($testV . " " . $rangethres)) {
+        return 0;
+      }
+    } else {
+      if (not eval ($testV . " " . $thres)) {
+        return 0;
+      }
+    }
+  }
+  return 1;
 }
 
 sub get_pipelinever {
@@ -264,42 +357,11 @@ sub get_pairID {
     return($pid);
   } else {
     my $msg = "multiple pairID found for $id1 and $id2, it is impossible!!!\n\n $query\n";
-    email_error($msg);
-    die $msg;
+    Common::email_error("Job Status on thing1 for update sample info", $msg, "NA", $today, "NA", Common::get_config($dbh, "EMAIL_WARNINGS"));
+    croak $msg;
   }
 }
 
-sub read_config {
-  my %configureHash = (); #stores the information from the configure file
-  my $data = "";
-  my $configVersionFile = $CONFIG_VERSION_FILE;
-  open (FILE, "< $configVersionFile") or die "Can't open $configVersionFile for read: $!\n";
-  $data=<FILE>;                 #remove header
-  while ($data=<FILE>) {
-    chomp $data;
-    $data=~s/\"//gi;            #removes any quotations
-    $data=~s/\r//gi;            #removes excel return
-    my @splitTab = split(/\t/,$data);
-    my $platform = $splitTab[0];
-    my $gp = $splitTab[1];
-    my $capConfigKit = $splitTab[5];
-    my $pipeID = $splitTab[7];
-    my $annotationID = $splitTab[8];
-    my $filterID = $splitTab[9];
-    if (defined $gp) {
-      my $key = $gp . "\t" . $capConfigKit;
-      if (defined $configureHash{$key}) {
-        die "ERROR in $configVersionFile : Duplicate platform, genePanelID, and captureKit\n";
-      } else {
-        $configureHash{$key}{'pipeID'} = $pipeID;
-        $configureHash{$key}{'annotateID'} = $annotationID;
-        $configureHash{$key}{'filterID'} = $filterID;
-      }
-    }
-  }
-  close(FILE);
-  return(\%configureHash);
-}
 
 sub get_qual_stat {
   my ($flowcellID, $machine, $destDir) = @_;
@@ -311,19 +373,22 @@ sub get_qual_stat {
 
     my %sample_barcode;
     while (my @data_ref = $sthQNS->fetchrow_array) {
-      $sample_barcode{$data_ref[0]} = $ilmnBarcodes{$data_ref[1]};
+      $sample_barcode{$data_ref[1]} = Common::get_value($dbh, "value", "encoding", "code", $data_ref[1]);
       if ($data_ref[2]) {
-        $sample_barcode{$data_ref[0]} .= "+" . $ilmnBarcodes{$data_ref[2]};
+        $sample_barcode{$data_ref[2]} = Common::get_value($dbh, "value", "encoding", "code", $data_ref[2]);
       }
     }
     print "\n";
 
     my $sub_flowcellID = (split(/_/,$destDir))[-1];
     $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $sub_flowcellID, 1 ;
+
     my $demuxSummaryFile = "$FASTQ_FOLDER/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
+
     if (! -e "$demuxSummaryFile") {
-      email_error("File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n");
-      die "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n";
+      Common::email_error("Job Status on thing1 for update sample info", "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n", $machine, $today, $flowcellID, Common::get_config($dbh, "EMAIL_WARNINGS"));
+
+      croak "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n";
     }
     print $demuxSummaryFile,"\n";
     my $te = HTML::TableExtract->new( depth => 0, count => 2 );
@@ -349,30 +414,47 @@ sub get_qual_stat {
         }
       }
       foreach my $row (@table_cont) {
-        next if ($$row[$table_pos{'Sample'}] eq 'Undetermined');
-        if ($$row[$table_pos{'Barcode'}] ne $sample_barcode{$$row[$table_pos{'Sample'}]}) {
-          my $msg = "barcode does not match for $machine of $flowcellID\nSampleID: \"" . $$row[$table_pos{'Sample'}] . "\"\t\"" . $$row[$table_pos{'Barcode'}] . "\"\t\"" . $sample_barcode{$$row[$table_pos{'Sample'}]} . "\"\n" . $table_pos{'Barcode'} . "\t" . $table_pos{'Sample'} . "\n";
-          email_error($msg);
-          die $msg,"\n";
-        }
+        ##print STDERR "row=@row\n";
+
         $$row[$table_pos{'reads'}] =~ s/,//g;
         $$row[$table_pos{'Yield'}] =~ s/,//g;
         $sample_cont{$$row[$table_pos{'Sample'}]}{'reads'} += $$row[$table_pos{'reads'}];
         $sample_cont{$$row[$table_pos{'Sample'}]}{'Yield'} += $$row[$table_pos{'Yield'}];
         push @{$perQ30{$$row[$table_pos{'Sample'}]}}, $$row[$table_pos{'perQ30'}];
+
+        # if ($$row[$table_pos{'Barcode'}] ne $sample_barcode{$$row[$table_pos{'Sample'}]}) {
+        #   my $msg = "barcode does not match for $machine of $flowcellID\nSampleID: \"" . $$row[$table_pos{'Sample'}] . "\"\t\"" . $$row[$table_pos{'Barcode'}] . "\"\t\"" . $sample_barcode{$$row[$table_pos{'Sample'}]} . "\"\n" . $table_pos{'Barcode'} . "\t" . $table_pos{'Sample'} . "\n";
+        #   email_error("Job Status on thing1 for update sample info", $msg, $machine, $today, $flowcellID, Common::get_config($dbh, "EMAIL_WARNINGS"));
+        #   die $msg,"\n";
+        # }
       }
+      my $totalReads = 0;
       foreach my $sid (keys %perQ30) {
         my $total30Q = 0;
+        $totalReads = $totalReads + $sample_cont{$sid}{'reads'};
         foreach (@{$perQ30{$sid}}) {
           $total30Q += $_;
         }
         $sample_cont{$sid}{'perQ30'} = $total30Q/scalar(@{$perQ30{$sid}});
       }
+
+      ###calculate the % index for each sample including Undetermined
+      foreach my $sid (keys %perQ30) {
+        $sample_cont{$sid}{'perIndex'} = $sample_cont{$sid}{'reads'}/$totalReads*100;
+      }
+
+      ###update to store number of undetermined reads
+      my $updateUndetermined = "UPDATE thing1JobStatus SET undeterminedReads = '" . $sample_cont{'Undetermined'}{'reads'} ."', perUndetermined = '" . $sample_cont{'Undetermined'}{'perIndex'} . "' WHERE flowcellID = '" . $flowcellID . "'";
+
+      my $sthUU = $dbh->prepare($updateUndetermined) or die "Can't prepare update: ". $dbh->errstr() . "\n";
+
+      $sthUU->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
+
       return($flowcellID, \%sample_cont);
     }
   } else {
     my $msg = "No sampleID found in table sampleSheet for $machine of $flowcellID\n\n Please check the table carefully \n $query";
-    email_error($msg);
+    Common::email_error("Job Status on thing1 for update sample info", $msg, $machine, $today, $flowcellID, Common::get_config($dbh, "EMAIL_WARNINGS"));
     die $msg;
   }
 }
@@ -394,130 +476,44 @@ sub get_chksum_list {
   }
 }
 
-sub email_error {
-  my $errorMsg = shift;
-  $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
-  my $sender = Mail::Sender->new();
-  my $mail   = {
-                smtp                 => 'localhost',
-                from                 => 'notice@thing1.sickkids.ca',
-                to                   => $email_lst_ref->{'WARNINGS'}, 
-                subject              => $msg . "Job Status on thing1 for update sample info.",
-                ctype                => 'text/plain; charset=utf-8',
-                skip_bad_recipients  => 1,
-                msg                  => $msg . $errorMsg
-               };
-  my $ret =  $sender->MailMsg($mail);
-}
-
 sub email_qc {
   #Error code: 1 = low yield, 2 = error on Q30, 3 = error on passing reads threshold
-
   my ($sampleID, $flowcellID, $errorCode, $failingMetric, $threshold, $mach) = @_;
   print STDERR "mach=$mach\n";
   print STDERR "threshold=$threshold\n";
   print STDERR "failingMetric=$failingMetric\n";
-  
-  my $errorMsg = "$sampleID on $flowcellID has finished demultiplexing from $mach.";
-  my $emailSub = "$sampleID";
+
+  my $errorMsg = "$sampleID on $flowcellID has finished demultiplexing from $mach. ";
+  my $emailSub = "$sampleID unacceptable sequencing QC";
   my @splitCode = split(/\,/,$errorCode);
   my @splitFM = split(/\,/,$failingMetric);
   my @splitThres = split(/\,/,$threshold);
   for (my $i = 0; $i < scalar(@splitCode); $i++) {
     if ($splitCode[$i] == 1) {
-      $errorMsg = $errorMsg . " It's sequencing yield is $splitFM[$i] which is below our threshold of $splitThres[$i] and may fail coverage metrics & error on analysis. ";
-      $emailSub = $emailSub . " *low sequencing yield* ";
+      $errorMsg = $errorMsg . " It's sequencing yield is $splitFM[$i] which is not in our acceptable range: $splitThres[$i] and may fail coverage metrics & error on analysis. ";
+      #$emailSub = $emailSub . " *low sequencing yield* ";
     } elsif ($splitCode[$i] == 2) {
-      $errorMsg = $errorMsg . " It's % Q30 is $splitFM[$i] which is below our threshold of $splitThres[$i]. ";
-      $emailSub = $emailSub . " *low % Q30*";
+      $errorMsg = $errorMsg . " It's % Q30 is $splitFM[$i] which is not in our acceptable range: $splitThres[$i]. ";
+      #$emailSub = $emailSub . " *low % Q30*";
     } elsif ($splitCode[$2] == 3) {
-      $errorMsg = $errorMsg . "The number of passing reads is $splitFM[$i] which is below our threshold of $splitThres[$i] and may fail coverage metrics & error on analysis. ";
-      $emailSub = " *low passing reads* ";
+      $errorMsg = $errorMsg . "The number of passing reads is $splitFM[$i] which is not in our acceptable range: $splitThres[$i] and may fail coverage metrics & error on analysis. ";
+      #$emailSub = " *low passing reads* ";
+    } elsif ($splitCode[$2] == 4) {
+      $errorMsg = $errorMsg . "One of the reads Cluster Density from this sample is $splitFM[$i] which is not in our acceptable range: $splitThres[$i]. ";
+    } elsif ($splitCode[$2] == 5) {
+      $errorMsg = $errorMsg . "One of the read's % Reads Passing Filter from this sample is $splitFM[$i] which is not in our acceptable range: $splitThres[$i]. ";
+    } elsif ($splitCode[$2] == 6) {
+      $errorMsg = $errorMsg . "One of the read's % Q30 Score from this sample is $splitFM[$i] which is not in our acceptable range: $splitThres[$i]. ";
+    } elsif ($splitCode[$2] == 7) {
+      $errorMsg = $errorMsg . "One of the read's Error Rate from this sample is $splitFM[$i] which is below our thresold of $splitThres[$i]. ";
+    } elsif ($splitCode[$2] == 8) {
+      $errorMsg = $errorMsg . "One of the read's # of Total Reads from this sample is $splitFM[$i] which is below our range of $splitThres[$i]. ";
     }
   }
 
-  $errorMsg = $errorMsg . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThis email is from thing1 pipelineV5.\n\nThanks,\nThing1\n";
+  #  $errorMsg = $errorMsg . "\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThis email is from thing1 pipelineV5.\n\nThanks,\nThing1\n";
 
   print STDERR "errorMsg=$errorMsg\n";
   print STDERR "emailSub=$emailSub\n";
-  my $sender = Mail::Sender->new();
-  my $mail   = {
-                smtp                 => 'localhost',
-                from                 => 'notice@thing1.sickkids.ca',
-                to                   => $email_lst_ref->{'QUALMETRICS'},
-                subject              => $msg . $emailSub,
-                ctype                => 'text/plain; charset=utf-8',
-                skip_bad_recipients  => 1,
-                msg                  => $msg . $errorMsg
-               };
-  my $ret =  $sender->MailMsg($mail);
-}
-
-sub email_list {
-    my $infile = shift;
-    my %email;
-    open (INF, "$infile") or die $!;
-    while (<INF>) {
-        chomp;
-        my ($type, $lst) = split(/\t/);
-        $email{$type} = $lst;
-    }
-    return(\%email);
-}
-
-sub print_time_stamp {
-  my $retval = time();
-  my $yetval = $retval - 86400;
-  $yetval = localtime($yetval);
-  my $localTime = localtime( $retval );
-  my $time = Time::Piece->strptime($localTime, '%a %b %d %H:%M:%S %Y');
-  my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
-  my $timestring = "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  " . $timestamp . "\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-  print $timestring;
-  print STDERR $timestring;
-  return ($localTime->strftime('%Y%m%d'), $localTime->strftime('%Y%m%d%H%M%S'), $localTime->strftime('%m/%d/%Y'));
-}
-
-sub read_in_config {
-  #read in the pipeline configure file
-  #this filename will be passed from thing1 (from the database in the future)
-  my ($configFile) = @_;
-  my $data = "";
-  my ($FASTQ_FOLDERtmp, $CONFIG_VERSION_FILEtmp, $PIPELINE_THING1_ROOTtmp, $WEB_THING1_ROOTtmp, $PIPELINE_HPF_ROOTtmp, $SSHFDATAFILEtmp, $hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp);
-  my $msgtmp = "";
-  open (FILE, "< $configFile") or die "Can't open $configFile for read: $!\n";
-  while ($data=<FILE>) {
-    chomp $data;
-    my @splitTab = split(/ /,$data);
-    my $type = $splitTab[0];
-    my $value = $splitTab[1];
-    if ($type eq "SSHDATAFILE") {
-      $SSHFDATAFILEtmp = $value;
-    } elsif ($type eq "FASTQ_FOLDER") {
-      $FASTQ_FOLDERtmp = $value;
-    } elsif ($type eq "CONFIG_VERSION_FILE") {
-      $CONFIG_VERSION_FILEtmp = $value;
-    } elsif ($type eq "PIPELINE_THING1_ROOT") {
-      $PIPELINE_THING1_ROOTtmp = $value;
-    } elsif ($type eq "WEB_THING1_ROOT") {
-      $WEB_THING1_ROOTtmp = $value;
-    } elsif ($type eq "PIPELINE_HPF_ROOT") {
-      $PIPELINE_HPF_ROOTtmp = $value;
-    } elsif ($type eq "HOST") {
-      $hosttmp = $value;
-    } elsif ($type eq "PORT") {
-      $porttmp = $value;
-    } elsif ($type eq "USER") {
-      $usertmp = $value;
-    } elsif ($type eq "PASSWORD") {
-      $passtmp = $value;
-    } elsif ($type eq "db") {
-      $dbtmp = $value;
-    } elsif ($type eq "msg") {
-      $msgtmp = $value;
-    }
-
+  Common::email_error ($emailSub, $errorMsg, $mach, $today, $flowcellID, Common::get_config($dbh, "EMAIL_WARNINGS"))
   }
-  close(FILE);
-  return ($FASTQ_FOLDERtmp, $CONFIG_VERSION_FILEtmp, $PIPELINE_THING1_ROOTtmp, $WEB_THING1_ROOTtmp, $PIPELINE_HPF_ROOTtmp, $SSHFDATAFILEtmp, $hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp, $msgtmp);
-}
