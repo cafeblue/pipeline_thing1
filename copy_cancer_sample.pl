@@ -17,5 +17,5 @@ $copy->execute();
 my $update = $dbhC->prepare("UPDATE sampleInfo SET currentStatus = '0' WHERE TIMESTAMPADD(MINUTE,10,time)>=CURRENT_TIMESTAMP and genePanelVer = 'cancer.gp19'") or die "Can't query database for running samples: ". $dbhC->errstr() . "\n";
 $update->execute();
 
-$copy = $dbhC->prepare("INSERT INTO sampleSheet SELECT * from clinicalA.sampleInfo where TIMESTAMPADD(MINUTE,10,time)>=CURRENT_TIMESTAMP") or die "Can't query database\n";
+$copy = $dbhC->prepare("INSERT INTO sampleSheet SELECT * from clinicalA.sampleSheet where TIMESTAMPADD(MINUTE,10,time)>=CURRENT_TIMESTAMP") or die "Can't query database\n";
 $copy->execute();
