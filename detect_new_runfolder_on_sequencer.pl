@@ -1,27 +1,24 @@
 #! /bin/env perl
 
 use strict;
+use warnings;
+use lib './lib';
 use DBI;
-use Time::localtime;
-use Time::ParseDate;
-use Time::Piece;
-use Mail::Sender;
+use Thing1::Common qw(:All);
+use Carp qw(croak);
 
-# open the accessDB file to retrieve the database name, host name, user name and password
-open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
-my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
-close(ACCESS_INFO);
-chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
-                       $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
+my $dbConfigFile = $ARGV[0];
+my $dbh = Common::connect_db($dbConfigFile);
+my $config = Common::get_all_config($dbh);
 
 ####### Constant Variables ################
 my $TEMP_LOG_FILES_FOLDER = '/home/pipeline/pipeline_temp_log_files';
-my $folders_tobe_detected = &get_run_folders;
+my $folders_tobe_detected = Common::get_active_runfolders($dbh);
 my @newdetected = `find $folders_tobe_detected -maxdepth 1 -name "??????_[DNM]*_????_*" -mtime -1 `;
 
 my %folder_lst;
 my @detected_folders = `cat $TEMP_LOG_FILES_FOLDER/detected_sequencer_RF.txt`;
+my @detected_folders = Common::get_detected_RF($dbh); 
 foreach (@detected_folders) {
     $folder_lst{$_} = 0;
 }
@@ -51,26 +48,13 @@ foreach (@worklist) {
         email_error($flowcellID, "Failed to check the cyclenumbers or cycle number equal to 0?\n");
         next;
     }
-    $print_parsed .= $_ . "\n";
+    $print_parsed .= $_ . "\s";
     my $msg = &update_database($_, $flowcellID, $cyclenum);
     &email_error($flowcellID, $msg);
 }
 open (DETLST, ">$TEMP_LOG_FILES_FOLDER/detected_sequencer_RF.txt") or die "failed to open file $TEMP_LOG_FILES_FOLDER/detected_sequencer_RF.txt for writing. $!\n";
 print DETLST $print_parsed;
 close(DETLST);
-
-sub get_run_folders {
-    my $msg = "";
-    my @folder = ();
-    my $query_rf = $dbh->prepare("SELECT runFolder FROM sequencers WHERE active = '1'") or $msg .=  "Can't query database for runfolder info: ". $dbh->errstr() . "\n";
-    $query_rf->execute() or $msg .= "Can't execute query for postprocID info: " . $dbh->errstr() . "\n";
-    email_error($msg) if $msg ne '';
-    die $msg if $msg ne '';
-    while (my @dataS = $query_rf->fetchrow_array()) {
-        push @folder, $dataS[0];
-    }
-    return join(" ", @folder);
-}
 
 sub email_error {
     my ($flowcellID, $errorMsg) = @_;

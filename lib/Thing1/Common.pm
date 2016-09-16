@@ -126,4 +126,45 @@ sub get_barcode {
   return(\%tmpBC);
 }
 
+sub get_all_config {
+  my $dbh = shift;
+  my %all_config;
+  my $queryConfig = "SELECT * FROM config";
+  my $sthQC = $dbh->prepare($queryConfig) or die "Can't query database for config : ". $dbh->errstr() . "\n";
+  $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
+  while (my @tmprow = $sthQC->fetchrow_array()) {
+      $all_config{$tmprow[0]} = $tmprow[1];
+  }
+  return(\%all_config);
+}
+
+sub get_active_runfolders {
+  my $dbh = shift;
+  my @runfolders = ();
+  my $query = "SELECT runFolder from sequencers where active = '1'";
+  my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
+  $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
+  while (my @tmprow = $sthQC->fetchrow_array()) {
+      push @runfolders, $tmprow[0];
+  }
+  return join(" ", @runfolders);
+}
+
+sub get_detected_RF {
+  my $dbh = shift;
+  my @detected_RF = ();
+  my $query = "SELECT sequencer_RF FROM cronControlPanel;";
+  my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
+  $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
+  my @tmprow = $sthQC->fetchrow_array()) ;
+  return split(/\s/, $tmprow[0]);
+}
+
+sub update_detected_RF {
+  my ($dbh, $str) = @_;
+  my $query = "UPDATE cronControlPanel SET  sequencer_RF = '$str'";
+  my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
+  $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
+}
+
 1;

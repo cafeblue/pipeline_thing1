@@ -184,16 +184,16 @@ foreach my $file (@new_fl) {
     } else {
       $info = "The sample sheet has been generated successfully and can be found: /" . $machine . "_desktop/"  . $today . ".flowcell_" . $flowcellID . ".sample_sheet.csv OR\n ".  Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine). "/" . $today     . ".flowcell_" . $flowcellID . ".sample_sheet.csv";
     }
-    Common::email_error("$flowcellID samplesheet" ,$info, $machine, $today, $flowcellID, $emailList);
+    #Common::email_error("$flowcellID samplesheet" ,$info, $machine, $today, $flowcellID, $emailList);
   } else {
 
     my $info = "There are errors when parsing sample sheet of $machine of $flowcellID:\n\n" . $errorMsg;
-    Common::email_error("$flowcellID samplesheet",$info, $machine, $today, $flowcellID, $emailList);
+    #Common::email_error("$flowcellID samplesheet",$info, $machine, $today, $flowcellID, $emailList);
   }
 
   if ($cancer_samples_msg ne '') {
     my $emailListCancer = Common::get_config($dbh, "EMAIL_WARNINGS");
-    Common::email_error("$flowcellID samplesheet", $cancer_samples_msg, $machine, $today, $flowcellID, $emailListCancer);
+    #Common::email_error("$flowcellID samplesheet", $cancer_samples_msg, $machine, $today, $flowcellID, $emailListCancer);
   }
 
   print STDERR "errorMsg=$errorMsg\n";
