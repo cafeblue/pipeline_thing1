@@ -44,7 +44,7 @@ my %FILTERS = (
     "perbasesAbove20XGP"    => { "hiseq2500" => [" >= 90"],              "nextseq500" => [" >= 90"],              "miseqdx" => [" >= 96"]}, 
     "perbasesAbove10XExome" => { "hiseq2500" => [" >= 95"],              "nextseq500" => [" >= 95"],              "miseqdx" => [" >= 0"]}, 
     "perbasesAbove20XExome" => { "hiseq2500" => [" >= 90"],              "nextseq500" => [" >= 90"],              "miseqdx" => [" >= 0"]}, 
-    "meanCvgExome"          => { "hiseq2500" => [" >= 80", " <= 200"],   "nextseq500" => [" >= 80", " <= 200"],   "miseqdx" => [" >= 120"]}, 
+    "meanCvgExome"          => { "hiseq2500" => [" >= 80", " <= 200"],   "nextseq500" => [" >= 80", " <= 300"],   "miseqdx" => [" >= 120"]}, 
     "lowCovExonNum"         => { "hiseq2500" => [" <= 6000"],            "nextseq500" => [" <= 6000"],            "miseqdx" => [" >= 0"]}, 
     "meanCvgGP"             => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 80"],              "miseqdx" => [" >= 120"]}); 
 
