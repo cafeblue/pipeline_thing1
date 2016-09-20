@@ -174,15 +174,20 @@ sub get_active_runfolders {
 sub get_detected_RF {
   my $dbh = shift;
   my @detected_RF = ();
+  my %folder_lst;
   my $query = "SELECT sequencer_RF FROM cronControlPanel;";
   my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
   $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
-  my @tmprow = $sthQC->fetchrow_array()) ;
-  return split(/\s/, $tmprow[0]);
+  my @tmprow = $sthQC->fetchrow_array() ;
+  foreach (split(/\s+/, $tmprow[0])) {
+    $folder_lst{$_} = 0;
+  }
+  return(\%folder_lst);
 }
 
 sub update_detected_RF {
   my ($dbh, $str) = @_;
+  $str =~ s/\n/\s/g;
   my $query = "UPDATE cronControlPanel SET  sequencer_RF = '$str'";
   my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
   $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
