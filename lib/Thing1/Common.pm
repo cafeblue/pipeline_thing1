@@ -74,14 +74,14 @@ sub email_error {
   if ($machine ne "NA") {
     $info = $info . "\n\nmachine : " .$machine. "\nflowcell :" . $flowcellID;
   }
-  $info = $info . "\n\nTESTING\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
+  $info = $info . "\n\nTESTINGTESTING\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
   print STDERR "COMMON MODULE EMAIL_ERROR info=$info\n";
 
   my $mail = {
               smtp                 => 'localhost',
               from                 => 'notice@thing1.sickkids.ca',
               to                   => $mail_lst,
-              subject              => "testing" . $email_subject,
+              subject              => "TESTINGTESTING " . $email_subject,
               ctype                => 'text/plain; charset=utf-8',
               skip_bad_recipients  => 1,
               msg                  => $info
