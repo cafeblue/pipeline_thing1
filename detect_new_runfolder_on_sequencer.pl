@@ -48,7 +48,7 @@ foreach (@worklist) {
         Common::email_error("Error: $flowcellID " ,"Failed to check the cyclenumbers or cycle number equal to 0?\n", "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
         next;
     }
-    $print_parsed .= $_ . " ";
+    $print_parsed .= $_ . "\n";
     my $msg = &update_database($_, $flowcellID, $cyclenum);
     Common::email_error("Sequencing folder for $flowcellID found." ,"Sequencing folder for $flowcellID found.\nThe cyclenum is $cyclenum\nthe running folder is $_", "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
 }
