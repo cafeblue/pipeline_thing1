@@ -627,6 +627,7 @@ while ($data=<FILE>) {
       } elsif ($cHeader eq $exacAFR) {
         $exacAFRAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacAMR) {
+        $exacAMRAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacEAS) {
         $exacEASAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacFIN) {
@@ -778,7 +779,7 @@ while ($data=<FILE>) {
 
     my $tidName = $splitTab[$colNum{'Transcript ID'}];
 
-    if (($qualFilter == 1) && ($locationFilter == 1) && ($espAFFilter == 1) && ($thouAFFilter == 1)) {
+    if (($qualFilter == 1) && ($locationFilter == 1) && (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1))) {
       print STDERR "1. key = $annChr:$annPos:$vtType\n";
       if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) {
         print STDERR "1. passed location filters $data\n";
@@ -1397,7 +1398,7 @@ sub printformat {
       if (defined $colI && $colI ne "") {
         $outputArray[57] = $colI;
       } else {
-        $outputArray[57] = "NA";       
+        $outputArray[57] = "NA";
       }
     } elsif ($colHeader eq $cgWell) { #cgWellerdly
       if (defined $colI && $colI ne "") {
@@ -1468,11 +1469,12 @@ sub printformat {
       #print STDERR "splitOmim=@splitOmim\n";
       if ((defined $splitOmim[0]) && ($splitOmim[0] ne "")) {
         # Modification made by Lily Jin 2015 Sep 09 1/2
-        if ($splitOmim[1]=~m/^\d+$/) {
-          print $splitOmim[0] . "\t"; #print the omim description for the text file
-        } else {
-          print $splitOmim[1] . "\t"; #print the omim description for the text file
-        }
+        #if ($splitOmim[1]=~m/^\d+$/) {
+        print $splitOmim[0] . "|:|" . $splitOmim[1] ."\t";
+        #print $splitOmim[0] . "\t"; #print the omim description for the text file
+        #} else {
+        #print $splitOmim[1] . "\t"; #print the omim description for the text file
+        #}
         # Modification end 1/2
       } else {
         print "\t";
@@ -1499,11 +1501,12 @@ sub printformat {
         if (defined $splitOmim[1] && $splitOmim[1] ne "") {
           #print the OMIM description
           # Modification made by Lily Jin 2015 Sep 09 2/2
-          if ($splitOmim[1]=~m/^\d+$/) { ##Updated July 16, 2015
-            $worksheet->write($rowNum, ($l+3), "$splitOmim[0]");
-          } else {
-            $worksheet->write($rowNum, ($l+3), "$splitOmim[1]");
-          }
+          #if ($splitOmim[1]=~m/^\d+$/) { ##Updated July 16, 2015
+          #  $worksheet->write($rowNum, ($l+3), "$splitOmim[0]");
+          #} else {
+          #  $worksheet->write($rowNum, ($l+3), "$splitOmim[1]");
+          #}
+          $worksheet->write($rowNum, ($l+3), $splitOmim[0] . "|:|" . $splitOmim[1]);
           # Modification end 2/2
         }
         ##excel will use the description of omim instead of the number

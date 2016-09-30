@@ -6,6 +6,8 @@ use HPF::pipeline;
 use Time::localtime;
 use Time::Piece;
 
+/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 258691 -a 516 -f /hpf/largeprojects/pray/llau/clinical/fastq/Project_hiseq2500_1_BHNW5LADXX/Sample_258691 -g ct.gp16 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/258691-516-20160901111111-ct.gp16-b37 -p exome
+
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 268226 -a 3283 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH3WW5ADXX/Sample_268226 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/268226-3283-20160901111111-exome.gp10-b37 -p exome
 
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 54628 -a 3577 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHV5C7BCXX/Sample_54628 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/54628-3577-20160901111111-exome.gp10-b37 -p exome
