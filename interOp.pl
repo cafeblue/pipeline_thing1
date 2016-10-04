@@ -12,24 +12,33 @@ my $dbConfigFile = $ARGV[0];
 my $flowcellRunDir = $ARGV[1];
 my $flowcellID = $ARGV[2];
 my $interOpFile = $ARGV[3];
+my $machine = $ARGV[4];
 
 my $dbh = Common::connect_db($dbConfigFile);
+my $config = Common::get_all_config($dbh);
+my $FILTERS = Common::get_qcmetrics($dbh, $machine, "");
 
 my $interCmd = "summary " . $flowcellRunDir . " > " . $interOpFile; ###in the bashrc of pipeline user module load interop
 #print STDERR "interCmd=$interCmd\n";
 print `$interCmd`;
 #print STDERR "interCmdRun=$interCmdRun\n";
 
-my $readNum = 0;
-my $index = 0;
-my $density = "";
-my $clusterPF = "";
-my $reads = "";
-my $readsPF = "";
-my $pQ30 = "";
-my $aligned = "";
-my $error = "";
-my $data = "";
+my $readNum    = 0;
+my $index      = 0;
+my $density    = "";
+my $clusterPF  = "";
+my $reads      = "";
+my $readsPF    = "";
+my $pQ30       = "";
+my $aligned    = "";
+my $error      = "";
+my $data       = "";
+
+my $clusterFlag    = 0;
+my $totalReadsFlag = 0;
+my $pReadsPFFlag   = 0;
+my $q30Flag        = 0;
+my $errorRateFlag  = 0;
 
 open (FILE, "< $interOpFile") or die "Can't open $interOpFile for read: $!\n";
 #read out the header
@@ -45,7 +54,7 @@ $data=<FILE>;
 my $readNumTmp =<FILE>;
 my @splitRead = split(/ /,$readNumTmp);
 $readNum = $splitRead[1];
-print "readNum=$readNum\n";
+#print "readNum=$readNum\n";
 
 my $header = <FILE>;
 my @headerColtmp=split(/  /,$header);
@@ -57,7 +66,7 @@ for (my $i=0; $i < scalar(@headerColtmp); $i++) {
     # do nothing for now
   } else {
     $headerColtmp[$i]=~s/\s//gi;
-    print "headerColtmp[$i]=$headerColtmp[$i]\n";
+    #print "headerColtmp[$i]=$headerColtmp[$i]\n";
     push (@headerCol, $headerColtmp[$i]);
   }
 }
@@ -65,7 +74,7 @@ for (my $i=0; $i < scalar(@headerColtmp); $i++) {
 while ($data=<FILE>) {
   chomp $data;
   chop $data;
-  print "data=|$data|\n";
+  #print "data=|$data|\n";
   if ($data=~/^Read/) {
     if ($data=~/\(I/) {
       $index = 1;
@@ -76,7 +85,7 @@ while ($data=<FILE>) {
     # my @splitS = split(/ /,$data);
     # if (defined $splitS[1]) {
     #   $readNum = $splitS[1];
-    print "readNum=$readNum\n";
+    #print "readNum=$readNum\n";
     # }
   } elsif ($data=~/^ Lane/) {
     #column header ignore
@@ -97,20 +106,23 @@ while ($data=<FILE>) {
         # do nothing for now
       } else {
         $splitSpaceTmp[$j]=~s/\s//gi;
-        print "splitSpaceTmp[$j]=$splitSpaceTmp[$j]\n";
+        #print "splitSpaceTmp[$j]=$splitSpaceTmp[$j]\n";
 
         push (@splitSpace, $splitSpaceTmp[$j]);
       }
     }
 
-    print "headerCol=@headerCol\n";
-    print "splitSpace=@splitSpace\n";
+    #print "headerCol=@headerCol\n";
+    #print "splitSpace=@splitSpace\n";
 
     for (my $l=0;$l < scalar(@headerCol); $l++) {
       if ($headerCol[$l] eq "Density") {
         if ($readNum == 1) {
           my @splitPlus = split(/\+/,$splitSpace[$l]);
-          if ($splitPlus[0] < $clusterPFLow || $splitPlus[0] > $clusterPFHigh) {
+          my @equations = @{$FILTERS->{'fcClusterDensity'}};
+          map { s/^/$splitPlus[0] / ; $_} @equations;
+          if (not eval (join (" && ", @equations))) {
+          #if ($splitPlus[0] < $clusterPFLow || $splitPlus[0] > $clusterPFHigh) {
             $clusterFlag = 1;
           }
           if ($density eq "") {
@@ -129,7 +141,10 @@ while ($data=<FILE>) {
         }
       } elsif ($headerCol[$l] eq "Reads") {
         if ($readNum == 1) {
-          if ($splitSpace[$l] < $totalReadsLow || $splitSpace[$l] > $totalReadsHigh) {
+          my @equations = @{$FILTERS->{'fcTotalReads'}};
+          map { s/^/$splitSpace[$l] / ; $_} @equations;
+          if (not eval (join (" && ", @equations))) {
+          #if ($splitSpace[$l] < $totalReadsLow || $splitSpace[$l] > $totalReadsHigh) {
             $totalReadsFlag = 1;
           }
           if ($reads eq "") {
@@ -140,7 +155,10 @@ while ($data=<FILE>) {
         }
       } elsif ($headerCol[$l] eq "ReadsPF") {
         if ($readNum == 1) {
-          if ($splitSpace[$l] < $perReadsPFGT) {
+          my @equations = @{$FILTERS->{'fcpReadsPF'}};
+          map { s/^/$splitSpace[$l] / ; $_} @equations;
+          if (not eval (join (" && ", @equations))) {
+          #if ($splitSpace[$l] < $perReadsPFGT) {
             $pReadsPFFlag = 1;
           }
           if ($readsPF eq "") {
@@ -150,7 +168,10 @@ while ($data=<FILE>) {
           }
         }
       } elsif ($headerCol[$l] eq "%>=Q30") {
-        if ($splitSpace[$l] < $q30ScoreGT) {
+        my @equations = @{$FILTERS->{'fcq30Score'}};
+        map { s/^/$splitSpace[$l] / ; $_} @equations;
+        if (not eval (join (" && ", @equations))) {
+        #if ($splitSpace[$l] < $q30ScoreGT) {
           $q30Flag = 1;
         }
         if ($index == 0) {
@@ -170,7 +191,10 @@ while ($data=<FILE>) {
         }
       } elsif ($headerCol[$l] eq "Error") {
         my @splitPlus = split(/\+/,$splitSpace[$l]);
-        if ($splitPlus[0] > $errorRateLT) {
+        my @equations = @{$FILTERS->{'fcErrorRate'}};
+        map { s/^/$splitPlus[0] / ; $_} @equations;
+        if (not eval (join (" && ", @equations))) {
+        #if ($splitPlus[0] > $errorRateLT) {
           $errorRateFlag = 1;
         }
         if ($index == 0) {
@@ -203,6 +227,13 @@ close(FILE);
 
 
 #update thing1JobStatus table
+my $msg = '';
+$msg .= $clusterFlag    == 1 ? $config->{'ERROR_MSG_5'}."\n" : '';
+$msg .= $totalReadsFlag == 1 ? $config->{'ERROR_MSG_6'}."\n" : '';
+$msg .= $pReadsPFFlag   == 1 ? $config->{'ERROR_MSG_7'}."\n" : '';
+$msg .= $q30Flag        == 1 ? $config->{'ERROR_MSG_8'}."\n" : '';
+$msg .= $errorRateFlag  == 1 ? $config->{'ERROR_MSG_10'}."\n" : '';
+Common::email_error("QC warnings for flowcell $flowcellID." , $msg, "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'}) unless $msg eq '';
 
 my $updateFCStats = "UPDATE thing1JobStatus SET density = '".$density."', clusterPF = '" . $clusterPF. "', readsNum = '" .$reads. "', readsPF = '" . $readsPF . "', pQ30 = '" . $pQ30 . "', aligned = '" . $aligned . "', error = '". $error."' WHERE flowcellID = '".$flowcellID."'";
 print STDERR "updateFCStats=$updateFCStats\n";

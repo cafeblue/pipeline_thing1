@@ -131,7 +131,6 @@ sub get_barcode {
   my $dbh = shift;
   my %tmpBC;
   my $queryBarcodes = "SELECT code, value FROM encoding WHERE tablename='sampleSheet' AND fieldname = 'barcode'";
-  print STDERR "queryBarcodes=$queryBarcodes\n";
   my $sthBC = $dbh->prepare($queryBarcodes) or die "Can't query database for barcode encoding : ". $dbh->errstr() . "\n";
   $sthBC->execute() or croak "Can't execute query for barcode encoding : " . $dbh->errstr() . "\n";
   if ($sthBC->rows() == 0) {
@@ -171,25 +170,91 @@ sub get_active_runfolders {
   return join(" ", @runfolders);
 }
 
-sub get_detected_RF {
-  my $dbh = shift;
-  my @detected_RF = ();
-  my %folder_lst;
-  my $query = "SELECT sequencer_RF FROM cronControlPanel;";
-  my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
-  $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
-  my @tmprow = $sthQC->fetchrow_array() ;
-  foreach (split(/\n/, $tmprow[0])) {
-    $folder_lst{$_."\n"} = 0;
+sub get_RunInfo {
+  my $folder = shift;
+  my %runinfo = ('LaneCount' => 0, 'SurfaceCount' => 0, 'SwathCount' => 0, 'TileCount' => 0, 'SectionPerLane' => 0, 'LanePerSection' => 0);
+  if (-e $folder) {
+    my @lines = ` grep "NumCycles=" $folder`;
+    foreach (@lines) {
+      if (/NumCycles="(\d+)"/) {
+        push @{$runinfo{'NumCycles'}}, $1;
+      }
+    }
+    @lines = `grep "<FlowcellLayout" $folder`;
+    while ($lines[0] =~ m/\s(\w+)=\"(\d+)\"/g) {
+        $runinfo{$1} = $2;
+    }
   }
-  return(\%folder_lst);
+  return(\%runinfo);
 }
 
-sub update_detected_RF {
-  my ($dbh, $str) = @_;
-  my $query = "UPDATE cronControlPanel SET  sequencer_RF = '$str'";
+sub cronControlPanel {
+  my ($dbh, $column, $status) = @_;
+  # get or write to column sequencer_RF
+  if ($column eq 'sequencer_RF') {
+    if ($status ne '') {
+      my $query = "UPDATE cronControlPanel SET  sequencer_RF = '$status'";
+      my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
+      $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
+    }
+    else {
+      my %folder_lst;
+      my $query = "SELECT sequencer_RF FROM cronControlPanel;";
+      my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
+      $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
+      my @tmprow = $sthQC->fetchrow_array() ;
+      foreach (split(/\n/, $tmprow[0])) {
+        $folder_lst{$_."\n"} = 0;
+      }
+      return(\%folder_lst);
+    }
+  }
+  #get or write to the status
+  else {
+    if ($status eq 'START') {
+      my $status = "SELECT $column FROM cronControlPanel limit 1";
+      my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
+      $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
+      my @status = $sthUDP->fetchrow_array();
+      if ($status[0] eq '1') {
+        &email_error("WARNINGS", "$column is still running, aborting...\n", "NA", "NA", "NA", 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca' );
+        exit;
+      }
+      elsif ($status[0] eq '0') {
+        my $update = "UPDATE cronControlPanel SET $column = '1'";
+        my $sthUDP = $dbh->prepare($update) or die "Can't update database by $update: " . $dbh->errstr() . "\n";
+        $sthUDP->execute() or die "Can't execute update $update: " . $dbh->errstr() . "\n";
+        return;
+      }
+      else {
+        die "IMPOSSIBLE happened!! how could the status of $column be " . $status[0] . " in table cronControlPanel?\n";
+      }
+    }
+    elsif ($status eq 'STOP') {
+      my $status = "UPDATE cronControlPanel SET $column = '0'";
+      my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
+      $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
+    }
+  }
+}
+
+sub get_qcmetrics {
+  my ($dbh,$machine,$sampleType) = @_;
+  my $query = '';
+  if ($sampleType ne '') {
+    $query = "SELECT sYieldMb AS yieldMB, spQ30Bases AS perQ30Bases, sNumReads numReads, sLowCovATRatio AS lowCovATRatio, spbasesAbv10XGP AS perbasesAbove10XGP, spbasesAbv20XGP AS perbasesAbove20XGP, spbasesAbv10XExome AS perbasesAbove10XExome, spbasesAbv20XExome AS perbasesAbove20XExome, sMeanCvgGP AS meanCvgGP, sLowCvgExonNum AS lowCovExonNum, sMeanCvgExome AS meanCvgExome, spReadsIndex, varFlagHetCvg, varFlagHomCvg, varFlagHetRatio, varFlagHomRatio, varSnpQD, varIndelQD, varSnpFS, varIndelFS, varSnpMQ, varSnpMQRS, varSnpRPRS, varIndelRPRS FROM qcMetrics WHERE machine = '$machine' AND sampleType = '$sampleType'";
+  }
+  else {
+    $query = "SELECT fcClusterDensity, fcErrorRate, fcpReadsPF, fcq30Score, fcTotalReads, fcpUndeterminedReads FROM qcMetrics WHERE machine = '$machine'";
+  }
+
   my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
   $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
+  my $ref = $sthQC->fetchrow_hashref();
+  foreach my $key_name (keys %$ref) {
+      $ref->{$key_name} = [split(/&&/, $ref->{$key_name})];
+  }
+  return($ref);
 }
 
 1;

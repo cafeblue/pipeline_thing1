@@ -11,17 +11,9 @@ my $dbConfigFile = $ARGV[0];
 my $dbh = Common::connect_db($dbConfigFile);
 my $config = Common::get_all_config($dbh);
 
-####### Constant Variables ################
-#my $TEMP_LOG_FILES_FOLDER = '/home/pipeline/pipeline_temp_log_files';
 my $folders_tobe_detected = Common::get_active_runfolders($dbh);
 my @newdetected = `find $folders_tobe_detected -maxdepth 1 -name "??????_[DNM]*_????_*" -mtime -1 `;
-
-#my %folder_lst;
-#my @detected_folders = `cat $TEMP_LOG_FILES_FOLDER/detected_sequencer_RF.txt`;
-my $folder_lst = Common::get_detected_RF($dbh); 
-#foreach (@detected_folders) {
-#    $folder_lst{$_} = 0;
-#}
+my $folder_lst = Common::cronControlPanel($dbh, "sequencer_RF", ""); 
 
 my $print_parsed = "";
 my @worklist = ();
@@ -42,39 +34,24 @@ if ($#worklist == -1) {
 Common::print_time_stamp();
 
 foreach (@worklist) {
-    my $cyclenum = &get_cycleNum($_);
+    my $runinfo = Common::get_RunInfo("$_/$config->{'SEQ_RUN_INFO_FILE'}");
     my $flowcellID = (split(/_/))[-1];
-    if ($cyclenum == 0) {
-        Common::email_error("Error: $flowcellID " ,"Failed to check the cyclenumbers or cycle number equal to 0?\n", "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+    my $cyclenum = 0;
+    if ( not exists $runinfo->{'NumCycles'}) {
+        Common::email_error("Error: $flowcellID ", $config->{'ERROR_MSG_3'}, "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
         next;
     }
+    foreach (@{$runinfo->{'NumCycles'}}) {
+        $cyclenum += $_;
+    }
     $print_parsed .= $_ . "\n";
-    my $msg = &update_database($_, $flowcellID, $cyclenum);
-    Common::email_error("Sequencing folder for $flowcellID found." ,"Sequencing folder for $flowcellID found.\nThe cyclenum is $cyclenum\nthe running folder is $_", "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+    my $msg = &update_database($_, $flowcellID, $cyclenum, $runinfo);
+    Common::email_error("Sequencing folder for $flowcellID found." , eval(eval('$config->{ERROR_MSG_4}')), "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
 }
-Common::update_detected_RF($dbh, $print_parsed);
-
-sub get_cycleNum {
-    my $sourceFolder = shift;
-    my $cycleNum = 0;
-    my @cycles = `grep "NumCycles" $sourceFolder/RunInfo.xml  `;
-    my $flag = 1;
-    foreach (@cycles) {
-        if (/ NumCycles=\"(\d+)\" /) {
-            $cycleNum += $1;
-            $flag = 0;
-        }
-    }
-    if ($flag == 1) {
-        return 0;
-    }
-    else {
-        return $cycleNum;
-    }
-}
+Common::cronControlPanel($dbh, "sequencer_RF", $print_parsed);
 
 sub update_database {
-    my ($sourceFolder, $flowcellID, $cycleNum) = @_;
+    my ($sourceFolder, $flowcellID, $cycleNum, $runinfo) = @_;
     $flowcellID = uc($flowcellID);
     my ($machine , $folder) = (split(/\//,$sourceFolder))[4,-1];
     my $destDir = $config->{'RUN_BACKUP_FOLDER'} . $machine . '_' . $folder;
@@ -91,7 +68,7 @@ sub update_database {
     } 
 
     #insert into clinicalA
-    my $insert = "INSERT INTO thing1JobStatus ( flowcellID, machine, rundir, destinationDir, sequencing, cycleNum ) VALUES (\'$flowcellID\', \'$machine\', \'$sourceFolder\', \'$destDir\', \'2\', \'$cycleNum\')";
+    my $insert = "INSERT INTO thing1JobStatus ( flowcellID, machine, rundir, destinationDir, sequencing, cycleNum, LaneCount, SurfaceCount, SwathCount, TileCount, SectionPerLane, LanePerSection ) VALUES (\'$flowcellID\', \'$machine\', \'$sourceFolder\', \'$destDir\', \'2\', \'$cycleNum\', $runinfo->{'LaneCount'}, $runinfo->{'SurfaceCount'}, $runinfo->{'SwathCount'}, $runinfo->{'TileCount'}, $runinfo->{'SectionPerLane'}, $runinfo->{'LanePerSection'})";
     print "insert=$insert\n";
     my $sth = $dbh->prepare($insert) or $msg .=  "Can't prepare insert: ". $dbh->errstr() . "\n";
     $sth->execute() or $msg .=  "Can't execute insert: " . $dbh->errstr() . "\n";
