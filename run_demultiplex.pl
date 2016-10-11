@@ -46,11 +46,11 @@ sub demultiplexInterOp {
   my $machineType = $machine;
   $machineType =~ s/_.+//;
   my $samplesheet = &create_sample_sheet($machine, $flowcellID, $cycle1, $cycle2);
-  my $outputfastqDir = $config->{'FASTQ_FOLDER'} . '/TESTINGTESTING' . $machine . "_" . $flowcellID;
+  my $outputfastqDir = "/AUTOTESTING$config->{'FASTQ_FOLDER'}/" . $machine . "_" . $flowcellID;
   my $demultiplexCmd = "bcl2fastq -R $folder -o $outputfastqDir --sample-sheet $samplesheet";
-  my $jobDir = "demultiplex_TESTINGTESTING" . $machine . '_' . $flowcellID . "_" . $currentTime;
+  my $jobDir = "demultiplex_" . $machine . '_' . $flowcellID . "_" . $currentTime;
   # check jsub log
-  my $jsubChkCmd = "ls -d $config->{'JSUB_LOG_FOLDER'}/demultiplex_TESTINGTESTING$machine\_$flowcellID\_* 2>/dev/null";
+  my $jsubChkCmd = "ls -d /AUTOTESTING$config->{'JSUB_LOG_FOLDER'}/demultiplex_$machine\_$flowcellID\_* 2>/dev/null";
   my @jsub_exists_folders = `$jsubChkCmd`;
   if ($#jsub_exists_folders >= 0) {
     my $msg = "folder:\n" . join("", @jsub_exists_folders) . "already exist. These folders will be deleted.\n\n";
@@ -90,7 +90,7 @@ sub create_sample_sheet {
   my $errlog = "";
   my @old_samplesheet = ();
 
-  my $filename = "$config->{'SAMPLE_SHEET'}/TESTINGTESTING$machine\_$flowcellID.csv";
+  my $filename = "/AUTOTESTING$config->{'SAMPLE_SHEET'}/$machine\_$flowcellID.csv";
   if ( -e "$filename" ) {
     $errlog .= "samplesheet already exists: $filename\n";
     @old_samplesheet = `tail -n +2  $filename`;

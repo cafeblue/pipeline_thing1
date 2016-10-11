@@ -10,198 +10,37 @@ use Carp qw(croak);
 
 my $dbConfigFile = $ARGV[0];
 my $dbh = Common::connect_db($dbConfigFile);
-
-#### constant variables for HPF ############
-my $SAMPLE_INFO = Common::get_config($dbh, "SAMPLE_INFO");
-
-print STDERR "SAMPLE_INFO=$SAMPLE_INFO\n";
-#### Read the barcodes #####################
+my $config = Common::get_all_config($dbh);
 my $ilmnBarcodes = Common::get_barcode($dbh);
 
-#my $queryBarcodes = "SELECT code, value FROM encoding WHERE tablename='sampleSheet' AND fieldname = 'barcode'";
-#print STDERR "queryBarcodes=$queryBarcodes\n";
-#my $sthBC = $dbh->prepare($queryBarcodes) or die "Can't query database for barcode encoding : ". $dbh->errstr() . "\n";
-#$sthBC->execute() or croak "Can't execute query for barcode encoding : " . $dbh->errstr() . "\n";
-#if ($sthBC->rows() == 0) {
-#  croak "ERROR $queryBarcodes";
-#} else {
-#  my @dataBC = ();
-#  while (@dataBC = $sthBC->fetchrow_array()) {
-#    my $id = $dataBC[0];
-#    my $ntCode = $dataBC[1];
-#    $ilmnBarcodes{$id} = $ntCode;
-#  }
-#}
-
 #### Get the new file list #################
-my @new_fl = `find $SAMPLE_INFO/*.txt $SAMPLE_INFO/done/*.txt -mmin -10.1`;
-chomp(@new_fl);
-if ($#new_fl == -1) {
-  exit(0);
-}
+my $sampleSheet = get_new_sampleSheet();
 my ($today, $yesterday) = Common::print_time_stamp();
 
 
-#### Start to parse each new file ##########
-foreach my $file (@new_fl) {
-  print STDOUT "file=$file\n";
+#### Start to parse each new sampleSheet ##########
+foreach my $flowcellID (keys %$sampleSheet) {
+  my ($flowcellID, $machine, $cancer_samples_msg) = ($sampleSheet->{$flowcellID}[0]->{'flowcell_ID'}, $sampleSheet->{$flowcellID}[0]->{'machine'}, '');
 
-  my @header = ();
-  my $cancer_samples_msg = '';
-  my @file_content = ();
-  open (FILE, "< $file") or croak "Can't open $file for read: $!\n";
-  my $tmphead = <FILE>;
-  chomp($tmphead);
-  $tmphead =~ s/\r//;
-  $tmphead =~ s/\t+$//;
-  @header = split(/\t/,$tmphead);
-  my ($flowcellID, $machine, $errorMsg) = ("","","");
-  while (my $data=<FILE>) {
-    #ignore the empty lines.
-    next if ($data =~ /\t\t\t\t/);
+  if ($machine =~ /hiseq/) {
+    next if write_samplesheet($machine, @{$sampleSheet->{$flowcellID}}) != 0;
+  } 
+  elsif ($machine =~ /miseq/) {
+    next if write_samplesheet_miseq($machine, @{$sampleSheet->{$flowcellID}}) != 0;
+  }
 
-    chomp($data);
-    $data=~s/\"//gi;            #remove any quotations
-    $data=~s/\r//gi;            # remove excel return
-    $data=~s/\t+$//gi;          #remove the last empty columns.
-
-    my @splitTab = split(/\t/,$data);
-
-    my $lines_ref = {};
-    foreach (0..$#header) {
-      $lines_ref->{$header[$_]} = $splitTab[$_];
-    }
-    push @file_content, $lines_ref;
-
-    if ($flowcellID eq "") {
-      $flowcellID = $lines_ref->{'flowcell_ID'};
-    } else {
-      if ($flowcellID ne $lines_ref->{'flowcell_ID'}) {
-        $errorMsg .= "ERROR: " . $lines_ref->{'flowcell_ID'} . " and $flowcellID are not the same in this file.\n";
-      }
-    }
-
-    if ($machine eq "") {
-      $machine = $lines_ref->{"machine"};
-      ###check machine name
-      if (Common::check_name($dbh, "machine","sequencers","active","1",$lines_ref->{"machine"}) == 0) {
-        $errorMsg .= "ERROR: " . $lines_ref->{'machine'} . " is not active or the machine name is incorrect.\n";
-      }
-    } else {
-      if ($machine ne $lines_ref->{'machine'}) {
-        $errorMsg .= "ERROR: " . $lines_ref->{'machine'} . " and $machine are not the same in this file.\n";
-      }
-    }
-
-    if (Common::check_name($dbh, "value","encoding","fieldname","specimen",$lines_ref->{"specimen"}) == 0) {
-      $errorMsg .= "ERROR: Specimen is incorrect. Please use either blood, cell, ffpf, or tissue in line $..\n";
-    }
-
-    if (Common::check_name($dbh, "value","encoding","fieldname","sampleType",$lines_ref->{"sample_type"}) == 0) {
-      $errorMsg .= "ERROR: sampleType not recognized, please use either normal or tumour in line $..\n";
-    }
-
-    if ( ! defined $ilmnBarcodes->{$lines_ref->{'barcode'}} ) {
-      $errorMsg .= "ERROR: Ilumina Barcode doesn't exist in line $..\n";
-    }
-    ##  Uncomment if double barcode required
-    #if ( $lines_ref->{'machine'} =~ "miseq" && (! defined $ilmnBarcodes{$lines_ref->{'barcode2'}})) {
-    #    $errorMsg .= "ERROR: Ilumina Barcode2 for miseq doesn't exist in line $..\n";
-    #}
-
-    ###doesn't really need a lane anymore -> HOW TO CHECK?
-    if ( $lines_ref->{'lane'} !~ /[1-8](,[1-8])*/ ) {
-      $errorMsg .= "ERROR: lane is greater than 8 OR less than 0 in line $..\n";
-    }
-
-    if ( $lines_ref->{'flowcell_ID'} !~ /^(A|B)/ && $lines_ref->{'machine'} !~ "miseq") {
-      $errorMsg .= "ERROR: FlowcellID is missing A or B in line $..\n";
-    }
-
-    if (Common::check_name($dbh,"value","encoding","fieldname","capture_kit", $lines_ref->{"capture_kit"}) == 0) {
-      $errorMsg .= "ERROR: Capture kit is not recognized in line $..\n";
-    }
-
-    if (Common::check_name($dbh,"value","encoding","fieldname","pooling", $lines_ref->{"pooling"}) == 0) {
-      $errorMsg .= "ERROR: Pooling is not recognized in line $..\n";
-    }
-
-    if (Common::check_name($dbh,"value","encoding","fieldname","jbravo_used",$lines_ref->{"jbravo_used"}) == 0) {
-      $errorMsg .= "ERROR: jbravo is not recognized in line $..\n";
-    }
-
-    if ( $lines_ref->{'sampleID'} eq "" ) {
-      $errorMsg .= "ERROR: sampleID is not recognized in line $..\n";
-    }
-    if ( $lines_ref->{'sampleID'} =~  /\_/ ) {
-      $errorMsg .= "ERROR: sampleID can not contain \"_\" in line $..\n";
-    }
-
-    #if (Common::check_name($dbh,"username","login","position","coordinator",$lines_ref->{"ran_by"}) == 0) {
-    #  $errorMsg .= "ERROR: You must used your NGS login username for ranby in line $..\n";
-    #}
-
-    if ( $lines_ref->{'gene_panel'} eq "" ) {
-      $errorMsg .= "ERROR: gene_panel is not defined in line $..\n";
-    }
-
-    my $genePanel = lc($lines_ref->{'gene_panel'});
-
-    if (Common::check_name($dbh,"genePanelID","gpConfig","captureKit",$lines_ref->{"capture_kit"},$genePanel) == 0) {
-      $errorMsg .= "ERROR: $genePanel is not recognized in line for the capture kit, " . $lines_ref->{"capture_kit"}."$..\n";
-    }
-
-    if ($genePanel =~ /cancer/ && $lines_ref->{'pairedSampleID'} !~ /\d/) {
-      $cancer_samples_msg .= "Please specify the pairedSampleID for " . $lines_ref->{'sampleID'} . " which is running on flowcellID: " . $lines_ref->{'flowcell_ID'}  . "\n";
+  foreach my $sampleLine (@{$sampleSheet->{$flowcellID}}) {
+    if ($sampleLine->{'gene_panel'} =~ /cancer/) {
+      $cancer_samples_msg .= "Please specify the KiCS ID for " . $sampleLine->{'sampleID'} . " which is running on flowcellID: " . $sampleLine->{'flowcell_ID'}  . "\n";
     }
   }
-  close(FILE);
-  my $emailList = Common::get_config($dbh, "EMAIL_WARNINGS");
-  print STDERR "emailList=$emailList\n";
 
-  if ($errorMsg eq "") {
-      #if ($machine =~ /hiseq/) {
-      #write_samplesheet($machine, @file_content);
-      #} elsif ($machine =~ /miseq/) {
-      #write_samplesheet_miseq($machine, @file_content);
-      #}
-
-    my $delete_sql = "DELETE FROM sampleSheet WHERE flowcell_ID = '$flowcellID'";
-    $dbh->do($delete_sql);
-
-    write_database(@file_content);
-    #print LST $file,"\n";       ##unsure of what this does
-
-    my $info = "";
-    if ($machine=~ /nextseq/) {
-      $info = "The sample sheet has been inputted into the database successfully";
-    } else {
-      $info = "The sample sheet has been generated successfully and can be found: /" . $machine . "_desktop/"  . $today . ".flowcell_" . $flowcellID . ".sample_sheet.csv OR\n ".  Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine). "/" . $today     . ".flowcell_" . $flowcellID . ".sample_sheet.csv";
-    }
-    #Common::email_error("$flowcellID samplesheet" ,$info, $machine, $today, $flowcellID, $emailList);
-  } else {
-
-    my $info = "There are errors when parsing sample sheet of $machine of $flowcellID:\n\n" . $errorMsg;
-    #Common::email_error("$flowcellID samplesheet",$info, $machine, $today, $flowcellID, $emailList);
-  }
+  my $info = "The sample sheet has been generated successfully and can be found: /" . $machine . "_desktop/"  . $today . ".flowcell_" . $flowcellID . ".sample_sheet.csv OR\n ".  Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine). "/" . $today     . ".flowcell_" . $flowcellID . ".sample_sheet.csv";
+  Common::email_error("$flowcellID samplesheet" ,$info, $machine, $today, $flowcellID, 'weiw.wang@sickkids.ca');
 
   if ($cancer_samples_msg ne '') {
-    my $emailListCancer = Common::get_config($dbh, "EMAIL_WARNINGS");
-    #Common::email_error("$flowcellID samplesheet", $cancer_samples_msg, $machine, $today, $flowcellID, $emailListCancer);
+    Common::email_error("$flowcellID samplesheet", $cancer_samples_msg, $machine, $today, $flowcellID, 'weiw.wang@sickkids.ca');
   }
-
-  print STDERR "errorMsg=$errorMsg\n";
-  #if ($errorMsg eq "") {
-  #  my $moveCmd = "mv $file $SAMPLE_INFO/done";
-  #  print STDERR "moveCmd=$moveCmd\n";
-  #  my $moveCmdOut = `$moveCmd`;
-  #  print STDERR "moveCmdOut=$moveCmdOut\n";
-  #} else {
-  #  my $moveCmd = "mv $file $SAMPLE_INFO/error";
-  #  print STDERR "moveCmd=$moveCmd\n";
-  #  my $moveCmdOut = `$moveCmd`;
-  #  print STDERR "moveCmdOut=$moveCmdOut\n";
-  #}
 }
 
 sub write_samplesheet {
@@ -214,12 +53,12 @@ sub write_samplesheet {
       $flowcellID = $line->{'flowcell_ID'};
     }
   }
-  my $file = Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
-  print $file,"\n";
-  print $output;
-  open (CSV, ">$file") or croak "failed to open file $file";
-  print CSV $output;
-  close(CSV);
+  my $file = "/AUTOTESTING" . Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
+  if (-e $file) {
+    Common::email_error("$flowcellID samplesheet already exists", "ignored...\n", $machine, $today, $flowcellID, 'weiw.wang@sickkids.ca');
+    return 1;
+  }
+  print $output; open (CSV, ">$file") or croak "failed to open file $file"; print CSV $output; close(CSV); return 0;
 }
 
 sub write_samplesheet_miseq {
@@ -232,32 +71,25 @@ sub write_samplesheet_miseq {
     $flowcellID = $line->{'flowcell_ID'};
   }
 
-  my $file = Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
-
-  print $file,"\n";
-  print $output;
-  open (CSV, ">$file") or croak "failed to open file $file";
-  print CSV $output;
-  close(CSV);
-}
-
-sub write_database {
-  my @cont_tmp = @_;
-  foreach my $line (@cont_tmp) {
-    my @fields = keys %{$line};
-    my $fieldlst = join(', ', @fields);
-    my @contentlst = ();
-    foreach my $field (@fields) {
-      push @contentlst, $line->{$field};
-    }
-    my $insertSampleSheet = "INSERT INTO sampleSheet (" . $fieldlst . ") VALUES ('" . join ("', '", @contentlst) . "')";
-    print "insert sampleSheet: $insertSampleSheet\n";
-
-    #insert into clinicalA
-    my $sth = $dbh->prepare($insertSampleSheet) or croak "Can't prepare ngsSample table insert: ". $dbh->errstr() . "\n";
-    $sth->execute() or die "Can't execute ngsSample table insert: " . $dbh->errstr() . "\n";
+  my $file = "/AUTOTESTING" . Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
+  if (-e $file) {
+    Common::email_error("$flowcellID samplesheet already exists", "ignored...\n", $machine, $today, $flowcellID, 'weiw.wang@sickkids.ca');
+    return 1;
   }
+  print $output; open (CSV, ">$file") or croak "failed to open file $file"; print CSV $output; close(CSV); return 0;
 }
 
-
-
+sub get_new_sampleSheet {
+    my %tmpSS;
+    my $sth = $dbh->prepare("SELECT flowcell_ID,sampleID,barcode,capture_kit,sample_type,ran_by,machine,gene_panel,lane FROM sampleSheet WHERE TIMESTAMPADD(SECOND,61,time) > NOW() AND (machine LIKE 'miseqdx_%' OR machine LIKE 'hiseq2500_%') ");
+    $sth->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+    if ($sth->rows() > 0) {
+        while(my $row = $sth->fetchrow_hashref()) {
+            push @{$tmpSS{$row->{'flowcell_ID'}}}, $row;
+        }
+        return \%tmpSS;
+    }
+    else {
+        exit(0);
+    }
+}

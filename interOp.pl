@@ -235,7 +235,7 @@ $msg .= $q30Flag        == 1 ? $config->{'ERROR_MSG_8'}."\n" : '';
 $msg .= $errorRateFlag  == 1 ? $config->{'ERROR_MSG_10'}."\n" : '';
 Common::email_error("QC warnings for flowcell $flowcellID." , $msg, "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'}) unless $msg eq '';
 
-my $updateFCStats = "UPDATE thing1JobStatus SET density = '".$density."', clusterPF = '" . $clusterPF. "', readsNum = '" .$reads. "', readsPF = '" . $readsPF . "', pQ30 = '" . $pQ30 . "', aligned = '" . $aligned . "', error = '". $error."' WHERE flowcellID = '".$flowcellID."'";
+my $updateFCStats = "UPDATE thing1JobStatus SET `reads Cluster Density` = '".$density."', clusterPF = '" . $clusterPF. "', `# of Total Reads` = '" .$reads. "', `% Reads Passing Filter` = '" . $readsPF . "', `% Q30 Score` = '" . $pQ30 . "', aligned = '" . $aligned . "', `Error Rate` = '". $error."' WHERE flowcellID = '".$flowcellID."'";
 print STDERR "updateFCStats=$updateFCStats\n";
 my $sthUFCS = $dbh->prepare($updateFCStats) or die "Can't query database for flowcell info: ". $dbh->errstr() . "\n";
 $sthUFCS->execute() or die "Can't execute query for flowcell info: " . $dbh->errstr() . "\n";

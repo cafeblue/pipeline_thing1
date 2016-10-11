@@ -158,6 +158,21 @@ sub get_all_config {
   return(\%all_config);
 }
 
+sub get_gp_config {
+  my $dbh = shift;
+  my %all_gp_config;
+  my $queryConfig = "SELECT * FROM gpConfig where active = '1'";
+  my $sthQC = $dbh->prepare($queryConfig) or die "Can't query database for config : ". $dbh->errstr() . "\n";
+  $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
+  while (my $tmprow = $sthQC->fetchrow_hashref()) {
+      my $hash_key = $tmprow->{'genePanelID'} . "\t" . $tmprow->{'captureKit'};
+      foreach my $tmpkey (keys %{$tmprow}) {
+          $all_gp_config{$hash_key}{$tmpkey} = $tmprow->{$tmpkey};
+      }
+  }
+  return(\%all_gp_config);
+}
+
 sub get_active_runfolders {
   my $dbh = shift;
   my @runfolders = ();

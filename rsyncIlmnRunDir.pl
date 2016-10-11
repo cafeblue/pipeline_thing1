@@ -24,8 +24,8 @@ sub rsync_folders {
     if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
         Common::print_time_stamp;
         while (my @runs = $sthQNS->fetchrow_array()) {
-            `rsync -Lav --progress --stats  $runs[0]/  $runs[1]TESTINGTESTING 1>/dev/null`;  
-            print "rsync -Lav --progress --stats  $runs[0]/  $runs[1]TESTINGTESTING 1>/dev/null\n";
+            `rsync -Lav --progress --stats  $runs[0]/  /AUTOTESTING$runs[1] 1>/dev/null`;  
+            print "rsync -Lav --progress --stats  $runs[0]/  /AUTOTESTING$runs[1] 1>/dev/null\n";
             if ($? != 0) {
                 my $msg = "rsync $runs[0] to $runs[1] failed with the error code $?\n";
                 print STDERR "$msg";
