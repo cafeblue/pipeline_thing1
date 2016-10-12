@@ -74,14 +74,14 @@ sub email_error {
   if ($machine ne "NA") {
     $info = $info . "\n\nmachine : " .$machine. "\nflowcell :" . $flowcellID;
   }
-  $info = $info . "\n\n/AUTOTESTING\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
+  $info = $info . "\n\n\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
   print STDERR "COMMON MODULE EMAIL_ERROR info=$info\n";
 
   my $mail = {
               smtp                 => 'localhost',
               from                 => 'notice@thing1.sickkids.ca',
               to                   => $mail_lst,
-              subject              => "/AUTOTESTING " . $email_subject,
+              subject              => " " . $email_subject,
               ctype                => 'text/plain; charset=utf-8',
               skip_bad_recipients  => 1,
               msg                  => $info
@@ -328,7 +328,7 @@ sub get_pipelinever {
   chomp(@commit_tag);
   my $hpf_ver = join('(',@commit_tag) . ")";
 
-  $cmd = "cd /AUTOTESTING$config->{'PIPELINE_THING1_ROOT'} ; git tag | tail -1 ; git log -1 | head -1 |cut -b 8-14";
+  $cmd = "cd $config->{'PIPELINE_THING1_ROOT'} ; git tag | tail -1 ; git log -1 | head -1 |cut -b 8-14";
   @commit_tag = `$cmd`;
   if ($? != 0) {
     $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
@@ -357,7 +357,7 @@ sub get_sequencing_qual_stat {
     my $sub_flowcellID = (split(/_/,$destDir))[-1];
     $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $sub_flowcellID, 1 ;
 
-    my $demuxSummaryFile = "/AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
+    my $demuxSummaryFile = "$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
     if (! -e "$demuxSummaryFile") {
       &mail_error("Job Status on thing1 for update sample info", "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n", $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
       croak "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n";
