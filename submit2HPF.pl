@@ -1,27 +1,23 @@
 #! /bin/env perl
 
 use strict;
+use warnings;
+use lib './lib';
 use DBI;
-use Time::localtime;
-use Time::ParseDate;
-use Time::Piece;
-use Mail::Sender;
+use Thing1::Common qw(:All);
+use Carp qw(croak);
+
+my $dbConfigFile = $ARGV[0];
+my $dbh = Common::connect_db($dbConfigFile);
+my $config = Common::get_all_config($dbh);
 $|++;
 
 my $allerr = "";
-# open the accessDB file to retrieve the database name, host name, user name and password
-open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") or $allerr = "Can't access login credentials";
-my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
-close(ACCESS_INFO);
-chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
-                       $user, $pass, { RaiseError => 1 } ) or $allerr .= ( "Couldn't connect to database: " . DBI->errstr );
 
-my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SSH_DATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
 my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
-my $CALL_SCREEN = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
+my $CALL_SCREEN = "$config->{'PIPELINE_HPF_ROOT'}/AUTOTESTING/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
 my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/clinical/samples/illumina';
 my $FASTQ_DIR    = '/hpf/largeprojects/pray/clinical/fastq_v5/';
 my $BACKUP_BAM  = '/hpf/largeprojects/pray/clinical/backup_files_v5/bam';
@@ -217,33 +213,4 @@ sub get_sample_list {
     else {
         exit(0);
     }
-}
-
-sub email_error {
-    my $errorMsg = shift;
-    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
-    my $sender = Mail::Sender->new();
-    my $mail   = {
-        smtp                 => 'localhost',
-        from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
-        subject              => "Job Status on thing1 for submit2HPF.",
-        ctype                => 'text/plain; charset=utf-8',
-        skip_bad_recipients  => 1,
-        msg                  => $errorMsg 
-    };
-    my $ret =  $sender->MailMsg($mail);
-}
-
-sub print_time_stamp {
-    my $retval = time();
-    my $yetval = $retval - 86400;
-    $yetval = localtime($yetval);
-    my $localTime = localtime( $retval );
-    my $time = Time::Piece->strptime($localTime, '%a %b %d %H:%M:%S %Y');
-    my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
-    my $timestring = "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  " . $timestamp . "\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-    print $timestring;
-    print STDERR $timestring;
-    return ($localTime->strftime('%Y%m%d'), $localTime->strftime('%Y%m%d%H%M%S'), $localTime->strftime('%m/%d/%Y'));
 }

@@ -1,23 +1,23 @@
 #! /usr/bin/env perl
 
 use strict;
+use warnings;
+use lib './lib';
 use DBI;
-#use File::stat;
-use Time::localtime;
-use Time::ParseDate;
-use Time::Piece;
-use Mail::Sender;
+use Thing1::Common qw(:All);
+use Carp qw(croak);
+
+my $dbConfigFile = $ARGV[0];
+my $dbh = Common::connect_db($dbConfigFile);
+my $config = Common::get_all_config($dbh);
 
 #### constant variables for HPF ############
-my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/clinical/samples/illumina';
-my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
-my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $SQL_JOBLST        = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
-my $SSHDATA           = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
-my $GET_JSUBID        = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_jsub_pl.sh ';
-my $GET_QSUB_STATUS   = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca '; 
-my $GET_EXIT_STATUS   = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/get_status_pl.sh ';
-my $DEL_RUNDIR        = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/del_rundir_pl.sh ';
+my $SSHDATA           = 'ssh -i ' . $config->{'SSH_DATA_FILE'} . " " . $config->{'HPF_USERNAME'} . '@' . $config->{'HPF_DATA_NODE'} . ' "' . $config->{'PIPELINE_HPF_ROOT'} . '/cat_sql.sh ';
+my $GET_JSUBID        = 'ssh -i ' . $config->{'SSH_DATA_FILE'} . " " . $config->{'HPF_USERNAME'} . '@' . $config->{'HPF_DATA_NODE'} . ' "' . $config->{'PIPELINE_HPF_ROOT'} . '/get_jsub_pl.sh ';
+my $GET_QSUB_STATUS   = 'ssh -i ' . $config->{'SSH_DATA_FILE'} . " " . $config->{'HPF_USERNAME'} . '@' . $config->{'HPF_DATA_NODE'} . ' '; 
+my $GET_EXIT_STATUS   = 'ssh -i ' . $config->{'SSH_DATA_FILE'} . " " . $config->{'HPF_USERNAME'} . '@' . $config->{'HPF_DATA_NODE'} . ' "' . $config->{'PIPELINE_HPF_ROOT'} . '/get_status_pl.sh ';
+my $DEL_RUNDIR        = 'ssh -i ' . $config->{'SSH_DATA_FILE'} . " " . $config->{'HPF_USERNAME'} . '@' . $config->{'HPF_DATA_NODE'} . ' "' . $config->{'PIPELINE_HPF_ROOT'} . '/del_rundir_pl.sh ';
 my %RESUME_LIST = ( 'bwaAlign' => 'bwaAlign', 'picardMardDup' => 'picardMarkDup', 'gatkLocalRealgin' => 'gatkLocalRealign', 'gatkQscoreRecalibration' => 'gatkQscoreRecalibration',
                     'gatkRawVariantsCall' => 'gatkRawVariantsCall', 'gatkRawVariants' => 'gatkRawVariants', 'muTect' => 'muTect', 'mutectCombine' => 'mutectCombine',
                     'annovarMutect' => 'annovarMutect', 'gatkFilteredRecalSNP' => 'gatkRawVariants', 'gatkdwFilteredRecalINDEL' => 'gatkRawVariants',
@@ -27,17 +27,8 @@ my %TRUNK_LIST = ( 'bwaAlign' => 0, 'picardMardDup' => 0, 'picardMarkDupIdx' => 
                     'gatkRawVariantsCall' => 0, 'gatkRawVariants' => 0, 'muTect' => 0, 'mutectCombine' => 0, 'annovarMutect' => 0, 'gatkFilteredRecalSNP' => 0, 
                     'gatkdwFilteredRecalINDEL' => 0, 'gatkFilteredRecalVariant' => 0, 'windowBed' => 0, 'annovar' => 0, 'snpEff' => 0);
 
-# open the accessDB file to retrieve the database name, host name, user name and password
-open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
-# assign the values in the accessDB file to the variables
-my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
-close(ACCESS_INFO);
-chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
-                       $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
-
 my $idpair_ref = &check_unfinished_sample;
-my ($today, $yesterday) = &print_time_stamp();
+Common::print_time_stamp();
 
 &check_idle_bwa($idpair_ref);
 
@@ -53,13 +44,13 @@ foreach my $idpair (@$idpair_ref) {
     }
     # resubmit all the jobs if submission failed.
     elsif (&check_failed_submission(@$idpair) == 1) {
-        my $cmd = $DEL_RUNDIR . $HPF_RUNNING_FOLDER . " " . $$idpair[0] . "-" . $$idpair[1] . '"';
+        my $cmd = $DEL_RUNDIR . $config->{'HPF_RUNNING_FOLDER'} . " " . $$idpair[0] . "-" . $$idpair[1] . '"';
         print $cmd,"\n";
         `$cmd`;
         if ($? != 0) {
-            my $msg = "remove the running folder " . $HPF_RUNNING_FOLDER . " " . $$idpair[0] . "-" . $$idpair[1] . " which idled over 30 hours failed with errorcode: $?\n";
+            my $msg = "remove the running folder " . $config->{'HPF_RUNNING_FOLDER'} . " " . $$idpair[0] . "-" . $$idpair[1] . " which idled over 30 hours failed with errorcode: $?\n";
             print STDERR $msg;
-            &email_error($msg);
+            Common::email_error("Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
             next;
         }
         my $update_CS = "UPDATE sampleInfo set currentStatus = '0' where sampleID = '$$idpair[0]' and postprocID = '$$idpair[1]'";
@@ -68,7 +59,7 @@ foreach my $idpair (@$idpair_ref) {
         $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
         my $msg = "Jobs failed to be submitted of sampleID: " . $$idpair[0] . " postprocID: " . $$idpair[1] . ". Re-submission will be running within 10 min.\n";
         print STDERR $msg;
-        &email_error($msg);
+        Common::email_error("Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
     }
     # resume from the stuck job:
     elsif (&check_idle_jobs(@$idpair) == 1) {
@@ -155,7 +146,7 @@ sub check_idle_jobs {
             $msg .= "\tjobName " . $dataS[0] . " idled over 4 hours...\n";
             $msg .= "\nIf this jobs can't be finished in 2 hours, this job together with the folloiwng joibs  will be re-submitted!!!\n";
             print STDERR $msg;
-            &email_error($msg);
+            Common::email_error("Job is idle on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
             return 0;
         }
     }
@@ -215,7 +206,7 @@ sub resume_stuck_jobs {
     else {
         $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, but the resubmission is NOT going to run, please re-submit the job by manual!\n";
     }
-    &email_error($msg);
+    Common::email_error("Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
 }
 
 sub check_idle_bwa {
@@ -238,7 +229,7 @@ sub check_idle_bwa {
 
     if ($msg ne '') {
         print STDERR $msg;
-        &email_error($msg);
+        Common::email_error("Job is idle on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
     }
 }
 
@@ -251,11 +242,11 @@ sub update_jobID {
         push @joblst, @$tmp_ref;
     }
     my $joblst = join(" ", @joblst);
-    my $cmd = $GET_JSUBID . $HPF_RUNNING_FOLDER . " " . $sampleID . "-" . $postprocID . " " . $joblst . '"';
+    my $cmd = $GET_JSUBID . $config->{'HPF_RUNNING_FOLDER'} . " " . $sampleID . "-" . $postprocID . " " . $joblst . '"';
     print $cmd,"\n";
     @joblst = `$cmd`;
     for (my $i = 0; $i<$#joblst; $i++) {
-        if ($joblst[$i] =~ /^$HPF_RUNNING_FOLDER/) {
+        if ($joblst[$i] =~ /^$config->{'HPF_RUNNING_FOLDER'}/) {
             my $jobName = (split(/\//, $joblst[$i]))[-3]; 
             my $jobID = '';
             if ($joblst[$i+1] =~ /QUEUEING RESULT: (.+)/) {
@@ -271,7 +262,7 @@ sub update_jobID {
         }
     }
     if ($msg ne '') {
-        &email_error($msg);
+        Common::email_error("Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
     }
 }
 
@@ -283,11 +274,11 @@ sub update_jobStatus {
         push @joblst, @$tmp_ref;
     }
     my $joblst = join(" ", @joblst);
-    my $cmd = $GET_EXIT_STATUS . $HPF_RUNNING_FOLDER . " " . $sampleID . "-" . $postprocID . " " . $joblst . ' 2>/dev/null"';
+    my $cmd = $GET_EXIT_STATUS . $config->{'HPF_RUNNING_FOLDER'} . " " . $sampleID . "-" . $postprocID . " " . $joblst . ' 2>/dev/null"';
     print $cmd,"\n";
     @joblst = `$cmd`;
     for (my $i = 0; $i<$#joblst; $i++) {
-        if ($joblst[$i] =~ /^$HPF_RUNNING_FOLDER/) {
+        if ($joblst[$i] =~ /^$config->{'HPF_RUNNING_FOLDER'}/) {
             my $jobName = (split(/\//, $joblst[$i]))[-3]; 
             my $jobID = '';
             if ($joblst[$i+1] =~ /EXIT STATUS: (.+)/) {
@@ -297,7 +288,7 @@ sub update_jobStatus {
                 if ($1 ne '0' && exists $TRUNK_LIST{$jobName}) {
                     my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n";
                     print STDERR $msg;
-                    email_error($msg);
+                    Common::email_error("Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
                     $update_query = "UPDATE sampleInfo set currentStatus = '5', analysisFinishedTime = NOW(), displayed_at = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
                     $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                     $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
@@ -307,11 +298,11 @@ sub update_jobStatus {
                 elsif ($1 ne '0') {
                     my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n\n But it is not a trunk job, Please manually resubmit this job!\n";
                     print STDERR $msg;
-                    email_error($msg);
+                    Common::email_error("Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
                 }
                 # upate the time:
                 my $update_time = "UPDATE hpfJobStatus SET time = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND exitcode IS NULL";
-                my $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
+                $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                 $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
             }
         }
@@ -330,12 +321,12 @@ sub update_qualMetrics {
             push @joblst, @$tmp;
         }
         my $joblst = join(" ", @joblst);
-        my $cmd = "$SSHDATA $HPF_RUNNING_FOLDER $sampleID-$postprocID $joblst\"";
+        my $cmd = "$SSHDATA $config->{'HPF_RUNNING_FOLDER'} $sampleID-$postprocID $joblst\"";
         my @updates = `$cmd`;
         if ($? != 0) {
             my $msg = "There is an error running the following command:\n\n$cmd\n";
             print STDERR $msg;
-            email_error($msg);
+            Common::email_error("Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
             return 2;
         }
 
@@ -348,33 +339,4 @@ sub run_update {
         my $sthQUQ = $dbh->prepare($update_sql);
         $sthQUQ->execute();
     }
-}
-
-sub email_error {
-    my $errorMsg = shift;
-    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
-    print STDERR $errorMsg;
-    my $sender = Mail::Sender->new();
-    my $mail   = {
-        smtp                 => 'localhost',
-        from                 => 'notice@thing1.sickkids.ca',
-        to                   => 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca',
-        subject              => "Job Status on HPF",
-        ctype                => 'text/plain; charset=utf-8',
-        skip_bad_recipients  => 1,
-        msg                  => $errorMsg 
-    };
-    my $ret =  $sender->MailMsg($mail);
-}
-
-sub print_time_stamp {
-    my $retval = time();
-    my $yetval = $retval - 86400;
-    $yetval = localtime($yetval);
-    my $localTime = localtime( $retval );
-    my $time = Time::Piece->strptime($localTime, '%a %b %d %H:%M:%S %Y');
-    my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
-    print "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-    print STDERR "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-    return ($localTime->strftime('%Y%m%d'), $yetval->strftime('%Y%m%d'));
 }

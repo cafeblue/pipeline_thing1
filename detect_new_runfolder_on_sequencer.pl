@@ -54,7 +54,7 @@ sub update_database {
     my ($sourceFolder, $flowcellID, $cycleNum, $runinfo) = @_;
     $flowcellID = uc($flowcellID);
     my ($machine , $folder) = (split(/\//,$sourceFolder))[4,-1];
-    my $destDir = $config->{'RUN_BACKUP_FOLDER'} . $machine . '_' . $folder;
+    my $destDir = "/AUTOTESTING$config->{'RUN_BACKUP_FOLDER'}" . $machine . '_' . $folder;
     my $msg = "";
     my $test_exists = "SELECT * from thing1JobStatus where flowcellID = '" . $flowcellID . "'";
 

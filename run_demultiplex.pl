@@ -60,10 +60,10 @@ sub demultiplexInterOp {
     }
     Common::email_error("$machine $flowcellID demultiplex status", $msg, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
   }
-  my $demultiplexJobID = `echo "$demultiplexCmd" | "$config->{'JSUB'}" -b  $config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000`;
-  print "echo $demultiplexCmd | " . $config->{'JSUB'} . " -b $config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000\n";
+  my $demultiplexJobID = `echo "$demultiplexCmd" | "$config->{'JSUB'}" -b  /AUTOTESTING$config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000`;
+  print "echo $demultiplexCmd | " . $config->{'JSUB'} . " -b /AUTOTESTING$config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000\n";
   if ($demultiplexJobID =~ /(\d+).$config->{'THING1_NODE'}/) {
-    my $jlogFolder = $config->{'JSUB_LOG_FOLDER'} . '/' . $jobDir;
+    my $jlogFolder = "/AUTOTESTING$config->{'JSUB_LOG_FOLDER'}/$jobDir";
     my $update = "UPDATE thing1JobStatus SET demultiplexJobID = '" . $1 . "' , demultiplex = '2' , seqFolderChksum = '2', demultiplexJfolder = '" . $jlogFolder . "' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'";
     print "Demultiplex is starting: $update\n";
     my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
@@ -74,7 +74,7 @@ sub demultiplexInterOp {
 
   my $interOpJobDir = $jobDir;
   $interOpJobDir=~s/demultiplex_/interOp_/gi;
-  my $outputInterOpFile = $config->{'INTEROP_FOLDER'} . $machine . "_" . $flowcellID . ".txt";
+  my $outputInterOpFile = "/AUTOTESTING$config->{'INTEROP_FOLDER'}" . $machine . "_" . $flowcellID . ".txt";
   my $interOpCmd = "./interOp.pl $dbConfigFile  $folder  $flowcellID  $outputInterOpFile $machineType";
   print $interOpCmd,"\n";
   `$interOpCmd`;
