@@ -36,10 +36,10 @@ foreach my $flowcellID (keys %$sampleSheet) {
   }
 
   my $info = "The sample sheet has been generated successfully and can be found: /" . $machine . "_desktop/"  . $today . ".flowcell_" . $flowcellID . ".sample_sheet.csv OR\n ".  Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine). "/" . $today     . ".flowcell_" . $flowcellID . ".sample_sheet.csv";
-  Common::email_error("$flowcellID samplesheet" ,$info, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+  Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet" ,$info, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
 
   if ($cancer_samples_msg ne '') {
-    Common::email_error("$flowcellID samplesheet", $cancer_samples_msg, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet", $cancer_samples_msg, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
   }
 }
 
@@ -53,9 +53,9 @@ sub write_samplesheet {
       $flowcellID = $line->{'flowcell_ID'};
     }
   }
-  my $file = "/AUTOTESTING" . Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
+  my $file = Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
   if (-e $file) {
-    Common::email_error("$flowcellID samplesheet already exists", "ignored...\n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet already exists", "ignored...\n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   print $output; open (CSV, ">$file") or croak "failed to open file $file"; print CSV $output; close(CSV); return 0;
@@ -71,9 +71,9 @@ sub write_samplesheet_miseq {
     $flowcellID = $line->{'flowcell_ID'};
   }
 
-  my $file = "/AUTOTESTING" . Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
+  my $file = Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
   if (-e $file) {
-    Common::email_error("$flowcellID samplesheet already exists", "ignored...\n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet already exists", "ignored...\n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   print $output; open (CSV, ">$file") or croak "failed to open file $file"; print CSV $output; close(CSV); return 0;

@@ -40,7 +40,7 @@ foreach my $id (keys %genePanelID) {
 }
 
 #print STDERR "msg=$msg\n";
-Common::email_error("Sample Interpretation Statistics",$msg,"NA",$today,"NA", Common::get_config($dbh, "EMAIL_WARNINGS"));
+Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Sample Interpretation Statistics",$msg,"NA",$today,"NA", Common::get_config($dbh, "EMAIL_WARNINGS"));
 
 sub count {
   my ($gpID, $status) = @_;

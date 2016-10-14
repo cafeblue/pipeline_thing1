@@ -68,7 +68,7 @@ foreach my $ref (@$demultiplex_ref) {
 
 if ($allerr ne '') {
     print STDERR $allerr;
-    Common::email_error("Error on chksum for fastq", $allerr, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'} );
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $allerr, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'} );
 }
 Common::cronControlPanel($dbh, 'chksum_fastq', "STOP");
 
@@ -76,12 +76,12 @@ sub checksum_fastq {
     my ($machine, $flowcellID) = @_;
     my %sampleID_lst = ();
 
-    my $total_sampleNum = `ls /AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/*_L001_R1_001.fastq.gz|wc -l`;
+    my $total_sampleNum = `ls $config->{'FASTQ_FOLDER'}$machine\_$flowcellID/*_L001_R1_001.fastq.gz|wc -l`;
     chomp($total_sampleNum);
     $total_sampleNum--;
     ####### rename the fastq files 
     for my $id (1..$total_sampleNum) {
-        my @files = `ls /AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/*_S$id\_L00?_R1_001.fastq.gz `;
+        my @files = `ls $config->{'FASTQ_FOLDER'}$machine\_$flowcellID/*_S$id\_L00?_R1_001.fastq.gz `;
         chomp(@files);
         foreach my $loca (@files) {
             my $filename = (split(/\//, $loca))[-1];
@@ -89,17 +89,17 @@ sub checksum_fastq {
                 my $sampleID = $1;
                 $sampleID_lst{$sampleID} = 0;
                 my $order = $2;
-                my $cmd = "mv $loca /AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/$sampleID\_$flowcellID\_R1_$order\.fastq.gz";
+                my $cmd = "mv $loca $config->{'FASTQ_FOLDER'}$machine\_$flowcellID/$sampleID\_$flowcellID\_R1_$order\.fastq.gz";
                 print $cmd,"\n";
                 `$cmd`;
                 $loca =~ s/_R1_001\.fastq\.gz/_R2_001\.fastq\.gz/;
-                $cmd = "mv $loca /AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/$sampleID\_$flowcellID\_R2_$order\.fastq.gz";
+                $cmd = "mv $loca $config->{'FASTQ_FOLDER'}$machine\_$flowcellID/$sampleID\_$flowcellID\_R2_$order\.fastq.gz";
                 print $cmd,"\n";
                 `$cmd`;
             }
             else {
                 my $msg = "file $loca in error format, rename file aborted\n";
-                Common::email_error("Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+                Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
                 Common::cronControlPanel($dbh, 'chksum_fastq', "STOP");
                 die "$msg\n";
             }
@@ -114,7 +114,7 @@ sub checksum_fastq {
         my $msg = "";
         while (my @data_ref = $sthQNS->fetchrow_array) {
             if (not exists $sampleID_lst{$data_ref[0]}) {
-                my $msg .= "SampleID: " . $data_ref[0] . " can't be found under the folder of /AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID\n ";
+                my $msg .= "SampleID: " . $data_ref[0] . " can't be found under the folder of $config->{'FASTQ_FOLDER'}$machine\_$flowcellID\n ";
             }
             else {
                 delete($sampleID_lst{$data_ref[0]});
@@ -122,26 +122,26 @@ sub checksum_fastq {
         }
         if (scalar(keys %sampleID_lst) != 0) {
             my $missed_samples = join(",", keys %sampleID_lst) . " missed in the table sampleSheet for $flowcellID \n " ;
-            Common::email_error("Error on chksum for fastq", $missed_samples, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $missed_samples, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
             Common::cronControlPanel($dbh, 'chksum_fastq', "STOP");
             die $missed_samples;
         }
         if ($msg ne "") {
-            Common::email_error("Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
             Common::cronControlPanel($dbh, 'chksum_fastq', "STOP");
             die $msg;
         }
     }
 
     ####### checksum for fastq files
-    my @gz_files = `ls /AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/*_$flowcellID\_*.fastq.gz`;
+    my @gz_files = `ls $config->{'FASTQ_FOLDER'}$machine\_$flowcellID/*_$flowcellID\_*.fastq.gz`;
     my @all_fastq_names = ();
     my @commands;
     chomp(@gz_files);
     foreach my $source ( @gz_files ) {
         my $filename = (split(/\//, $source))[-1];
         push @all_fastq_names, $filename;
-        my $cmd = "cd /AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/ ; sha256sum $filename > $filename.sha256sum";
+        my $cmd = "cd $config->{'FASTQ_FOLDER'}$machine\_$flowcellID/ ; sha256sum $filename > $filename.sha256sum";
         push @commands, $cmd;
     }
     &multiprocess(\@commands, 6);
@@ -152,29 +152,29 @@ sub checksum_fastq {
         my $tmp_sID = (split(/_$flowcellID/))[0];
         $sampleIDs{$tmp_sID} = 0;
     }
-    `$SSHCMD "mkdir $config->{'FASTQ_HPF'}/AUTOTESTING/$flowcellID"`;
-    print "$SSHCMD \"mkdir $config->{'FASTQ_HPF'}/AUTOTESTING/$flowcellID\"\n";
+    `$SSHCMD "mkdir $config->{'FASTQ_HPF'}$flowcellID"`;
+    print "$SSHCMD \"mkdir $config->{'FASTQ_HPF'}$flowcellID\"\n";
     my $msg = "";
     if ($? != 0 ) {
-        $msg .= "error sshmsg: create directory $config->{'FASTQ_HPF'}/AUTOTESTING/$flowcellID on hpf failed with error code: $?\n";
+        $msg .= "error sshmsg: create directory $config->{'FASTQ_HPF'}$flowcellID on hpf failed with error code: $?\n";
     }
     foreach my $sampleID ( keys %sampleIDs ) {
-        `$SSHCMD "mkdir $config->{'FASTQ_HPF'}/AUTOTESTING/$flowcellID/Sample_$sampleID"`;
-        print "$SSHCMD \"mkdir $config->{'FASTQ_HPF'}/AUTOTESTING/$flowcellID/Sample_$sampleID\"\n";
+        `$SSHCMD "mkdir $config->{'FASTQ_HPF'}$flowcellID/Sample_$sampleID"`;
+        print "$SSHCMD \"mkdir $config->{'FASTQ_HPF'}$flowcellID/Sample_$sampleID\"\n";
         if ( $? != 0 ) {
-            $msg .= "error ssh msg: create directory $config->{'FASTQ_HPF'}/AUTOTESTING/$flowcellID/Sample_$sampleID for $machine, $flowcellID on hpf failed with error code: $?\n";
+            $msg .= "error ssh msg: create directory $config->{'FASTQ_HPF'}$flowcellID/Sample_$sampleID for $machine, $flowcellID on hpf failed with error code: $?\n";
         }
-        `$RSYNCCMD /AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/$sampleID\_* wei.wang\@data1.ccm.sickkids.ca:$config->{'FASTQ_HPF'}/AUTOTESTING/$flowcellID/Sample_$sampleID `;
-        print "$RSYNCCMD /AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/$sampleID\_* wei.wang\@data1.ccm.sickkids.ca:$config->{'FASTQ_HPF'}/AUTOTESTING/$flowcellID/Sample_$sampleID \n";
+        `$RSYNCCMD $config->{'FASTQ_FOLDER'}$machine\_$flowcellID/$sampleID\_* wei.wang\@data1.ccm.sickkids.ca:$config->{'FASTQ_HPF'}$flowcellID/Sample_$sampleID `;
+        print "$RSYNCCMD $config->{'FASTQ_FOLDER'}$machine\_$flowcellID/$sampleID\_* wei.wang\@data1.ccm.sickkids.ca:$config->{'FASTQ_HPF'}$flowcellID/Sample_$sampleID \n";
         if ( $? != 0 ) {
             $msg .= "error rsync msg: $sampleID, $machine, $flowcellID, $?\n";
-            Common::email_error("Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
             Common::cronControlPanel($dbh, 'chksum_fastq', "STOP");
             die $msg,"\n";
         }
     }
     if ($msg ne '') {
-        Common::email_error("Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
     }
 }
 

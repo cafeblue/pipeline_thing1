@@ -50,7 +50,7 @@ foreach my $idpair (@$idpair_ref) {
         if ($? != 0) {
             my $msg = "remove the running folder " . $config->{'HPF_RUNNING_FOLDER'} . " " . $$idpair[0] . "-" . $$idpair[1] . " which idled over 30 hours failed with errorcode: $?\n";
             print STDERR $msg;
-            Common::email_error("Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
             next;
         }
         my $update_CS = "UPDATE sampleInfo set currentStatus = '0' where sampleID = '$$idpair[0]' and postprocID = '$$idpair[1]'";
@@ -59,7 +59,7 @@ foreach my $idpair (@$idpair_ref) {
         $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
         my $msg = "Jobs failed to be submitted of sampleID: " . $$idpair[0] . " postprocID: " . $$idpair[1] . ". Re-submission will be running within 10 min.\n";
         print STDERR $msg;
-        Common::email_error("Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
     }
     # resume from the stuck job:
     elsif (&check_idle_jobs(@$idpair) == 1) {
@@ -146,7 +146,7 @@ sub check_idle_jobs {
             $msg .= "\tjobName " . $dataS[0] . " idled over 4 hours...\n";
             $msg .= "\nIf this jobs can't be finished in 2 hours, this job together with the folloiwng joibs  will be re-submitted!!!\n";
             print STDERR $msg;
-            Common::email_error("Job is idle on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job is idle on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
             return 0;
         }
     }
@@ -206,7 +206,7 @@ sub resume_stuck_jobs {
     else {
         $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, but the resubmission is NOT going to run, please re-submit the job by manual!\n";
     }
-    Common::email_error("Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
 }
 
 sub check_idle_bwa {
@@ -229,7 +229,7 @@ sub check_idle_bwa {
 
     if ($msg ne '') {
         print STDERR $msg;
-        Common::email_error("Job is idle on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job is idle on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
     }
 }
 
@@ -262,7 +262,7 @@ sub update_jobID {
         }
     }
     if ($msg ne '') {
-        Common::email_error("Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
     }
 }
 
@@ -288,7 +288,7 @@ sub update_jobStatus {
                 if ($1 ne '0' && exists $TRUNK_LIST{$jobName}) {
                     my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n";
                     print STDERR $msg;
-                    Common::email_error("Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+                    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
                     $update_query = "UPDATE sampleInfo set currentStatus = '5', analysisFinishedTime = NOW(), displayed_at = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
                     $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                     $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
@@ -298,7 +298,7 @@ sub update_jobStatus {
                 elsif ($1 ne '0') {
                     my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n\n But it is not a trunk job, Please manually resubmit this job!\n";
                     print STDERR $msg;
-                    Common::email_error("Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+                    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
                 }
                 # upate the time:
                 my $update_time = "UPDATE hpfJobStatus SET time = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND exitcode IS NULL";
@@ -326,7 +326,7 @@ sub update_qualMetrics {
         if ($? != 0) {
             my $msg = "There is an error running the following command:\n\n$cmd\n";
             print STDERR $msg;
-            Common::email_error("Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
             return 2;
         }
 

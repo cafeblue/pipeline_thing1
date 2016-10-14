@@ -12,8 +12,8 @@ use Mail::Sender;
 
 our $VERSION = 1.00;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(print_time_stamp check_name email_error get_config);
-our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_config &get_value &month_time_stamp)],);
+our @EXPORT_OK = qw(print_time_stamp check_name email_error get_all_config);
+our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_all_config &get_value &month_time_stamp)],);
 
 sub connect_db {
   my ($dbCFile) = @_;
@@ -66,22 +66,16 @@ sub check_name {
 }
 
 sub email_error {
-  my ($email_subject, $info, $machine, $today, $flowcellID, $mail_lst) = @_;
+  my ($email_subject_prefix, $email_content_prefix, $email_subject, $info, $machine, $today, $flowcellID, $mail_lst) = @_;
   my $sender = Mail::Sender->new();
-  if ($mail_lst=~"ERROR" || !defined($mail_lst)) {
-    $mail_lst = get_config("EMAIL_WARNINGS");
-  }
-  if ($machine ne "NA") {
-    $info = $info . "\n\nmachine : " .$machine. "\nflowcell :" . $flowcellID;
-  }
-  $info = $info . "\n\n/AUTOTESTING\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
+  $info = $info . "$email_content_prefix Do not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
   print STDERR "COMMON MODULE EMAIL_ERROR info=$info\n";
 
   my $mail = {
               smtp                 => 'localhost',
               from                 => 'notice@thing1.sickkids.ca',
               to                   => $mail_lst,
-              subject              => "/AUTOTESTING " . $email_subject,
+              subject              => $email_subject_prefix . $email_subject,
               ctype                => 'text/plain; charset=utf-8',
               skip_bad_recipients  => 1,
               msg                  => $info
@@ -205,6 +199,7 @@ sub get_RunInfo {
 
 sub cronControlPanel {
   my ($dbh, $column, $status) = @_;
+  my $config = &get_all_config($dbh);
   # get or write to column sequencer_RF
   if ($column eq 'sequencer_RF') {
     if ($status ne '') {
@@ -232,7 +227,7 @@ sub cronControlPanel {
       $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
       my @status = $sthUDP->fetchrow_array();
       if ($status[0] eq '1') {
-        &email_error("WARNINGS", "$column is still running, aborting...\n", "NA", "NA", "NA", 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca' );
+        &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "WARNINGS", "$column is still running, aborting...\n", "NA", "NA", "NA", 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca' );
         exit;
       }
       elsif ($status[0] eq '0') {
@@ -328,7 +323,7 @@ sub get_pipelinever {
   chomp(@commit_tag);
   my $hpf_ver = join('(',@commit_tag) . ")";
 
-  $cmd = "cd /AUTOTESTING$config->{'PIPELINE_THING1_ROOT'} ; git tag | tail -1 ; git log -1 | head -1 |cut -b 8-14";
+  $cmd = "cd $config->{'PIPELINE_THING1_ROOT'} ; git tag | tail -1 ; git log -1 | head -1 |cut -b 8-14";
   @commit_tag = `$cmd`;
   if ($? != 0) {
     $msg .= "get the commit and tag failed from Thing1 with the errorcode $?\n";
@@ -344,7 +339,7 @@ sub get_pipelinever {
   chomp(@commit_tag);
   my $web_ver = join('(',@commit_tag) . ")";
 
-  &email_error("Get pipeline version failed.", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'}) if $msg ne '';
+  &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "Get pipeline version failed.", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'}) if $msg ne '';
   return($thing1_ver, $hpf_ver, $web_ver);
 }
 
@@ -357,7 +352,7 @@ sub get_sequencing_qual_stat {
     my $sub_flowcellID = (split(/_/,$destDir))[-1];
     $sub_flowcellID = $machine =~ "miseq" ? $flowcellID : substr $sub_flowcellID, 1 ;
 
-    my $demuxSummaryFile = "/AUTOTESTING$config->{'FASTQ_FOLDER'}/$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
+    my $demuxSummaryFile = "$config->{'FASTQ_FOLDER'}$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
     if (! -e "$demuxSummaryFile") {
       &mail_error("Job Status on thing1 for update sample info", "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n", $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
       croak "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n";
@@ -414,7 +409,7 @@ sub get_sequencing_qual_stat {
     }
   } else {
     my $msg = "No sampleID found in table sampleSheet for $machine of $flowcellID\n\n Please check the table carefully \n $query";
-    &email_error("Job Status on thing1 for update sample info", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+    &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "Job Status on thing1 for update sample info", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
     die $msg;
   }
 }

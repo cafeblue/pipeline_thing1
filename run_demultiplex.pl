@@ -30,11 +30,11 @@ foreach my $ref (@$machine_flowcellID_cycles_ref) {
     print "sequencing failed: $update\n";
     my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
     $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
-    Common::email_error("$machine $flowcellID run status","$folder failed. The final cycle number, $finalcycles does not equal to the initialed cycle number $cycles \n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID run status","$folder failed. The final cycle number, $finalcycles does not equal to the initialed cycle number $cycles \n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
   } else {
     my $update = "UPDATE thing1JobStatus SET sequencing = '1' where destinationDir = '" . $folder . "'";
     print "sequencing finished: $update\n";
-    Common::email_error("$machine $flowcellID run status","Sequencing finished successfully, demultiplexing is starting...\n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID run status","Sequencing finished successfully, demultiplexing is starting...\n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
     my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
     $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
     &demultiplexInterOp($folder, $machine, $flowcellID, $runinfo->{'NumCycles'}->[0], $runinfo->{'NumCycles'}->[2]);
@@ -46,11 +46,11 @@ sub demultiplexInterOp {
   my $machineType = $machine;
   $machineType =~ s/_.+//;
   my $samplesheet = &create_sample_sheet($machine, $flowcellID, $cycle1, $cycle2);
-  my $outputfastqDir = "/AUTOTESTING$config->{'FASTQ_FOLDER'}/" . $machine . "_" . $flowcellID;
+  my $outputfastqDir = "$config->{'FASTQ_FOLDER'}" . $machine . "_" . $flowcellID;
   my $demultiplexCmd = "bcl2fastq -R $folder -o $outputfastqDir --sample-sheet $samplesheet";
   my $jobDir = "demultiplex_" . $machine . '_' . $flowcellID . "_" . $currentTime;
   # check jsub log
-  my $jsubChkCmd = "ls -d /AUTOTESTING$config->{'JSUB_LOG_FOLDER'}/demultiplex_$machine\_$flowcellID\_* 2>/dev/null";
+  my $jsubChkCmd = "ls -d $config->{'JSUB_LOG_FOLDER'}demultiplex_$machine\_$flowcellID\_* 2>/dev/null";
   my @jsub_exists_folders = `$jsubChkCmd`;
   if ($#jsub_exists_folders >= 0) {
     my $msg = "folder:\n" . join("", @jsub_exists_folders) . "already exist. These folders will be deleted.\n\n";
@@ -58,28 +58,28 @@ sub demultiplexInterOp {
       $msg .= "rm -rf $extfolder\n";
       `rm -rf $extfolder`;
     }
-    Common::email_error("$machine $flowcellID demultiplex status", $msg, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status", $msg, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
   }
-  my $demultiplexJobID = `echo "$demultiplexCmd" | "$config->{'JSUB'}" -b  /AUTOTESTING$config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000`;
-  print "echo $demultiplexCmd | " . $config->{'JSUB'} . " -b /AUTOTESTING$config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000\n";
+  my $demultiplexJobID = `echo "$demultiplexCmd" | "$config->{'JSUB'}" -b  $config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000`;
+  print "echo $demultiplexCmd | " . $config->{'JSUB'} . " -b $config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000\n";
   if ($demultiplexJobID =~ /(\d+).$config->{'THING1_NODE'}/) {
-    my $jlogFolder = "/AUTOTESTING$config->{'JSUB_LOG_FOLDER'}/$jobDir";
+    my $jlogFolder = "$config->{'JSUB_LOG_FOLDER'}$jobDir";
     my $update = "UPDATE thing1JobStatus SET demultiplexJobID = '" . $1 . "' , demultiplex = '2' , seqFolderChksum = '2', demultiplexJfolder = '" . $jlogFolder . "' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'";
     print "Demultiplex is starting: $update\n";
     my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
     $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
   } else {
-    Common::email_error("$machine $flowcellID demultiplex status", "Demultiplexing job failed to be submitted.", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status", "Demultiplexing job failed to be submitted.", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
   }
 
   my $interOpJobDir = $jobDir;
   $interOpJobDir=~s/demultiplex_/interOp_/gi;
-  my $outputInterOpFile = "/AUTOTESTING$config->{'INTEROP_FOLDER'}" . $machine . "_" . $flowcellID . ".txt";
+  my $outputInterOpFile = "$config->{'INTEROP_FOLDER'}" . $machine . "_" . $flowcellID . ".txt";
   my $interOpCmd = "./interOp.pl $dbConfigFile  $folder  $flowcellID  $outputInterOpFile $machineType";
   print $interOpCmd,"\n";
   `$interOpCmd`;
   if ($? != 0) {
-    Common::email_error("$machine $flowcellID interOp status", "interOp Job failed with exitcode $?", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID interOp status", "interOp Job failed with exitcode $?", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
   } 
 }
 
@@ -90,7 +90,7 @@ sub create_sample_sheet {
   my $errlog = "";
   my @old_samplesheet = ();
 
-  my $filename = "/AUTOTESTING$config->{'SAMPLE_SHEET'}/$machine\_$flowcellID.csv";
+  my $filename = "$config->{'SAMPLE_SHEET'}$machine\_$flowcellID.csv";
   if ( -e "$filename" ) {
     $errlog .= "samplesheet already exists: $filename\n";
     @old_samplesheet = `tail -n +2  $filename`;
@@ -115,7 +115,7 @@ sub create_sample_sheet {
       }
     }
   } else {
-    Common::email_error("$machine $flowcellID demultiplex status","No sampleID could be found for $flowcellID in the database, table sampleSheet", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status","No sampleID could be found for $flowcellID in the database, table sampleSheet", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
     croak "no sample could be found for $flowcellID \n";
   }
 
@@ -135,10 +135,10 @@ sub create_sample_sheet {
   }
 
   if ($check_ident == 1) {
-    Common::email_error("$machine $flowcellID demultiplex status",$errlog, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status",$errlog, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
     croak $errlog;
   } elsif ($check_ident == 0 && $errlog ne '') {
-    Common::email_error("$machine $flowcellID demultiplex status",$errlog, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status",$errlog, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
     return $filename;
   }
 

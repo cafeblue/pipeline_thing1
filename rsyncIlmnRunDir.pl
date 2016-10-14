@@ -29,7 +29,7 @@ sub rsync_folders {
             if ($? != 0) {
                 my $msg = "rsync $runs[0] to $runs[1] failed with the error code $?\n";
                 print STDERR "$msg";
-                Common::email_error("rsync Error", $msg, "NA", "NA", $runs[2], $config->{'EMAIL_WARNINGS'});
+                Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "rsync Error", $msg, "NA", "NA", $runs[2], $config->{'EMAIL_WARNINGS'});
             }
         }
     }
@@ -48,7 +48,7 @@ sub check_failed_flowcell {
             my $sthUDP = $dbh->prepare($update) or die "Can't update database by $update: " . $dbh->errstr() . "\n";
             $sthUDP->execute() or die "Can't execute update $update: " . $dbh->errstr() . "\n";
             print STDERR "$msg";
-            Common::email_error("Sequencing Error", $msg, "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Sequencing Error", $msg, "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
         }
     }
 }

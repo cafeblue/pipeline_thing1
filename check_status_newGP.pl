@@ -65,7 +65,7 @@ sub check_pipeline_status {
   $sth_command->execute() or $allerr .= "Can't execute query database table '$chk_command' hpfJobStatus: ". $dbh->errstr() . "\n";
   if ($sth_command->rows() < 1) {
     $allerr .= "No lines found in table hpfJobStatus for sampleID $sampleID postprocID $postprocID, the new GenePanel submission should be failed!\n";
-    Common::email_error("Job Status on thing1 for submit2HPF", $allerr, "NA", $today, "NA", "ERROR");
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on thing1 for submit2HPF", $allerr, "NA", $today, "NA", "ERROR");
     exit(0);
   }
   while (my @data_ref = $sth_command->fetchrow_array) {
@@ -86,7 +86,7 @@ sub final_step {
   if ($? != 0) {
     my $msg = "There is an error running the following command:\n\n$cmd\n";
     print STDERR $msg;
-    Common::email_error("Job Status on thing1 for submit2HPF", $msg, "NA", $today, "NA", "ERROR");
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on thing1 for submit2HPF", $msg, "NA", $today, "NA", "ERROR");
     exit(0);
   }
   &run_update(@updates);
@@ -152,7 +152,7 @@ sub update_jobID {
     }
   }
   if ($msg ne '') {
-    Common::email_error("Job Status on thing1 for submit2HPF", $msg, "NA", $today, "NA", "ERROR");
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on thing1 for submit2HPF", $msg, "NA", $today, "NA", "ERROR");
   }
 }
 
@@ -178,7 +178,7 @@ sub update_jobStatus {
         if ($1 ne '0') {
           my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n\n But it is new Gene Panel run, Please manually resubmit this job!\n";
           print STDERR $msg;
-          Common::email_error("Job Status on thing1 for submit2HPF", $msg, "NA", $today, "NA", "ERROR");
+          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on thing1 for submit2HPF", $msg, "NA", $today, "NA", "ERROR");
         }
         # upate the time:
         my $update_time = "UPDATE hpfJobStatus SET time = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND exitcode IS NULL";

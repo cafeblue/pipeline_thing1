@@ -39,7 +39,7 @@ sub update_table {
         my $msg = "sampleID $sampleID on flowcellID $flowcellID already exists in table sampleInfo, the following rows will be deleted!!!\n";
         my $hash = $sthQNS->fetchall_hashref('sampleID');
         $msg .= Dumper($hash);
-        Common::email_error("Job Status on thing1 for update sample info", $msg, "Unkonwn", $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on thing1 for update sample info", $msg, "Unkonwn", $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
         my $delete_sql = "DELETE FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";
         $dbh->do($delete_sql);
       }
@@ -59,7 +59,7 @@ sub update_table {
       ### sampleID QC ###
       $qc_message .= Common::qc_sample($sampleID, $machineType, $ck, $table_ref->{$sampleID}, $dbh);
   }
-  Common::email_error("QC warnings for flowcellID $flowcellID", $qc_message, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'}) if $qc_message ne '';
+  Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "QC warnings for flowcellID $flowcellID", $qc_message, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'}) if $qc_message ne '';
 }
 
 sub get_chksum_list {

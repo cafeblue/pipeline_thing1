@@ -73,7 +73,7 @@ sub check_sequencer_connections {
     }
   }
   if ($errorMsg ne '') {
-    Common::email_error("Job Status on HPF",$errorMsg,"NA",$today,"NA","EMAIL_WARNINGS");
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on HPF",$errorMsg,"NA",$today,"NA","EMAIL_WARNINGS");
   }
   return 0;
 }
@@ -85,11 +85,11 @@ sub check_disk_space_on_hpf {
   if ($percentage =~ /(\d+)\%/) {
     if ($1 >= 90) {
       my $errorMsg = "Warning!!!   Disk usage on HPF is greater than $1\% now, please delete the useless files\n\n $lastline";
-      Common::email_error("Job Status on HPF",$errorMsg,"NA",$today,"NA","EMAIL_WARNINGS");
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on HPF",$errorMsg,"NA",$today,"NA","EMAIL_WARNINGS");
     }
   } else {
     my $errorMsg = "Failed to get the percentage of the free space on HPF\n please run the df again on HPF\n";
-    Common::email_error("Job Status on HPF",$errorMsg,"NA",$today,"NA","EMAIL_WARNINGS");
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on HPF",$errorMsg,"NA",$today,"NA","EMAIL_WARNINGS");
   }
   return 0;
 }

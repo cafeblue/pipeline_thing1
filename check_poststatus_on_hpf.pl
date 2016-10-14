@@ -82,7 +82,7 @@ sub check_toolong_jobs {
       $msg .= "SampleID ". $dataS[0] . " postprocID " . $dataS[1] . " jobName " . $dataS[2] . " jobID " . $dataS[3] . " have been running over 24 hours after the snpEff finished. please double check!\n";
       print STDERR $msg;
     }
-    Common::email_error($msg,"HPF Jobs Running > 24hrs","NA",$today,"NA","ERROR");
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $msg,"HPF Jobs Running > 24hrs","NA",$today,"NA","ERROR");
   }
 }
 
@@ -102,7 +102,7 @@ sub update_jobStatus {
         if ($1 ne '0') {
           my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n\n But it is not an important job, Please manually resubmit this job!\n";
           print STDERR $msg;
-          Common::email_error($msg,"Failure of Branch Jobs on HPF","NA",$today,"NA","ERROR");
+          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $msg,"Failure of Branch Jobs on HPF","NA",$today,"NA","ERROR");
         }
       }
     }

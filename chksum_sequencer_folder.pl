@@ -20,28 +20,28 @@ foreach my $ref (@$demultiplex_ref) {
     my ($flowcellID, $machine, $runDir, $destinationDir) = @$ref;
     my $commandout;
 
-    if ( -s "/AUTOTESTING$config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256" ) {
-        print "cd $runDir ; sha256sum -c /AUTOTESTING$config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256 | grep -i failed\n";
-        $commandout = `cd $runDir ; sha256sum -c /AUTOTESTING$config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256 | grep -i failed`;
+    if ( -s "$config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256" ) {
+        print "cd $runDir ; sha256sum -c $config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256 | grep -i failed\n";
+        $commandout = `cd $runDir ; sha256sum -c $config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256 | grep -i failed`;
     }
     else {
-        print "cd $destinationDir ; find . -type f \\( ! -iname \"IndexMetricsOut.bin\" ! -iname \"*omplete*\" \\) -print0 | xargs -0 sha256sum > /AUTOTESTING$config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256\n";
-        `cd $destinationDir ; find . -type f \\( ! -iname "IndexMetricsOut.bin"  ! -iname "*omplete*" \\) -print0 | xargs -0 sha256sum > /AUTOTESTING$config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256`;
+        print "cd $destinationDir ; find . -type f \\( ! -iname \"IndexMetricsOut.bin\" ! -iname \"*omplete*\" \\) -print0 | xargs -0 sha256sum > $config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256\n";
+        `cd $destinationDir ; find . -type f \\( ! -iname "IndexMetricsOut.bin"  ! -iname "*omplete*" \\) -print0 | xargs -0 sha256sum > $config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256`;
         if ($? != 0) {
             my $msg = "chksum of machine $machine flowcellID $flowcellID failed. it may be caused by the sequencer restarted.\n\n";
             $msg .= "If you received this email multiple times, something weird happened!\n";
             $msg .= "\n\nThis email is from thing1 pipelineV5.\n";
-            Common::email_error("Error on chksum for sequencer folder", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for sequencer folder", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
             next;
         }
-        print "cd $runDir ; sha256sum -c /AUTOTESTING$config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256 | grep -i failed\n";
-        $commandout = `cd $runDir ; sha256sum -c /AUTOTESTING$config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256 | grep -i failed`;
+        print "cd $runDir ; sha256sum -c $config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256 | grep -i failed\n";
+        $commandout = `cd $runDir ; sha256sum -c $config->{'RUN_CHKSUM_DIR'}$machine.$flowcellID.sha256 | grep -i failed`;
     }
     my $msg = "";
     if ($commandout =~ /FAILED/) {
         $msg .= "chksums of folder $runDir and folder $destinationDir are not identical!!!\n";
         $msg .= "\n\nThis email is from thing1 pipelineV5.\n";
-        Common::email_error("Error on chksum for sequencer folder", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for sequencer folder", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
         my $update = "UPDATE thing1JobStatus SET  seqFolderChksum = '0' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'"; 
         my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
         $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
