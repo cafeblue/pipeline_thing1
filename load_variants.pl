@@ -1,42 +1,35 @@
 #! /bin/env perl
 
 use strict;
+use warning;
+use lib './lib';
 use DBI;
-use Time::localtime;
-use Time::ParseDate;
-use Time::Piece;
 use Mail::Sender;
+use Thing1::Common qw(:All);
+use Carp qw(croak);
 
-##########################################
-#######    CONSTANT VARIABLES     ########
-##########################################
+my $dbConfigFile = $ARGV[0];
+my $dbh = Common::connect_db($dbConfigFile);
 
-#read in from a config file
-my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5.txt";
+my $RSYNCCMD_FILE = Common::get_config($dbh, "RSYNCCMDFILE");
+my $HPF_BACKUP_FOLDER = Common::get_config($dbh, "HPF_BACKUP_FOLDER");
+my $THING1_BACKUP_DIR = Common::get_config($dbh, "THING1_BACKUP_DIR");
+my $VARIANTS_EXCEL_DIR = Common::get_config($dbh, "VARIANTS_EXCEL_DIR");
+my $NO_ALLELE_FREQ = Common::get_config($dbh, "NO_ALLELE_FREQ");
+my $YES_STRING = Common::get_config($dbh,"YES");
+my $NO_STRING = Common::get_config($dbh,"NO");
 
-my ($RSYNCFILE, $HPF_BACKUP_FOLDER, $THING1_BACKUP_DIR,$VARIANTS_EXCEL_DIR,$host,$port,$user,$pass,$db, $msg,$cvgHomCutoff,$cvgHetCutoff, $hetRatioHigh, $hetRatioLow, $homRatioLow) = &read_in_config($configFile);
+###read the add_flags coverage from the database HAVE NOT DONE YET
+#my ($RSYNCFILE, $HPF_BACKUP_FOLDER, $THING1_BACKUP_DIR,$VARIANTS_EXCEL_DIR,$host,$port,$user,$pass,$db, $msg,$cvgHomCutoff,$cvgHetCutoff, $hetRatioHigh, $hetRatioLow, $homRatioLow) = &read_in_config($configFile);
 
 my $RSYNCCMD = "rsync -Lav -e 'ssh -i " . $RSYNCFILE ."' ";
-# my $HPF_BACKUP_FOLDER = '/hpf/largeprojects/pray/clinical/backup_files_v5/variants';
-# my $THING1_BACKUP_DIR = '/localhd/data/thing1/variants';
-# my $VARIANTS_EXCEL_DIR = '/localhd/sample_variants/filter_variants_excel_v5/';
-my %interpretationHistory = ( '0' => 'Not yet viewed: ', '1' => 'Select: ', '2' => 'Pathogenic: ', '3' => 'Likely Pathogenic: ', '4' => 'VUS: ', '5' => 'Likely Benign: ', '6' => 'Benign: ', '7' => 'Unknown: ');
-my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
-
-
-# open the accessDB file to retrieve the database name, host name, user name and password
-# open(ACCESS_INFO, "</home/llau/.thing1test.cnf") || die "Can't access login credentials";
-# my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
-# close(ACCESS_INFO);
-# chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
 
 ###########################################
 #######         Main                 ######
 ###########################################
 my $idpair_ref = &check_goodQuality_samples;
 &loadvariants_status('START');
-my ($today, $todayDate, $yesterdayDate) = &print_time_stamp;
+my ($dummy, $yesterdayDate, $todayDate, $yesterdayDate, $dummy2,$today) = Common::print_time_stamp();
 foreach my $idpair (@$idpair_ref) {
   if (&rsync_files(@$idpair) != 0) {
     &updateDB(1,@$idpair);
@@ -147,35 +140,35 @@ sub loadVariants2DB {
     $lines_ref->{"PolyPhen Prediction"} =  &code_polyphen_prediction($lines_ref->{"PolyPhen Prediction"});
     $lines_ref->{"Sift Prediction"} =  &code_sift_prediction($lines_ref->{"Sift Prediction"});
     $lines_ref->{"Mutation Taster Prediction"} =  &code_mutation_taster_prediction($lines_ref->{"Mutation Taster Prediction"});
-    $lines_ref->{"CG 46 Unrelated Allele Frequency"} = ($lines_ref->{"CG 46 Unrelated Allele Frequency"} && $lines_ref->{"CG 46 Unrelated Allele Frequency"} ne "") ? $lines_ref->{"CG 46 Unrelated Allele Frequency"} : "0.00";
-    $lines_ref->{"ESP ALL Allele Frequency"} = ($lines_ref->{"ESP ALL Allele Frequency"} && $lines_ref->{"ESP ALL Allele Frequency"} ne "") ? $lines_ref->{"ESP ALL Allele Frequency"} : "0.00";
-    $lines_ref->{"ESP African Americans Allele Frequency"} = ($lines_ref->{"ESP African Americans Allele Frequency"} && $lines_ref->{"ESP African Americans Allele Frequency"} ne "") ? $lines_ref->{"ESP African Americans Allele Frequency"} : "0.00";
-    $lines_ref->{"ESP European American Allele Frequency"} = ($lines_ref->{"ESP European American Allele Frequency"} && $lines_ref->{"ESP European American Allele Frequency"} ne "") ? $lines_ref->{"ESP European American Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G All Allele Frequency"} = ($lines_ref->{"1000G All Allele Frequency"} && $lines_ref->{"1000G All Allele Frequency"} ne "") ? $lines_ref->{"1000G All Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G African Allele Frequency"} = ($lines_ref->{"1000G African Allele Frequency"} && $lines_ref->{"1000G African Allele Frequency"} ne "") ? $lines_ref->{"1000G African Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G American Allele Frequency"} = ($lines_ref->{"1000G American Allele Frequency"} && $lines_ref->{"1000G American Allele Frequency"} ne "") ? $lines_ref->{"1000G American Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G East Asian Allele Frequency"} = ($lines_ref->{"1000G East Asian Allele Frequency"} && $lines_ref->{"1000G East Asian Allele Frequency"} ne "") ? $lines_ref->{"1000G East Asian Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G South Asian Allele Frequency"} = ($lines_ref->{"1000G South Asian Allele Frequency"} && $lines_ref->{"1000G South Asian Allele Frequency"} ne "") ? $lines_ref->{"1000G South Asian Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G European Allele Frequency"} = ($lines_ref->{"1000G European Allele Frequency"} && $lines_ref->{"1000G European Allele Frequency"} ne "") ? $lines_ref->{"1000G European Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC All Allele Frequency"} = ($lines_ref->{"ExAC All Allele Frequency"} && $lines_ref->{"ExAC All Allele Frequency"} ne "") ? $lines_ref->{"ExAC All Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC AFR Allele Frequency"} = ($lines_ref->{"ExAC AFR Allele Frequency"} && $lines_ref->{"ExAC AFR Allele Frequency"} ne "") ? $lines_ref->{"ExAC AFR Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC AMR Allele Frequency"} = ($lines_ref->{"ExAC AMR Allele Frequency"} && $lines_ref->{"ExAC AMR Allele Frequency"} ne "") ? $lines_ref->{"ExAC AMR Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC EAS Allele Frequency"} = ($lines_ref->{"ExAC EAS Allele Frequency"} && $lines_ref->{"ExAC EAS Allele Frequency"} ne "") ? $lines_ref->{"ExAC EAS Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC FIN Allele Frequency"} = ($lines_ref->{"ExAC FIN Allele Frequency"} && $lines_ref->{"ExAC FIN Allele Frequency"} ne "") ? $lines_ref->{"ExAC FIN Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC NFE Allele Frequency"} = ($lines_ref->{"ExAC NFE Allele Frequency"} && $lines_ref->{"ExAC NFE Allele Frequency"} ne "") ? $lines_ref->{"ExAC NFE Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC OTH Allele Frequency"} = ($lines_ref->{"ExAC OTH Allele Frequency"} && $lines_ref->{"ExAC OTH Allele Frequency"} ne "") ? $lines_ref->{"ExAC OTH Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC SAS Allele Frequency"} = ($lines_ref->{"ExAC SAS Allele Frequency"} && $lines_ref->{"ExAC SAS Allele Frequency"} ne "") ? $lines_ref->{"ExAC SAS Allele Frequency"} : "0.00";
-    $lines_ref->{"Internal All Allele Frequency SNVs"} = ($lines_ref->{"Internal All Allele Frequency SNVs"} && $lines_ref->{"Internal All Allele Frequency SNVs"} ne "") ? $lines_ref->{"Internal All Allele Frequency SNVs"} : "0.00";
-    $lines_ref->{"Internal All Allele Frequency Indels"} = ($lines_ref->{"Internal All Allele Frequency Indels"} && $lines_ref->{"Internal All Allele Frequency Indels"} ne "") ? $lines_ref->{"Internal All Allele Frequency Indels"} : "0.00";
-    $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} = ($lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} && $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} ne "") ? $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} : "0.00";
-    $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} = ($lines_ref->{"Internal Gene Panel Allele Frequency Indels"} && $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} ne "") ? $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} : "0.00";
-    $lines_ref->{"On Low Coverage Exon"} = ($lines_ref->{"On Low Coverage Exon"} && $lines_ref->{"On Low Coverage Exon"} ne "") ? $lines_ref->{"On Low Coverage Exon"} eq 'Y' ? 1 : 0 : 2;
-    $lines_ref->{"Segmental Duplication"} = ($lines_ref->{"Segmental Duplication"} && $lines_ref->{"Segmental Duplication"} ne "") ? $lines_ref->{"Segmental Duplication"} eq 'Y' ? 1 : 0 : 2;
-    $lines_ref->{"Region of Homology"} = ($lines_ref->{"Region of Homology"} && $lines_ref->{"Region of Homology"} ne "") ? $lines_ref->{"Region of Homology"} eq 'Y' ? 1 : 0 : 2;
+    $lines_ref->{"CG 46 Unrelated Allele Frequency"} = ($lines_ref->{"CG 46 Unrelated Allele Frequency"} && $lines_ref->{"CG 46 Unrelated Allele Frequency"} ne "") ? $lines_ref->{"CG 46 Unrelated Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ESP ALL Allele Frequency"} = ($lines_ref->{"ESP ALL Allele Frequency"} && $lines_ref->{"ESP ALL Allele Frequency"} ne "") ? $lines_ref->{"ESP ALL Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ESP African Americans Allele Frequency"} = ($lines_ref->{"ESP African Americans Allele Frequency"} && $lines_ref->{"ESP African Americans Allele Frequency"} ne "") ? $lines_ref->{"ESP African Americans Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ESP European American Allele Frequency"} = ($lines_ref->{"ESP European American Allele Frequency"} && $lines_ref->{"ESP European American Allele Frequency"} ne "") ? $lines_ref->{"ESP European American Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"1000G All Allele Frequency"} = ($lines_ref->{"1000G All Allele Frequency"} && $lines_ref->{"1000G All Allele Frequency"} ne "") ? $lines_ref->{"1000G All Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"1000G African Allele Frequency"} = ($lines_ref->{"1000G African Allele Frequency"} && $lines_ref->{"1000G African Allele Frequency"} ne "") ? $lines_ref->{"1000G African Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"1000G American Allele Frequency"} = ($lines_ref->{"1000G American Allele Frequency"} && $lines_ref->{"1000G American Allele Frequency"} ne "") ? $lines_ref->{"1000G American Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"1000G East Asian Allele Frequency"} = ($lines_ref->{"1000G East Asian Allele Frequency"} && $lines_ref->{"1000G East Asian Allele Frequency"} ne "") ? $lines_ref->{"1000G East Asian Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"1000G South Asian Allele Frequency"} = ($lines_ref->{"1000G South Asian Allele Frequency"} && $lines_ref->{"1000G South Asian Allele Frequency"} ne "") ? $lines_ref->{"1000G South Asian Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"1000G European Allele Frequency"} = ($lines_ref->{"1000G European Allele Frequency"} && $lines_ref->{"1000G European Allele Frequency"} ne "") ? $lines_ref->{"1000G European Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ExAC All Allele Frequency"} = ($lines_ref->{"ExAC All Allele Frequency"} && $lines_ref->{"ExAC All Allele Frequency"} ne "") ? $lines_ref->{"ExAC All Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ExAC AFR Allele Frequency"} = ($lines_ref->{"ExAC AFR Allele Frequency"} && $lines_ref->{"ExAC AFR Allele Frequency"} ne "") ? $lines_ref->{"ExAC AFR Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ExAC AMR Allele Frequency"} = ($lines_ref->{"ExAC AMR Allele Frequency"} && $lines_ref->{"ExAC AMR Allele Frequency"} ne "") ? $lines_ref->{"ExAC AMR Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ExAC EAS Allele Frequency"} = ($lines_ref->{"ExAC EAS Allele Frequency"} && $lines_ref->{"ExAC EAS Allele Frequency"} ne "") ? $lines_ref->{"ExAC EAS Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ExAC FIN Allele Frequency"} = ($lines_ref->{"ExAC FIN Allele Frequency"} && $lines_ref->{"ExAC FIN Allele Frequency"} ne "") ? $lines_ref->{"ExAC FIN Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ExAC NFE Allele Frequency"} = ($lines_ref->{"ExAC NFE Allele Frequency"} && $lines_ref->{"ExAC NFE Allele Frequency"} ne "") ? $lines_ref->{"ExAC NFE Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ExAC OTH Allele Frequency"} = ($lines_ref->{"ExAC OTH Allele Frequency"} && $lines_ref->{"ExAC OTH Allele Frequency"} ne "") ? $lines_ref->{"ExAC OTH Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"ExAC SAS Allele Frequency"} = ($lines_ref->{"ExAC SAS Allele Frequency"} && $lines_ref->{"ExAC SAS Allele Frequency"} ne "") ? $lines_ref->{"ExAC SAS Allele Frequency"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"Internal All Allele Frequency SNVs"} = ($lines_ref->{"Internal All Allele Frequency SNVs"} && $lines_ref->{"Internal All Allele Frequency SNVs"} ne "") ? $lines_ref->{"Internal All Allele Frequency SNVs"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"Internal All Allele Frequency Indels"} = ($lines_ref->{"Internal All Allele Frequency Indels"} && $lines_ref->{"Internal All Allele Frequency Indels"} ne "") ? $lines_ref->{"Internal All Allele Frequency Indels"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} = ($lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} && $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} ne "") ? $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} = ($lines_ref->{"Internal Gene Panel Allele Frequency Indels"} && $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} ne "") ? $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} : $NO_ALLELE_FREQ;
+    $lines_ref->{"On Low Coverage Exon"} = ($lines_ref->{"On Low Coverage Exon"} && $lines_ref->{"On Low Coverage Exon"} ne "") ? $lines_ref->{"On Low Coverage Exon"} eq $YES_STRING ? 1 : 0 : 2;
+    $lines_ref->{"Segmental Duplication"} = ($lines_ref->{"Segmental Duplication"} && $lines_ref->{"Segmental Duplication"} ne "") ? $lines_ref->{"Segmental Duplication"} eq $YES_STRING ? 1 : 0 : 2;
+    $lines_ref->{"Region of Homology"} = ($lines_ref->{"Region of Homology"} && $lines_ref->{"Region of Homology"} ne "") ? $lines_ref->{"Region of Homology"} eq $YES_STRING ? 1 : 0 : 2;
     ($lines_ref->{"Genomic Location"} && $lines_ref->{"Genomic Location"} ne "") ? ($lines_ref->{"Genomic Location"} =~ s/chr//) :  ($lines_ref->{"Genomic Location"} = '');
     $lines_ref->{"CGD Inheritance"} = ($lines_ref->{"CGD Inheritance"} && $lines_ref->{"CGD Inheritance"} ne "") ? $lines_ref->{"CGD Inheritance"} : ".";
     $lines_ref->{"OMIM Disease"} = ($lines_ref->{"OMIM Disease"} && $lines_ref->{"OMIM Disease"} ne "") ? $lines_ref->{"OMIM Disease"} : ".";
-    $lines_ref->{"Wellderly All 597 Allele Frequency"} = ($lines_ref->{"Wellderly All 597 Allele Frequency"} && $lines_ref->{"Wellderly All 597 Allele Frequency"} ne "") ? $lines_ref->{"Wellderly All 597 Allele Frequency"} : "0.00";
+    $lines_ref->{"Wellderly All 597 Allele Frequency"} = ($lines_ref->{"Wellderly All 597 Allele Frequency"} && $lines_ref->{"Wellderly All 597 Allele Frequency"} ne "") ? $lines_ref->{"Wellderly All 597 Allele Frequency"} : $NO_ALLELE_FREQ;
     $lines_ref->{"Mutation Assessor Prediction"} =  &code_mutation_assessor_prediction($lines_ref->{"Mutation Assessor Prediction"});
     $lines_ref->{"CAAD prediction"} =  &code_cadd_prediction($lines_ref->{"CAAD prediction"});
     $lines_ref->{'% CDS Affected'} = ($lines_ref->{'% CDS Affected'} && $lines_ref->{'% CDS Affected'} ne "") ? $lines_ref->{'% CDS Affected'} : ".";
@@ -301,7 +294,7 @@ sub interpretation_note {
     my @interHist = ();
     foreach (keys %number_benign) {
       next if ($_ eq '0' || $_ eq '1');
-      push @interHist, "$interpretationHistory{$_} $number_benign{$_}";
+      push @interHist, Common::get_value($dbh, "value", "encoding", "code", $interpretationHistory{$_},"fieldname","interpretation") . $number_benign{$_};
     }
     my $interHist = $#interHist >= 0 ? join(" | ", @interHist) : '.';
     if ($number_benign{'6'} >= 10) {
@@ -317,19 +310,19 @@ sub add_flag {
   my ($segdup, $homology, $lowCvgExon, $altDP, $refDP, $zygosity) = @_;
   my $flag = 0;
 
-  if ($segdup eq "Y") {
+  if ($segdup == 1 || $segdup eq "Y") {
     $flag = 1;
   }
-  if ($homology eq "Y") {
+  if ($homology == 1 || $segdup eq "Y") {
     $flag = 1;
   }
-  if ($zygosity=~/het/) {
+  if ($zygosity ==1 || $zygosity == 3 || $zygosity=~/het/) {
 
     if (($altDP + $refDP ) < $cvgHetCutoff) {
       $flag = 1;
     } else {
       my $alleleBalance = 0;
-      if ($zygosity eq "het") {
+      if ($zygosity == 1 || $zygosity eq "het") {
         $alleleBalance = ($altDP/($refDP+$altDP));
       } else {
         my @splitC = split(/\,/,$altDP);
@@ -339,7 +332,7 @@ sub add_flag {
         $flag = 1;
       }
     }
-  } elsif ($zygosity eq "hom") {
+  } elsif ($zygosity == 2 || $zygosity eq "hom") {
     if (($altDP + $refDP ) < $cvgHomCutoff) {
       $flag = 1;
     } else {
@@ -448,14 +441,17 @@ sub code_cadd_prediction {
 
 sub code_chrom {
   my $chr = shift;
-  if ($chr =~ /X/i) {
-    return 24;
-  } elsif ($chr =~ /Y/i) {
-    return 25;
-  } elsif ($chr =~ /M/i) {
-    return 26;
+  if ($chr eq "X" || $chr eq "Y" || $chr eq "M") {
+    
   }
-  return $chr;
+  # if ($chr =~ /X/i || $chr =~/Y/i)  {
+  #   return 24;
+  # } elsif ($chr =~ /Y/i) {
+  #   return 25;
+  # } elsif ($chr =~ /M/i) {
+  #   return 26;
+  # }
+  # return $chr;
 }
 
 sub code_gatk_filter {
@@ -707,54 +703,4 @@ sub print_time_stamp {
   print "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
   print STDERR "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
   return ($timestamp, $localTime->strftime('%Y%m%d%H%M%S'), $yetval->strftime('%Y%m%d'));
-}
-
-sub read_in_config {
-  #read in the pipeline configure file
-  #this filename will be passed from thing1 (from the database in the future)
-  my ($configFile) = @_;
-  my $data = "";
-  my ($RSYNCFILEtmp, $HPF_BACKUP_FOLDERtmp, $THING1_BACKUP_DIRtmp,$VARIANTS_EXCEL_DIRtmp,$hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$cvgHomCutofftmp,$cvgHetCutofftmp, $hetRatioHightmp, $hetRatioLowtmp, $homRatioLowtmp);
-  my $msgtmp = "";
-  open (FILE, "< $configFile") or die "Can't open $configFile for read: $!\n";
-  while ($data=<FILE>) {
-    chomp $data;
-    my @splitTab = split(/ /,$data);
-    my $type = $splitTab[0];
-    my $value = $splitTab[1];
-    if ($type eq "RSYNCCMDFILE") {
-      $RSYNCFILEtmp = $value;
-    } elsif ($type eq "HPF_BACKUP_FOLDER") {
-      $HPF_BACKUP_FOLDERtmp = $value;
-    } elsif ($type eq "THING1_BACKUP_DIR") {
-      $THING1_BACKUP_DIRtmp = $value;
-    } elsif ($type eq "VARIANTS_EXCEL_DIR") {
-      $VARIANTS_EXCEL_DIRtmp = $value;
-    } elsif ($type eq "HOST") {
-      $hosttmp = $value;
-    } elsif ($type eq "PORT") {
-      $porttmp = $value;
-    } elsif ($type eq "USER") {
-      $usertmp = $value;
-    } elsif ($type eq "PASSWORD") {
-      $passtmp = $value;
-    } elsif ($type eq "db") {
-      $dbtmp = $value;
-    } elsif ($type eq "msg") {
-      $msgtmp = $value;
-    } elsif ($type eq "coverageHomCutoff") {
-      $cvgHomCutofftmp = $value;
-    } elsif ($type eq "coverageHetCutoff") {
-      $cvgHetCutofftmp = $value;
-    } elsif ($type eq "hetRatioHigh") {
-      $hetRatioHightmp = $value;
-    } elsif ($type eq "hetRatioLow") {
-      $hetRatioLowtmp = $value;
-    } elsif ($type eq "homRatioLow") {
-      $homRatioLowtmp = $value;
-    }
-
-  }
-  close(FILE);
-  return ($RSYNCFILEtmp, $HPF_BACKUP_FOLDERtmp, $THING1_BACKUP_DIRtmp,$VARIANTS_EXCEL_DIRtmp,$hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$msgtmp, $cvgHomCutofftmp, $cvgHetCutofftmp, $hetRatioHightmp, $hetRatioLowtmp, $homRatioLowtmp);
 }
