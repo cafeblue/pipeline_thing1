@@ -3,173 +3,103 @@
 use strict;
 use warnings;
 use lib './lib';
+use Time::localtime;
+use Time::ParseDate;
+use Time::Piece;
 use DBI;
 use Thing1::Common qw(:All);
 use Carp qw(croak);
 
-my $dbConfigFile = $ARGV[0];
-my $dbh = Common::connect_db($dbConfigFile);
+my $dbh = Common::connect_db($ARGV[0]);
 my $config = Common::get_all_config($dbh);
 $|++;
 
 my $allerr = "";
 
-my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
-my $SSH_DATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
-my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
-my $CALL_SCREEN = "$config->{'PIPELINE_HPF_ROOT'}call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
-my $HPF_RUNNING_FOLDER   = '/hpf/largeprojects/pray/clinical/samples/illumina';
-my $FASTQ_DIR    = '/hpf/largeprojects/pray/clinical/fastq_v5/';
-my $BACKUP_BAM  = '/hpf/largeprojects/pray/clinical/backup_files_v5/bam';
-my $RECYCLE_BIN = '/hpf/largeprojects/pray/recycle.bin/';
+my $SSH_DATA = "ssh -i $config->{'SSH_DATA_FILE'}  $config->{'HPF_USERNAME'}\@$config->{'HPF_DATA_NODE'}";
+my $SSH_HPF = "ssh -i $config->{'SSH_DATA_FILE'}  $config->{'HPF_USERNAME'}\@$config->{'HPF_HEAD_NODE'}";
+my $CALL_SCREEN = "$config->{'PIPELINE_HPF_ROOT'}call_screen.sh $config->{'PIPELINE_HPF_ROOT'}call_pipeline.pl";
 
-my $sample_ref = &get_sample_list;
-my ($today, $currentTime, $currentDate) = &print_time_stamp;
+my $sample_ref = Common::get_sampleInfo($dbh, 0);
+Common::print_time_stamp;
+my $currentTime;
 
-foreach my $ref (@$sample_ref) {
+foreach my $postprocID (keys %$sample_ref) {
     my $retval = time();
     my $localTime = localtime( $retval );
     $currentTime = $localTime->strftime('%Y%m%d%H%M%S');
-    &update_submit_status(&main(@$ref),@$ref);
+    &update_submit_status(&main($sample_ref->{$postprocID}), $postprocID);
 }
 
 if ($allerr ne "") {
-    &email_error($allerr);
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "submit2HPF failed.", $allerr, "NA", "", "NA", $config->{'EMAIL_WARNINGS'});
     print STDERR $allerr,"\n";
 }
 
 sub main {
-    my ($sampleID, $flowcellID, $postprocID, $genePanelVer, $pairID, $sampleType, $config_ref) = @_;
+    my $sampleInfo_ref = shift;
+    my ($sampleID, $flowcellID, $postprocID, $genePanelVer, $pairID, $sampleType ) = @_;
     my $command = '';
 
-    if ($genePanelVer =~ /cancer/) {
-        if (($sampleType eq 'T' || $sampleType eq 't' || $sampleType eq 'tumor' || $sampleType eq 'tumour') && $pairID !~ /\d/) {
-            $allerr .= "Tumor sample $sampleID (postprocID $postprocID) do not have the paired sampleID, pipeline could not be run, please update the database.\naborted...\n\n"; 
+    if ($sampleInfo_ref->{'genePanelVer'} =~ /cancer/) {
+        if (( $sampleInfo_ref->{'sampleType'} eq 'tumour') && $sampleInfo_ref->{'pairID '}!~ /\d/) {
+            $allerr .= "Tumor sample $sampleInfo_ref->{'sampleID'} (postprocID $sampleInfo_ref->{'postprocID'}) do not have the paired sampleID, pipeline could not be run, please update the database.\naborted...\n\n"; 
             return(1);
         }
-        elsif ($sampleType eq 'T' || $sampleType eq 't' || $sampleType eq 'tumor' || $sampleType eq 'tumour') {
-            &insert_jobstatus($sampleID,$postprocID,"cancerT");
-            print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN\"\n";
-            `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN"`;
-            print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
-            `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
-            if ( $? != 0 ) {
-                $allerr .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
+        elsif ( $sampleInfo_ref->{'sampleType'} eq 'tumour') {
+            &insert_jobstatus($sampleInfo_ref->{'sampleID'},$sampleInfo_ref->{'postprocID'},"cancerT", $sampleInfo_ref->{'genePanelVer'});
+
+            my $normal_bam = Common::get_normal_bam($dbh, $sampleInfo_ref->{'pairID'});
+            if ($normal_bam =~ /No normal/) {
+                $allerr .= $normal_bam; 
                 return(1);
             }
-
-            my $normal_bam = '';
-            my $search_pairID = "SELECT sampleID1,sampleID2 FROM pairInfo WHERE pairID = '$pairID'";
-            my $sth = $dbh->prepare($search_pairID) or $allerr .= "Can't query database for $pairID : " . $dbh->errstr() . "\n";
-            while (my @data_ref = $sth->fetchrow_array) {
-                if ($data_ref[0] eq $sampleID) {
-                    my $pairedSampleID = $data_ref[1];
-                    my $search_analysisId = "SELECT postprocID FROM sampleInfo WHERE sampleID = '$pairedSampleID' and genePanelVer = 'cancer.gp19'";
-                    my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedSampleID : " . $dbh->errstr() . "\n"; 
-                    if ($sth_tmp->rows() == 1) {
-                        my @data_ref = $sth_tmp->fetchrow_array ;
-                        $normal_bam = "$BACKUP_BAM/$pairedSampleID." . $data_ref[0] . ".realigned-recalibrated.bam";
-                    }
-                    else {
-                        $allerr .= "multiple/no postprocID found for paired sampleID $pairedSampleID with sampleID $sampleID\n";
-                        return(1);
-                    }
-                }
-                elsif ($data_ref[1] eq $sampleID) {
-                    my $pairedSampleID = $data_ref[0];
-                    my $search_analysisId = "SELECT postprocID FROM sampleInfo WHERE sampleID = '$pairedSampleID' and genePanelVer = 'cancer.gp19'";
-                    my $sth_tmp = $dbh->prepare($search_analysisId) or $allerr .= "Can't query database for postprocID for sampleID $pairedSampleID : " . $dbh->errstr() . "\n"; 
-                    if ($sth_tmp->rows() == 1) {
-                        my @data_ref = $sth_tmp->fetchrow_array ;
-                        $normal_bam = "$BACKUP_BAM/$pairedSampleID." . $data_ref[0] . ".realigned-recalibrated.bam";
-                    }
-                    else {
-                        $allerr .= "multiple/no postprocID found for paired sampleID $pairedSampleID with sampleID $sampleID\n";
-                        return(1);
-                    }
-                }
+            else {
+                $normal_bam = "$config->{'HPF_BACKUP_BAM'}$normal_bam";
             }
 
-            $command = "$SSH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam\" \n";
-            print $command;
-            `$SSH_HPF "$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerT -n $normal_bam "`;
-            if ( $? != 0 ) {
-                $allerr .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
-                return(1);
-            }
+            $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_DIR'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerT -n $normal_bam\"";
         }
         else {
-            &insert_jobstatus($sampleID,$postprocID,"cancerN");
-            print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN\"\n";
-            `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN"`;
-            print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
-            `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
-            if ( $? != 0 ) {
-                $allerr .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
-                return(1);
-            }
-            $command = "$SSH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN\" \n";
-            print $command; 
-            `$SSH_HPF "$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p cancerN "`;
-            if ( $? != 0 ) {
-                $allerr .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
-                return(1);
-            }
+            &insert_jobstatus($sampleInfo_ref->{'sampleID'},$sampleInfo_ref->{'postprocID'},"cancerN", $sampleInfo_ref->{'genePanelVer'});
+            $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_DIR'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerN\"";
         }
     }
     else {
-       &insert_jobstatus($sampleID,$postprocID,"exome");
-       print "$SSH_DATA \"mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN\"\n";
-       `$SSH_DATA "mv $HPF_RUNNING_FOLDER/$sampleID-$postprocID-*-b37 $RECYCLE_BIN"`;
-       print "$SSH_DATA \"mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37\"\n";
-       `$SSH_DATA "mkdir $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
-       if ( $? != 0 ) {
-           $allerr .= "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
-           return(1);
-       }
-       $command = "$SSH_HPF \"$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome \"\n";
-       print $command; 
-       `$SSH_HPF "$CALL_SCREEN -r $HPF_RUNNING_FOLDER/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $FASTQ_DIR/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome "`;
-       if ( $? != 0 ) {
-           $allerr .= "Failed to submit to HPF for : $sampleID, $flowcellID, error code:$?\n";
-           return(1);
-       }
+       &insert_jobstatus($sampleInfo_ref->{'sampleID'},$sampleInfo_ref->{'postprocID'},"exome", $sampleInfo_ref->{'genePanelVer'});
+       $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_DIR'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p exome \"";
     }
-    &insert_command($sampleID, $postprocID, $command);
-    return(0);
+    return(&insert_run_command($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $command));
 }
 
-sub insert_command {
+sub insert_run_command {
     my ($sampleID, $postprocID, $command) = @_;
     my $chk_exist = "SELECT * FROM hpfCommand WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
     my $sth_chk = $dbh->prepare($chk_exist) or $allerr .= "Can't query database for old hpf jobs: ". $dbh->errstr() . "\n";
     $sth_chk->execute() or $allerr .= "Can't query database for old hpf jobs: ". $dbh->errstr() . "\n";
-    if ($sth_chk->rows() == 0) {
-        my $insert_command  = "INSERT INTO hpfCommand (sampleID, postprocID, command) VALUES ('$sampleID', '$postprocID', '$command')";
-        my $sthCMD = $dbh->prepare($insert_command) or $allerr .= "Can't insert database of table hpfCommand on $sampleID $postprocID : " . $dbh->errstr() . "\n";
-        $sthCMD->execute() or $allerr .=  "Can't excute insert for new hpf jobs: " . $dbh->errstr() . "\n";
+    if ($sth_chk->rows() <= 0) {
+        my $insert_command  = "INSERT INTO hpfCommand (sampleID, postprocID, command) VALUES ('$sampleID', '$postprocID', '$command') ON DUPLICATE KEY UPDATE postprocID = '$postprocID'";
+        my $sthCMD = $dbh->prepare($insert_command) or $allerr .= "Can't insert database of table hpfCommand \n$insert_command\n on $sampleID $postprocID : " . $dbh->errstr() . "\n";
+        $sthCMD->execute() or $allerr .=  "Can't excute insert \n$insert_command\n for new hpf jobs: " . $dbh->errstr() . "\n";
     }
-    elsif ($sth_chk->rows() == 1) {
-        my $insert_command  = "UPDATE hpfCommand SET command = '$command' WHERE sampleID = '$sampleID' and postprocID =  '$postprocID'";
-        my $sthCMD = $dbh->prepare($insert_command) or $allerr .= "Can't update database of table hpfCommand on $sampleID $postprocID : " . $dbh->errstr() . "\n";
-        $sthCMD->execute() or $allerr .=  "Can't excute insert for new hpf jobs: " . $dbh->errstr() . "\n";
+    `$command`;
+    if ( $? != 0 ) {
+        $allerr .= "Failed to submit to HPF for sampleID: $sampleID on postprocID: $postprocID, error code:$?\nCommand: $command\n";
+        return(1);
     }
-    else {
-        $allerr .= "multiple hpf submission commands found for sampleID: $sampleID, postprocID: $postprocID. it is impossible!!!\n";
-    }
+    return(0);
 }
 
 sub update_submit_status {
-    my ($code, $sampleID, $flowcellID, $postprocID) = @_;
-
+    my ($code, $postprocID) = @_;
     $code = $code == 0 ? "2" : "3";
-    my $db_update = "UPDATE sampleInfo set currentStatus = '$code' where sampleID = '$sampleID' and postprocID = '$postprocID'";
+    my $db_update = "UPDATE sampleInfo SET currentStatus = '$code' WHERE postprocID = '$postprocID'";
     my $sth = $dbh->prepare($db_update) or $allerr .= "Can't prepare update: ". $dbh->errstr() . "\n";
     $sth->execute() or $allerr .= "Can't execute update: " . $dbh->errstr() . "\n";
 }
 
 sub insert_jobstatus {
-    my ($sampleID, $postprocID, $pipeline) = @_;
+    my ($sampleID, $postprocID, $pipeline, $genePanelVer) = @_;
 
     # delete the old record if exists.
     my $check_old = "SELECT * FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
@@ -177,7 +107,7 @@ sub insert_jobstatus {
     $sth_chk->execute() or $allerr .= "Can't execute query for old hpf jobs: " . $dbh->errstr() . "\n";
     if ($sth_chk->rows() != 0) {
         my $errorMsg = "job list already exists in the hpfJobStatus table for $sampleID postprocID $postprocID, deleting...\n";
-        email_error($errorMsg);
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for job list.", $errorMsg, $sampleID, "", "NA", $config->{'EMAIL_WARNINGS'});
         my $rm_old = "DELETE FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
         my $sth_rm = $dbh->prepare($rm_old) or $allerr .= "Can't delete from database for old hpf jobs: ". $dbh->errstr() . "\n";
         $sth_rm->execute() or $allerr .= "Can't execute delete for old samples: " . $dbh->errstr() . "\n";
@@ -200,17 +130,11 @@ sub insert_jobstatus {
         my $sth = $dbh->prepare($insert_sql) or $allerr .= "Can't insert into database for new hpf jobs: ". $dbh->errstr() . "\n";
         $sth->execute() or $allerr .= "Can't excute insert for new hpf jobs: " . $dbh->errstr() . "\n";
     }
-}
-
-sub get_sample_list {
-    my $db_query = 'SELECT sampleID,flowcellID,postprocID,genePanelVer,pairID,sampleType from sampleInfo where currentStatus = "0"';
-    my $sthQNS = $dbh->prepare($db_query) or $allerr .= "Can't query database for new samples: ". $dbh->errstr() . "\n";
-    $sthQNS->execute() or $allerr .= "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
-        my $data_ref = $sthQNS->fetchall_arrayref;
-        return ($data_ref);
-    }
-    else {
-        exit(0);
+    
+    # create directory
+    `$SSH_DATA "mv $config->{'HPF_RUNNING_FOLDER'}$sampleID-$postprocID-*-b37 $config->{'HPF_RECYCLE_FOLDER'}"`;
+    `$SSH_DATA "mkdir $config->{'HPF_RUNNING_FOLDER'}$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
+    if ( $? != 0 ) {
+        $allerr .= "Failed to create runfolder for sampleID: $sampleID, postprocID: $postprocID, genePanelVer: $genePanelVer, error code: $?\n";
     }
 }

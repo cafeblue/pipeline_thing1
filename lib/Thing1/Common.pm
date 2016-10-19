@@ -12,8 +12,8 @@ use Mail::Sender;
 
 our $VERSION = 1.00;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(print_time_stamp check_name email_error get_all_config);
-our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_all_config &get_value &month_time_stamp)],);
+our @EXPORT_OK = qw(print_time_stamp check_name email_error get_all_config hpf_queue_status);
+our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_all_config &get_value &month_time_stamp &hpf_queue_status)],);
 
 sub connect_db {
   my ($dbCFile) = @_;
@@ -68,9 +68,7 @@ sub check_name {
 sub email_error {
   my ($email_subject_prefix, $email_content_prefix, $email_subject, $info, $machine, $today, $flowcellID, $mail_lst) = @_;
   my $sender = Mail::Sender->new();
-  $info = $info . "$email_content_prefix Do not reply to this email, Thing1 cannot read emails. If there are any issues please email weiw.wang\@sickkids.ca or lynette.lau\@sickkids.ca \n\nThanks,\nThing1";
-  print STDERR "COMMON MODULE EMAIL_ERROR info=$info\n";
-
+  $info = $info . "\n\nmachine: $machine\nflowcell: $flowcellID\n\n$email_content_prefix Do not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThanks,\nThing1";
   my $mail = {
               smtp                 => 'localhost',
               from                 => 'notice@thing1.sickkids.ca',
@@ -291,7 +289,7 @@ sub qc_flowcell {
   return($message);
 }
 
-sub qc_sample {
+sub qc_warning_sample {
     my ($sampleID, $machineType, $captureKit, $sampleMx, $dbh) = @_;
     my $message = '';
     my $sthT = $dbh->prepare("SELECT sYieldMb, spQ30Bases, sNumReads FROM qcMetrics WHERE machine = '$machineType' AND captureKit = '$captureKit'") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
@@ -412,6 +410,132 @@ sub get_sequencing_qual_stat {
     &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "Job Status on thing1 for update sample info", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
     die $msg;
   }
+}
+
+sub get_sampleInfo {
+    my ($dbh, $status) = @_;
+    my $db_query = "SELECT * from sampleInfo where currentStatus = '$status'";
+    my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+    $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+    if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
+        return ($sthQNS->fetchall_hashref('postprocID'));
+    }
+    else {
+        exit(0);
+    }
+}
+
+sub get_normal_bam {
+    my ($dbh, $pairID) = @_;
+    my $search_pairID = "SELECT sampleID,postprocID FROM sampleInfo WHERE pairID = '$pairID' AND genePanelVer = 'cancer.gp19' AND sampleType = 'normal' order by postprocID desc limit 1";
+    my $sth = $dbh->prepare($search_pairID) or die "Can't query database for $pairID: " . $dbh->errstr() . "\n";
+    $sth->execute() or die "Can't execute database for $pairID: " . $dbh->errstr() . "\n";
+    return "No normal postprocID found for pairID $pairID .\n" if $sth->rows() == 0 ;  
+    my @data_ref = $sth->fetchrow_array;
+    return $data_ref[0] . "." . $data_ref[1] . ".realigned-recalibrated.bam";
+}
+
+sub check_idle_jobs {
+    my ($sampleID, $postprocID, $dbh, $config) = @_;
+
+    # Check the jobs which have not finished within 4 hours.
+    my $query_jobName = "SELECT jobName,jobID FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName != 'gatkGenoTyper' AND exitcode IS NULL AND flag IS NULL AND TIMESTAMPADD(HOUR,4,time)<CURRENT_TIMESTAMP ORDER BY jobID;";
+    my $sthQUF = $dbh->prepare($query_jobName);
+    $sthQUF->execute();
+    if ($sthQUF->rows() != 0) {
+        my @dataS = $sthQUF->fetchrow_array;
+        my $msg = "sampleID $sampleID postprocID $postprocID \n";
+        # check if flag = 1 already exixst!
+        my $check_flag = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1'";
+        my $sthFCH = $dbh->prepare($check_flag) or die "flag check failed: " . $dbh->errstr() . "\n";
+        $sthFCH->execute();
+        if ($sthFCH->rows() == 0) {
+            return 0 if (&hpf_queue_status($dataS[1], $config) eq 'R');
+            my $seq_flag = "UPDATE hpfJobStatus SET flag = '1' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND jobName = '" . $dataS[0] . "'";
+            my $sthSetFlag = $dbh->prepare($seq_flag);
+            $sthSetFlag->execute();
+            $msg .= "\tjobName " . $dataS[0] . " idled over 4 hours...\n";
+            $msg .= "\nIf this jobs can't be finished in 2 hours, this job together with the folloiwng joibs  will be re-submitted!!!\n";
+            print STDERR $msg;
+            &email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job is idle on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+            return 0;
+        }
+    }
+
+    $query_jobName = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1' AND TIMESTAMPADD(HOUR,2,time)<CURRENT_TIMESTAMP ORDER BY jobID;";
+    $sthQUF = $dbh->prepare($query_jobName);
+    $sthQUF->execute();
+    if ($sthQUF->rows() != 0) {
+        #Reset the jobID and time and  wait for the resubmission.
+        my $update = "UPDATE hpfJobStatus set jobID = NULL, flag = NULL WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+        my $sthUQ = $dbh->prepare($update)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
+        $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+sub hpf_queue_status {
+    my ($qid, $config) = @_;
+    my $cmd = "ssh -i $config->{'SSH_DATA_FILE'} $config->{'HPF_USERNAME'}" . '@' . "$config->{'HPF_HEAD_NODE'}  qstat -t $qid |tail -1";
+    my $status_line = `$cmd`;
+    $status_line = (split(/\s+/, $status_line))[4];
+    return($status_line);
+}
+
+sub resume_stuck_jobs {
+    my ($sampleInfo_ref, $dbh, $config) = @_;
+    my %RESUME_LIST = ( 'bwaAlign' => 'bwaAlign', 'picardMardDup' => 'picardMarkDup', 'gatkLocalRealgin' => 'gatkLocalRealign', 'gatkQscoreRecalibration' => 'gatkQscoreRecalibration',
+                    'gatkRawVariantsCall' => 'gatkRawVariantsCall', 'gatkRawVariants' => 'gatkRawVariants', 'muTect' => 'muTect', 'mutectCombine' => 'mutectCombine',
+                    'annovarMutect' => 'annovarMutect', 'gatkFilteredRecalSNP' => 'gatkRawVariants', 'gatkdwFilteredRecalINDEL' => 'gatkRawVariants',
+                    'gatkFilteredRecalVariant' => 'gatkFilteredRecalVariant', 'windowBed' => 'gatkFilteredRecalVariant', 'annovar' => 'gatkFilteredRecalVariant',
+                    'snpEff' => 'snpEff');
+    my %TRUNK_LIST = ( 'bwaAlign' => 0, 'picardMardDup' => 0, 'picardMarkDupIdx' => 0, 'gatkLocalRealgin' => 0, 'gatkQscoreRecalibration' => 0,
+                    'gatkRawVariantsCall' => 0, 'gatkRawVariants' => 0, 'muTect' => 0, 'mutectCombine' => 0, 'annovarMutect' => 0, 'gatkFilteredRecalSNP' => 0, 
+                    'gatkdwFilteredRecalINDEL' => 0, 'gatkFilteredRecalVariant' => 0, 'windowBed' => 0, 'annovar' => 0, 'snpEff' => 0);
+    my $sampleID     = $sampleInfo_ref->{'sampleID'};
+    my $postprocID   = $sampleInfo_ref->{'postrpicID'};
+    my $query_jobName = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1';";
+    my $sthQUF = $dbh->prepare($query_jobName);
+    $sthQUF->execute();
+    my @dataS = $sthQUF->fetchrow_array;
+    my $msg;
+    if (exists $RESUME_LIST{$dataS[0]}) {
+        $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, resubmission is running\n";
+        my $query = "SELECT command FROM hpfCommand WHERE sampleID = '$sampleID' AND postprocID = '$postprocID';";
+        my $sthSQ = $dbh->prepare($query) or die "Can't query database for command" . $dbh->errstr() . "\n";
+        $sthSQ->execute() or die "Can't excute query for command " . $dbh->errstr() . "\n";
+        if ($sthSQ->rows() == 1) {
+            my @tmpS = $sthSQ->fetchrow_array;
+            my $command = $tmpS[0];
+            chomp($command);
+            $command =~ s/"$//;
+            $command =~ s/ -startPoint .+//;
+            $command .= " -startPoint " . $dataS[0] . '"';
+            `$command`;
+            if ($? != 0) {
+                $msg .= "command \n\n $command \n\n failed with the error code $?, re-submission failed!!\n";
+            }
+        }
+        else {
+            $msg .= "\nMultiple/No submission command(s) found for sample $sampleID postprocID $postprocID, please check the table hpfCommand\n";
+        }
+
+    }
+    else {
+        $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, but the resubmission is NOT going to run, please re-submit the job by manual!\n";
+    }
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+}
+
+sub get_pipelineHPF {
+  my $dbh = shift;
+  my $query = "SELECT * FROM pipelineHPF where active = '1'";
+  my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
+  $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
+  return($sthQC->fetchall_hashref('pipeID'));
 }
 
 1;

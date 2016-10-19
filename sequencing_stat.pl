@@ -57,7 +57,7 @@ sub update_table {
       $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
 
       ### sampleID QC ###
-      $qc_message .= Common::qc_sample($sampleID, $machineType, $ck, $table_ref->{$sampleID}, $dbh);
+      $qc_message .= Common::qc_warning_sample($sampleID, $machineType, $ck, $table_ref->{$sampleID}, $dbh);
   }
   Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "QC warnings for flowcellID $flowcellID", $qc_message, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'}) if $qc_message ne '';
 }
