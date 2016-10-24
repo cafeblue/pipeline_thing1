@@ -47,6 +47,7 @@ sub main {
     my $command = '';
 
     if ($genePanelVer =~ /cancer/) {
+        return(1);
         if (($sampleType eq 'T' || $sampleType eq 't' || $sampleType eq 'tumor' || $sampleType eq 'tumour') && $pairID !~ /\d/) {
             $allerr .= "Tumor sample $sampleID (postprocID $postprocID) do not have the paired sampleID, pipeline could not be run, please update the database.\naborted...\n\n"; 
             return(1);
