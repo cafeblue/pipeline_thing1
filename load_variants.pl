@@ -42,7 +42,7 @@ sub rsync_files {
   `$rsyncCMD`;
   if ($? != 0) {
     my $msg = "Copy the variants to thing1 for sampleID $sampleInfo->{'sampleID'}, postprocID $sampleInfo->{'postprocID'} failed with exitcode $?\n";
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for RSYNC from HPF", $msg, $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for RSYNC from HPF", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   my $chksumCMD = "cd $config->{'THING1_BACKUP_DIR'}; sha256sum -c sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}*.sha256sum";
@@ -50,7 +50,7 @@ sub rsync_files {
   foreach (@chksum_output) {
     if (/computed checksum did NOT match/) {
       my $msg = "chksum of variants files from sampleID $sampleInfo->{'sampleID'}, postprocID $sampleInfo->{'postprocID'} failed, please check the following files:\n\n$config->{'THING1_BACKUP_DIR'}\n\n" . join("", @chksum_output);
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for CHKSUM of HPF Variants file", $msg, $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for CHKSUM of HPF Variants file", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
       return 1;
     }
   }
@@ -66,13 +66,13 @@ sub updateDB {
     my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
     $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
     $msg eq '' ?
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} ($sampleInfo->{'flowcellID'} $sampleInfo->{'machine'}) completed analysis", "$sampleInfo->{'sampleID'} ($sampleInfo->{'flowcellID'} $sampleInfo->{'machine'}) has finished analysis using gene panel $sampleInfo->{'genePanelVer'} with no errors. The sample can be viewed through the website. http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary The filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx.\n\nPlease login to thing1 using your Samba account in order to view this file.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca\n\nThanks,\n\nThing1\n", $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_FINISHED'}) :
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Failed to update the currentStatus set to 8 for sampleID: $sampleInfo->{'sampleID'} posrprocID: $sampleInfo->{'postprocID'}\n\nError Message:\n$msg\n", $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} ($sampleInfo->{'flowcellID'} $sampleInfo->{'machine'}) completed analysis", "$sampleInfo->{'sampleID'} ($sampleInfo->{'flowcellID'} $sampleInfo->{'machine'}) has finished analysis using gene panel $sampleInfo->{'genePanelVer'} with no errors. The sample can be viewed through the website. http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary The filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx.\n\nPlease login to thing1 using your Samba account in order to view this file.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca\n\nThanks,\n\nThing1\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_FINISHED'}) :
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Failed to update the currentStatus set to 8 for sampleID: $sampleInfo->{'sampleID'} posrprocID: $sampleInfo->{'postprocID'}\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
   } elsif ($exitcode == 1) {
     my $sthUPS = $dbh->prepare("UPDATE sampleInfo SET currentStatus = '9' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'") or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
     $sthUPS->execute() or $msg .= "Can't execute query:\n\n$sthUPS\n\n for running samples: " . $dbh->errstr() . "\n";
     if ($msg ne '') {
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Failed to update the currentStatus set to 9 for sampleID: $sampleInfo->{'sampleID'} posrprocID: $sampleInfo->{'postprocID'}\n\nError Message:\n$msg\n", $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Failed to update the currentStatus set to 9 for sampleID: $sampleInfo->{'sampleID'} posrprocID: $sampleInfo->{'postprocID'}\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     }
   } else {
     Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Impossible happened! what does the exitcode = $exitcode mean?\n", $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
@@ -86,13 +86,13 @@ sub loadVariants2DB {
   open (VARIANTS, "$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.annotated.tsv") or $msg .= "Failed to open file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.annotated.tsv\n";
   open (ALLFILE,  ">$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.loadvar2db.txt") or $msg .= "Failed to open file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.loadvar2db.txt\n";
   if ($msg ne '') {
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for open files dureing loading variants", $msg, $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for open files dureing loading variants", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   my $lines = <FILTERED>; $lines = <FILTERED>; $lines = <FILTERED>; $lines = <FILTERED>;
   if ($lines !~ /^Coordinator/) {
     $msg .= "Line 4 of file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.gp_$sampleInfo->{'genePanelVer'}.annotated.filter.txt is not the HEAD line. aborting the variants load...\n";
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for loading variants", $msg, $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for loading variants", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   chomp($lines);
@@ -144,7 +144,7 @@ sub loadVariants2DB {
   $lines = <VARIANTS>; $lines = <VARIANTS>; $lines = <VARIANTS>; $lines = <VARIANTS>;
   if ($lines !~ /^##Chrom/) {
     $msg .= "Line 4 of file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.annotated.tsv is not the HEAD line. aborting the variants load...\n";
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for loading variants", $msg, $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for loading variants", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   chomp($lines);
@@ -186,7 +186,7 @@ sub loadVariants2DB {
     $sthVarCheck->execute() or $msg .= "Can't execute variants check to ensure interpretation variants have not been inputted already : " . $dbh->errstr() . "\n";
     if ($sthVarCheck->rows() != 0) {
       my $msg .= "This postprocID=$sampleInfo->{'postprocID'} has already have interpretation variants inserted into the table\n";
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for loading variants", $msg, $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for loading variants", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
       return 1;
     }
 
@@ -215,7 +215,7 @@ sub loadVariants2DB {
   $msg = '';
   $dbh->do( $fileload ) or $msg .= "Unable load in file: " . $dbh->errstr . "\n";
   if ($msg ne '') {
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for loading variants", $msg, $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for loading variants", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   } else {
     return 0;
