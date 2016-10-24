@@ -125,15 +125,8 @@ sub get_barcode {
   my $queryBarcodes = "SELECT code, value FROM encoding WHERE tablename='sampleSheet' AND fieldname = 'barcode'";
   my $sthBC = $dbh->prepare($queryBarcodes) or die "Can't query database for barcode encoding : ". $dbh->errstr() . "\n";
   $sthBC->execute() or croak "Can't execute query for barcode encoding : " . $dbh->errstr() . "\n";
-  if ($sthBC->rows() == 0) {
-    croak "ERROR $queryBarcodes";
-  } else {
-    my @dataBC = ();
-    while (@dataBC = $sthBC->fetchrow_array()) {
-      my $id = $dataBC[0];
-      my $ntCode = $dataBC[1];
-      $tmpBC{$id} = $ntCode;
-    }
+  while (my @dataBC = $sthBC->fetchrow_array()) {
+    $tmpBC{$dataBC[0]} = $dataBC[1];
   }
   return(\%tmpBC);
 }
@@ -148,6 +141,16 @@ sub get_all_config {
       $all_config{$tmprow[0]} = $tmprow[1];
   }
   return(\%all_config);
+}
+
+sub get_encoding {
+  my ($dbh, $tablename) = @_;
+  my $sth = $dbh->prepare("SELECT * FROM encoding WHERE tablename = '$tablename'") or die "Can't prepare SQL: SELECT * FROM encoding WHERE tablename = 'variants_sub', error: " . $dbh->error() . "\n";
+  $sth->execute() or die "Can't execute query: SELECT * FROM encoding WHERE tablename = 'variants_sub', error: "  . $dbh->error() . "\n";
+  return($sth->fetchall_hashref( [ qw(fieldname value) ] ));
+}
+
+sub get_encoding_interpretation {
 }
 
 sub get_gp_config {
