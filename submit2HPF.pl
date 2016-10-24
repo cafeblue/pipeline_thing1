@@ -58,16 +58,16 @@ sub main {
                 $normal_bam = "$config->{'HPF_BACKUP_BAM'}$normal_bam";
             }
 
-            $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_DIR'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerT -n $normal_bam\"";
+            $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerT -n $normal_bam\"";
         }
         else {
             &insert_jobstatus($sampleInfo_ref->{'sampleID'},$sampleInfo_ref->{'postprocID'},"cancerN", $sampleInfo_ref->{'genePanelVer'});
-            $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_DIR'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerN\"";
+            $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerN\"";
         }
     }
     else {
        &insert_jobstatus($sampleInfo_ref->{'sampleID'},$sampleInfo_ref->{'postprocID'},"exome", $sampleInfo_ref->{'genePanelVer'});
-       $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_DIR'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p exome \"";
+       $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p exome \"";
     }
     return(&insert_run_command($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $command));
 }
