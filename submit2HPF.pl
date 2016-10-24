@@ -84,7 +84,7 @@ sub insert_run_command {
     }
     `$command`;
     if ( $? != 0 ) {
-        $allerr .= "Failed to submit to HPF for sampleID: $sampleID on postprocID: $postprocID, error code:$?\nCommand: $command\n";
+        $allerr .= "Failed to submit to HPF for sampleID: $sampleID on postprocID: $postprocID, error code:$?\nCommand: $command\n\n";
         return(1);
     }
     return(0);
