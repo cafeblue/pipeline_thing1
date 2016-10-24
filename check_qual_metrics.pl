@@ -38,7 +38,7 @@ sub update_qualMetrics {
         if ($? != 0) {
             my $msg = "There is an error running the following command:\n\n$cmd\n";
             print STDERR $msg;
-            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for QC metrics", $msg, $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for QC metrics", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
             return 2;
         }
 
@@ -54,8 +54,7 @@ sub update_qualMetrics {
     else {
         my $msg = "No successful job generate sql file for sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} ? it is impossible!!!!\n";
         print STDERR $msg;
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Failed on HPF ", $msg, $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'postprocID'}, $config->{'EMAIL_WARNINGS'});
-        email_error($msg);
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Failed on HPF ", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
         return 2;
     }
 }
@@ -81,8 +80,7 @@ sub check_qual {
     }
     if ($msg ne '') {
         $msg = "sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} on machine $sampleInfo->{'machine'} flowcellID $sampleInfo->{'flowcellID'} has finished analysis using gene panel, $sampleInfo->{'genePanelVer'}. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through.\n\n" . $msg;
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Failed on HPF ", $msg, $sampleInfo->{'flowcellID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
-        email_error($msg, "quality");
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Failed on HPF ", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
         return 7;
     }
     return 6;

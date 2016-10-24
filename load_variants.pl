@@ -75,7 +75,7 @@ sub updateDB {
       Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Failed to update the currentStatus set to 9 for sampleID: $sampleInfo->{'sampleID'} posrprocID: $sampleInfo->{'postprocID'}\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     }
   } else {
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Impossible happened! what does the exitcode = $exitcode mean?\n", $sampleInfo->{'sampleID'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Impossible happened! what does the exitcode = $exitcode mean?\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
   }
 }
 
