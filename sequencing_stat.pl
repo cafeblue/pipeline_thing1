@@ -27,7 +27,6 @@ sub update_table {
   my $machineType = $machine;
   $machineType =~ s/_.+//;
 
-  ### flowcell QC ###
   my $qc_message = Common::qc_flowcell($flowcellID, $machineType, $dbh);
 
   foreach my $sampleID (keys %$table_ref) {
@@ -45,18 +44,17 @@ sub update_table {
       }
 
       #Insert into table sampleInfo
-      my $query = "SELECT gene_panel,capture_kit,testType,priority,pairedSampleID,specimen,sample_type,machine from sampleSheet where flowcell_ID = '$flowcellID' and sampleID = '$sampleID'";
+      my $query = "SELECT gene_panel,capture_kit,testType,priority,pairedSampleID,specimen,sample_type from sampleSheet where flowcell_ID = '$flowcellID' and sampleID = '$sampleID'";
       $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
       $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-      my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype,$machine) = $sthQNS->fetchrow_array;
+      my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype) = $sthQNS->fetchrow_array;
       my ($pipething1ver, $pipehpfver, $webver) = Common::get_pipelinever($config);
       my $key = $gp . "\t" . $ck;
       $ps = defined $ps ? $ps : "";
-      my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer , perIndex ) VALUES ('" . $sampleID . "','$flowcellID','$ps','$gp','" . $gpConfig->{$key}{'pipeID'} . "','"  . $gpConfig->{$key}{'filterID'} . "','"  . $gpConfig->{$key}{'annotationID'} . "','"  . $table_ref->{$sampleID}{'sYieldMb'} . "','"  . $table_ref->{$sampleID}{'sNumReads'} . "','"  . $table_ref->{$sampleID}{'spQ30Bases'} . "','$specimen', '$sampletype', '$tt','$pt', '0', '$pipething1ver', '$pipehpfver', '$webver'" . ",'" . $table_ref->{$sampleID}{'perIndex'} . "')";
+      my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, machine, captureKit, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer , perIndex ) VALUES ('" . $sampleID . "','$flowcellID','$machine','$ck','$ps','$gp','" . $gpConfig->{$key}{'pipeID'} . "','"  . $gpConfig->{$key}{'filterID'} . "','"  . $gpConfig->{$key}{'annotationID'} . "','"  . $table_ref->{$sampleID}{'sYieldMb'} . "','"  . $table_ref->{$sampleID}{'sNumReads'} . "','"  . $table_ref->{$sampleID}{'spQ30Bases'} . "','$specimen', '$sampletype', '$tt','$pt', '0', '$pipething1ver', '$pipehpfver', '$webver'" . ",'" . $table_ref->{$sampleID}{'perIndex'} . "')";
       $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
       $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
 
-      ### sampleID QC ###
       $qc_message .= Common::qc_warning_sample($sampleID, $machineType, $ck, $table_ref->{$sampleID}, $dbh);
   }
   Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "QC warnings for flowcellID $flowcellID", $qc_message, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'}) if $qc_message ne '';
