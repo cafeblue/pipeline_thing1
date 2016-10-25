@@ -39,7 +39,7 @@ foreach my $flowcellID (keys %$sampleSheet) {
   Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet" ,$info, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
 
   if ($cancer_samples_msg ne '') {
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet", $cancer_samples_msg, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet", $cancer_samples_msg, $machine, $today, $flowcellID, $config->{'EMAIL_CANCERSAMPLE'});
   }
 }
 
