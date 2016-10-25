@@ -15,7 +15,7 @@ my $ilmnBarcodes = Common::get_barcode($dbh);
 
 #### Get the new file list #################
 my $sampleSheet = get_new_sampleSheet();
-my ($today, $yesterday) = Common::print_time_stamp();
+my ($today, $yesterday, $currentTime, $currentDate) = Common::print_time_stamp();
 
 
 #### Start to parse each new sampleSheet ##########
@@ -44,13 +44,14 @@ foreach my $flowcellID (keys %$sampleSheet) {
 }
 
 sub write_samplesheet {
-  my $output = "FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject\r\n";
   my ($machine, @cont_tmp) = @_;
+  my $output = $config->{'SEQ_SAMPLESHEET_HISEQ'}; 
   my $flowcellID;
   foreach my $line (@cont_tmp) {
+    $flowcellID = $line->{'flowcell_ID'};
     foreach my $lane (split(/,/, $line->{'lane'})) {
+      $lane =~ s/\s//g;
       $output .= $line->{'flowcell_ID'} . ",$lane," . $line->{'sampleID'} . ",b37," . $ilmnBarcodes->{$line->{'barcode'}} . "," . $line->{'capture_kit'} . "_" . $line->{'sample_type'} . ",N,R1," . $line->{'ran_by'} . "," . $line->{'machine'} . "_" . $line->{'flowcell_ID'} . "\r\n";
-      $flowcellID = $line->{'flowcell_ID'};
     }
   }
   my $file = Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
@@ -64,10 +65,10 @@ sub write_samplesheet {
 sub write_samplesheet_miseq {
   my ($machine,@cont_tmp) = @_;
   my $flowcellID;
-  my $output =  "[Header]\nIEMFileVersion,4\nDate,$today\nWorkflow,GenerateFASTQ\nApplication,MiSeq FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n151\n151\n\n[Settings]\nAdapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA\nAdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT\n\n[Data]\nSample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description\n";
-
+  my $output = eval($config->{'SEQ_SAMPLESHEET_INFO'}) . "\n"; 
+  $output =~ s/\n/\r\n/g;
   foreach my $line (@cont_tmp) {
-    $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes->{$line->{'barcode'}} . ",,\n";
+    $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes->{$line->{'barcode'}} . ",,\r\n";
     $flowcellID = $line->{'flowcell_ID'};
   }
 
