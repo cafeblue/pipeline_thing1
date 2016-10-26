@@ -152,6 +152,7 @@ sub create_sample_sheet {
 sub check_status {
   my ($folder, $cycles, $machine, $LaneCount, $SurfaceCount, $SwathCount, $TileCount) = @_;
   $machine =~ s/_.+//;
+  $TileCount = sprintf('%02d', $TileCount);
   my $checkPoint_file = $folder . eval(eval('$config->{"LAST_BCL_$machine"}'));
   my $complete_file  = $folder . $config->{"COMPLETE_FILE_$machine"};
 

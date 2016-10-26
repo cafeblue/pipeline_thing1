@@ -36,9 +36,13 @@ Common::print_time_stamp();
 foreach (@worklist) {
     my $runinfo = Common::get_RunInfo("$_/$config->{'SEQ_RUN_INFO_FILE'}");
     my $flowcellID = (split(/_/))[-1];
+    my $machine = '';
+    if (/\/sequencers\/(.+?)\//) {
+        $machine = $1;
+    }
     my $cyclenum = 0;
     if ( not exists $runinfo->{'NumCycles'}) {
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error: $flowcellID ", $config->{'ERROR_MSG_3'}, "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error: $flowcellID ", $config->{'ERROR_MSG_3'}, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
         next;
     }
     foreach (@{$runinfo->{'NumCycles'}}) {
@@ -46,7 +50,7 @@ foreach (@worklist) {
     }
     $print_parsed .= $_ . "\n";
     my $msg = &update_database($_, $flowcellID, $cyclenum, $runinfo);
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Sequencing folder for $flowcellID found." , eval(eval('$config->{ERROR_MSG_4}')), "NA", "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Sequencing folder for $flowcellID found." , eval(eval('$config->{ERROR_MSG_4}')), $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
 }
 Common::cronControlPanel($dbh, "sequencer_RF", $print_parsed);
 
