@@ -7,9 +7,8 @@ use DBI;
 use Thing1::Common qw(:All);
 use Carp qw(croak);
 
-my $dbConfigFile = $ARGV[0]; 
-
-my $dbh = Common::connect_db($dbConfigFile);
+my $dbh = Common::connect_db($ARGV[0]);
+my $config = Common::get_all_config($dbh);
 
 my ($today, $yesterday) = Common::print_time_stamp();
 my %genePanelID = ();

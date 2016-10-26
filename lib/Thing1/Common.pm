@@ -150,9 +150,6 @@ sub get_encoding {
   return($sth->fetchall_hashref( [ qw(fieldname value) ] ));
 }
 
-sub get_encoding_interpretation {
-}
-
 sub get_gp_config {
   my $dbh = shift;
   my %all_gp_config;
@@ -249,42 +246,23 @@ sub cronControlPanel {
   }
 }
 
-sub get_qcmetrics {
-  my ($dbh,$machine,$sampleType) = @_;
-  my $query = '';
-  if ($sampleType ne '') {
-    $query = "SELECT sYieldMb AS yieldMB, spQ30Bases AS perQ30Bases, sNumReads numReads, sLowCovATRatio AS lowCovATRatio, spbasesAbv10XGP AS perbasesAbove10XGP, spbasesAbv20XGP AS perbasesAbove20XGP, spbasesAbv10XExome AS perbasesAbove10XExome, spbasesAbv20XExome AS perbasesAbove20XExome, sMeanCvgGP AS meanCvgGP, sLowCvgExonNum AS lowCovExonNum, sMeanCvgExome AS meanCvgExome, spReadsIndex, varFlagHetCvg, varFlagHomCvg, varFlagHetRatio, varFlagHomRatio, varSnpQD, varIndelQD, varSnpFS, varIndelFS, varSnpMQ, varSnpMQRS, varSnpRPRS, varIndelRPRS FROM qcMetrics WHERE machine = '$machine' AND sampleType = '$sampleType'";
-  }
-  else {
-    $query = "SELECT fcClusterDensity, fcErrorRate, fcpReadsPF, fcq30Score, fcTotalReads, fcpUndeterminedReads FROM qcMetrics WHERE machine = '$machine'";
-  }
-
-  my $sthQC = $dbh->prepare($query) or die "Can't query database for config : ". $dbh->errstr() . "\n";
-  $sthQC->execute() or die "Can't execute query for config : " . $dbh->errstr() . "\n";
-  my $ref = $sthQC->fetchrow_hashref();
-  foreach my $key_name (keys %$ref) {
-      $ref->{$key_name} = [split(/&&/, $ref->{$key_name})];
-  }
-  return($ref);
-}
-
 sub qc_flowcell {
   my ($flowcellID, $machineType, $dbh) = @_;
   my $message = '';
-  my $sthT = $dbh->prepare("SELECT * FROM qcMetricsMachine WHERE machineType = '$machineType'") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+  my $sthT = $dbh->prepare("SELECT FieldName,Value FROM qcMetricsMachine WHERE machineType = '$machineType' AND level >= 1") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
   $sthT->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-  my $flowcellQC = $sthT->fetchrow_hashref ;
+  my $flowcellQC = $sthT->fetchall_hashref("FieldName") ;
 
-  my $sthInterOp = $dbh->prepare("SELECT `reads Cluster Density`, `Error Rate`, `% Reads Passing Filter`, `% Q30 Score`, `# of Total Reads` FROM thing1JobStatus WHERE flowcellID = '$flowcellID'") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+  my $sthInterOp = $dbh->prepare("SELECT * FROM thing1JobStatus WHERE flowcellID = '$flowcellID'") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
   $sthInterOp->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
   my $flowcellMx = $sthInterOp->fetchrow_hashref;
-  foreach my $keys (keys %$flowcellMx) {
-    foreach my $rule (split(/\&\&/, $flowcellQC->{$keys})) {
-      foreach my $val (split(/,/, $flowcellMx->{$keys})) {
+  foreach my $rule (keys %$flowcellQC) {
+    FQC: foreach my $equa (split(/\&\&/, $flowcellQC->{$rule}->{'Value'})) {
+      foreach my $val (split(/,/, $flowcellMx->{$rule})) {
         $val =~ s/\+.+//;
-        if (not eval($val . $rule)) {
-          $message .= "One of the $keys (Value: $flowcellMx->{$keys}) is not in our acceptable range: $flowcellQC->{$keys}.\n";
-          last;
+        if (not eval($val . $equa)) {
+          $message .= "One of the $rule (Value: $flowcellMx->{$rule}) is not in our acceptable range: $flowcellQC->{$rule}->{'Value'}.\n";
+          last FQC;
         }
       }
     }
@@ -292,22 +270,19 @@ sub qc_flowcell {
   return($message);
 }
 
-sub qc_warning_sample {
-    my ($sampleID, $machineType, $captureKit, $sampleMx, $dbh) = @_;
+sub qc_sample {
+    my ($sampleID, $machineType, $captureKit, $sampleMx, $level, $dbh) = @_;
     my $message = '';
-    my $sthT = $dbh->prepare("SELECT sYieldMb, spQ30Bases, sNumReads FROM qcMetrics WHERE machine = '$machineType' AND captureKit = '$captureKit'") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+    my $sthT = $dbh->prepare("SELECT FieldName,Value FROM qcMetricsSample WHERE machine = '$machineType' AND captureKit = '$captureKit' AND level = $level") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthT->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    my $sampleQC = $sthT->fetchrow_hashref ;
-    foreach my $keys (keys %$sampleMx) {
-      next if (not exists $sampleQC->{$keys});
-      foreach my $rule (split(/\&\&/, $sampleQC->{$keys})) {
-        foreach my $val (split(/,/, $sampleMx->{$keys})) {
-          if (not eval($val . $rule)) {
-            $message .= "The $keys (Value: $sampleMx->{$keys}) of sampleID $sampleID is not in our acceptable range: $sampleQC->{$keys} and may fail coverage metrics & error on analysis.\n";
-            last;
-          }
+    my $sampleQC = $sthT->fetchall_hashref('FieldName') ;
+    foreach my $rule (keys %$sampleQC) {
+        foreach my $equa (split(/\&\&/, $sampleQC->{$rule}->{'Value'})) {
+            if (not eval($sampleMx->{$rule} . $equa)) {
+                $message .= "The $rule (Value: $sampleMx->{$rule}) of sampleID $sampleID is not in our acceptable range: $sampleQC->{$rule}->{'Value'} .\n";
+                last;
+            }
         }
-      }
     }
     return($message);
 }

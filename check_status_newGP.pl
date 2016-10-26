@@ -8,9 +8,9 @@ use Thing1::Common qw(:All);
 use Carp qw(croak);
 $|++;
 
-my $dbConfigFile = $ARGV[0];
 my $allerr = "";
-my Common::connect_db($dbConfigFile);
+my $dbh = Common::connect_db($ARGV[0]);
+my $config = Common::get_all_config($dbh);
 
 my $HPF_RUNNING_FOLDER = Common::get_config($dbh, "HPF_RUNNING_FOLDER"); #'/hpf/largeprojects/pray/clinical/samples/illumina';
 my $PIPELINE_HPF_ROOT = Common::get_config($dbh, "PIPELINE_HPF_ROOT"); #'/home/wei.wang/pipeline_hpf_v5';
@@ -182,7 +182,7 @@ sub update_jobStatus {
         }
         # upate the time:
         my $update_time = "UPDATE hpfJobStatus SET time = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND exitcode IS NULL";
-        my $sthUQ = $dbh->prepare($update_query)  or $allerr .= "Can't query database '$update_time' for running samples: ". $dbh->errstr() . "\n";
+        $sthUQ = $dbh->prepare($update_query)  or $allerr .= "Can't query database '$update_time' for running samples: ". $dbh->errstr() . "\n";
         $sthUQ->execute() or $allerr .=  "Can't execute query '$update_time' for running samples: " . $dbh->errstr() . "\n";
       }
     }

@@ -10,8 +10,7 @@ use Thing1::Common qw(:All);
 use Carp qw(croak);
 $|++;
 
-my $dbConfigFile = $ARGV[0];
-my $dbh = Common::connect_db($dbConfigFile);
+my $dbh = Common::connect_db($ARGV[0]);
 my $config = Common::get_all_config($dbh);
 my $gpConfig = Common::get_gp_config($dbh);
 
@@ -55,7 +54,7 @@ sub update_table {
       $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
       $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
 
-      $qc_message .= Common::qc_warning_sample($sampleID, $machineType, $ck, $table_ref->{$sampleID}, $dbh);
+      $qc_message .= Common::qc_sample($sampleID, $machineType, $ck, $table_ref->{$sampleID}, "1", $dbh);
   }
   Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "QC warnings for flowcellID $flowcellID", $qc_message, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'}) if $qc_message ne '';
 }
