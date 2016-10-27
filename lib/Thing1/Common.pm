@@ -21,7 +21,7 @@ sub connect_db {
   my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
   close(ACCESS_INFO);
   chomp($port, $host, $user, $pass, $db);
-  my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or croak ( "Couldn't connect to database: " . DBI->errstr );
+  my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1, AutoCommit => 1 } ) or croak ( "Couldn't connect to database: " . DBI->errstr );
   return $dbh;
 }
 
@@ -273,7 +273,7 @@ sub qc_flowcell {
 sub qc_sample {
     my ($sampleID, $machineType, $captureKit, $sampleMx, $level, $dbh) = @_;
     my $message = '';
-    my $sthT = $dbh->prepare("SELECT FieldName,Value FROM qcMetricsSample WHERE machine = '$machineType' AND captureKit = '$captureKit' AND level = $level") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+    my $sthT = $dbh->prepare("SELECT FieldName,Value FROM qcMetricsSample WHERE machineType = '$machineType' AND captureKit = '$captureKit' AND level = $level") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthT->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
     my $sampleQC = $sthT->fetchall_hashref('FieldName') ;
     foreach my $rule (keys %$sampleQC) {
@@ -347,7 +347,7 @@ sub get_sequencing_qual_stat {
         if ($heads->[$_] eq 'Sample') {
           $table_pos{'Sample'} = $_;
         } elsif ($heads->[$_] eq 'PF Clusters') {
-          $table_pos{'sNumReads'} = $_;
+          $table_pos{'numReads'} = $_;
         } elsif ($heads->[$_] eq 'Yield (Mbases)') {
           $table_pos{'Yield'} = $_;
         } elsif ($heads->[$_] eq '% >= Q30bases') {
@@ -355,29 +355,29 @@ sub get_sequencing_qual_stat {
         }
       }
       foreach my $row (@table_cont) {
-        $$row[$table_pos{'sNumReads'}] =~ s/,//g;
+        $$row[$table_pos{'numReads'}] =~ s/,//g;
         $$row[$table_pos{'Yield'}] =~ s/,//g;
-        $sample_cont{$$row[$table_pos{'Sample'}]}{'sNumReads'} += $$row[$table_pos{'sNumReads'}];
-        $sample_cont{$$row[$table_pos{'Sample'}]}{'sYieldMb'} += $$row[$table_pos{'Yield'}];
+        $sample_cont{$$row[$table_pos{'Sample'}]}{'numReads'} += $$row[$table_pos{'numReads'}];
+        $sample_cont{$$row[$table_pos{'Sample'}]}{'yieldMB'} += $$row[$table_pos{'Yield'}];
         push @{$perQ30{$$row[$table_pos{'Sample'}]}}, $$row[$table_pos{'spQ30Bases'}];
       }
       my $totalReads = 0;
       foreach my $sid (keys %perQ30) {
         my $total30Q = 0;
-        $totalReads = $totalReads + $sample_cont{$sid}{'sNumReads'};
+        $totalReads = $totalReads + $sample_cont{$sid}{'numReads'};
         foreach (@{$perQ30{$sid}}) {
           $total30Q += $_;
         }
-        $sample_cont{$sid}{'spQ30Bases'} = $total30Q/scalar(@{$perQ30{$sid}});
+        $sample_cont{$sid}{'perQ30Bases'} = $total30Q/scalar(@{$perQ30{$sid}});
       }
 
       ###calculate the % index for each sample including Undetermined
       foreach my $sid (keys %perQ30) {
-        $sample_cont{$sid}{'perIndex'} = $sample_cont{$sid}{'sNumReads'}/$totalReads*100;
+        $sample_cont{$sid}{'perIndex'} = $sample_cont{$sid}{'numReads'}/$totalReads*100;
       }
 
       ###update to store number of undetermined reads
-      my $updateUndetermined = "UPDATE thing1JobStatus SET undeterminedReads = '" . $sample_cont{'Undetermined'}{'sNumReads'} ."', perUndetermined = '" . $sample_cont{'Undetermined'}{'perIndex'} . "' WHERE flowcellID = '" . $flowcellID . "'";
+      my $updateUndetermined = "UPDATE thing1JobStatus SET undeterminedReads = '" . $sample_cont{'Undetermined'}{'numReads'} ."', perUndetermined = '" . $sample_cont{'Undetermined'}{'perIndex'} . "' WHERE flowcellID = '" . $flowcellID . "'";
       my $sthUU = $dbh->prepare($updateUndetermined) or die "Can't prepare update: ". $dbh->errstr() . "\n";
       $sthUU->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
 

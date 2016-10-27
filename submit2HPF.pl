@@ -18,7 +18,7 @@ my $allerr = "";
 
 my $SSH_DATA = "ssh -i $config->{'SSH_DATA_FILE'}  $config->{'HPF_USERNAME'}\@$config->{'HPF_DATA_NODE'}";
 my $SSH_HPF = "ssh -i $config->{'SSH_DATA_FILE'}  $config->{'HPF_USERNAME'}\@$config->{'HPF_HEAD_NODE'}";
-my $CALL_SCREEN = "$config->{'PIPELINE_HPF_ROOT'}call_screen.sh $config->{'PIPELINE_HPF_ROOT'}call_pipeline.pl";
+my $CALL_SCREEN = "/home/wei.wang/pipeline_hpf_v5/call_screen.sh $config->{'PIPELINE_HPF_ROOT'}call_pipeline.pl";
 
 my $sample_ref = Common::get_sampleInfo($dbh, 0);
 Common::print_time_stamp;
