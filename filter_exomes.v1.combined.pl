@@ -122,7 +122,8 @@ my $exacFIN = "ExAC FIN Allele Frequency";
 my $exacNFE = "ExAC NFE Allele Frequency";
 my $exacOTH = "ExAC OTH Allele Frequency";
 my $exacSAS = "ExAC SAS Allele Frequency";
-
+my $exacPLI = "ExAC PLI";
+my $exacmissenseZ = "ExAC missense Z-score";
 my $clinVar = "ClinVar SIG";
 
 my $lowPerExon = 95.0;
@@ -143,10 +144,12 @@ my $refDepth = "Allelic Depths for Reference";
 my $qd = "Quality By Depth";
 my $sb = "Fisher's Exact Strand Bias Test";
 my $mq = "RMS Mapping Quality";
-my $hapScore = "Haplotype Score";
+my $sor = "Strand Odds Ratio";
 my $mqRankSum = "Mapping Quality Rank Sum Test";
 my $readposRankSum = "Read Pos Rank Sum Test";
 my $variantType = "Type of Mutation";
+
+my $softFilter = "Gatk Filters";
 
 my $snpEffAnnAA = "Amino Acid change";
 my $snpEffAnnCC = "Codon Change";
@@ -183,6 +186,7 @@ my $CGDInh = "CGD Inheritance";
 my $omimDisease = "OMIM Gene Map";
 my $omimDiseaseMorbidmap = "OMIM Morbidmap";
 my $omimInher = "OMIM Inheritance";
+my $omimLink = "OMIM Link";
 
 my $cgWell = "cgWellderly all frequency";
 my $mutass = "Mutation Assessor Prediction";
@@ -198,6 +202,8 @@ my $rareFreqInternal = 0.1;     #rare frequency we want to filter on
 my $qdThreshold = 2.0;
 my $snpFS = 60.0;
 my $snpMQ = 40.0;
+my $snpSOR = 3.0;
+my $indelSOR = 10.0;
 #my $snpHapScore = 13.0;
 #my $HSlg13 = 0;
 my $snpMQRankSum = -12.5;
@@ -295,7 +301,7 @@ while ($data=<FILE>) {
   if ($data=~/##Chrom/) {       #grab the header
 
     #print the text file's header
-    print "Coordinator's Interpretation\tSanger Validation\tCoordinator's Comments\tGene Name\tTranscript ID\tReference Allele\tAlternative Allele\tZygosity\tType of Variant\tGenomic Location\tCoding HGVS\tProtein Change\tEffect\tPanel\tCGD Inheritance\t1 > variant/gene\tOMIM Disease\tClinVar Significance\tClinVar CLNDBN\tClinVar Indels within 20bp window\tHGMD Significance\tHGMD Disease\tHGMD Indels within 20bp window\tdbsnp 144\t1000G All Allele Frequency\tESP ALL Allele Frequency\tInternal All Allele Frequency SNVs\tInternal All Allele Frequency Indels\tInternal Gene Panel Allele Frequency SNVs\tInternal Gene Panel Allele Frequency Indels\tWellderly All 597 Allele Frequency\tCG 46 Unrelated Allele Frequency\tESP African Americans Allele Frequency\tESP European American Allele Frequency\t1000G African Allele Frequency\t1000G American Allele Frequency\t1000G East Asian Allele Frequency\t1000G South Asian Allele Frequency\t1000G European Allele Frequency\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tSift Prediction\tPolyPhen Prediction\tMutation Assessor Prediction\tCAAD prediction\tMutation Taster Prediction\t\% CDS Affected\t\% Transcripts Affected\tSegmental Duplication\tRegion of Homology\tOn Low Coverage Exon\tAlternative Allele(s) Depth of Coverage\tReference Allele Depth of Coverage\tACMG Incidental Gene\tOMIM Inheritance\n";
+    print "Coordinator's Interpretation\tSanger Validation\tCoordinator's Comments\tGene Name\tTranscript ID\tReference Allele\tAlternative Allele\tZygosity\tType of Variant\tGenomic Location\tCoding HGVS\tProtein Change\tEffect\tPanel\tCGD Inheritance\t1 > variant/gene\tOMIM Disease\tClinVar Significance\tClinVar CLNDBN\tClinVar Indels within 20bp window\tHGMD Significance\tHGMD Disease\tHGMD Indels within 20bp window\tdbsnp 144\t1000G All Allele Frequency\tESP ALL Allele Frequency\tInternal All Allele Frequency SNVs\tInternal All Allele Frequency Indels\tInternal Gene Panel Allele Frequency SNVs\tInternal Gene Panel Allele Frequency Indels\tWellderly All 597 Allele Frequency\tCG 46 Unrelated Allele Frequency\tESP African Americans Allele Frequency\tESP European American Allele Frequency\t1000G African Allele Frequency\t1000G American Allele Frequency\t1000G East Asian Allele Frequency\t1000G South Asian Allele Frequency\t1000G European Allele Frequency\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tSift Prediction\tPolyPhen Prediction\tMutation Assessor Prediction\tCAAD prediction\tMutation Taster Prediction\t\% CDS Affected\t\% Transcripts Affected\tSegmental Duplication\tRegion of Homology\tOn Low Coverage Exon\tAlternative Allele(s) Depth of Coverage\tReference Allele Depth of Coverage\tACMG Incidental Gene\tOMIM Inheritance\tOMIM Link\tExAC PLI\n";
 
     #print the excel file's header
     my @groupHeader = ();
@@ -397,6 +403,9 @@ while ($data=<FILE>) {
     $colHeader[58] = "Reference Allele Depth of Coverage";
     $colHeader[59] = "ACMG Incidental Gene";
     $colHeader[60] = "OMIM Inheritance";
+    $colHeader[61] = "OMIM Link";
+    $colHeader[62] = "ExAC PLI";
+    $colHeader[63] = "ExAC Missense Z-score";
 
     for (my $i=0; $i < scalar(@colHeader); $i++) {
       $worksheet->write($rowNum, $i, "$colHeader[$i]", $titleFormat);
@@ -446,7 +455,7 @@ while ($data=<FILE>) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i]=~/$mq/) {
         $colNum{$header[$i]} = $i;
-      } elsif ($header[$i]=~/$hapScore/) {
+      } elsif ($header[$i]=~/$sor/) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i]=~/$mqRankSum/) {
         $colNum{$header[$i]} = $i;
@@ -524,6 +533,8 @@ while ($data=<FILE>) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $omimInher) {
         $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $omimLink) {
+        $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $cgWell) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $mutass) {
@@ -557,6 +568,12 @@ while ($data=<FILE>) {
       } elsif ($header[$i] eq $exacOTH) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $exacSAS) {
+        $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $exacPLI) {
+        $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $exacmissenseZ) {
+        $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $softFilter) {
         $colNum{$header[$i]} = $i;
       }
     }
@@ -597,7 +614,7 @@ while ($data=<FILE>) {
       my $colRow = $colNum{$cHeader};
       my $colInfo = $splitTab[$colRow];
       if ($cHeader eq $effect) { # check to see if variant is non coding (but include splicing)
-        print STDERR "1. EFFECT colInfo=$colInfo\n";
+        #print STDERR "1. EFFECT colInfo=$colInfo\n";
         $snpEffLoc = $colInfo;
         if (($colInfo=~/intergenic/) || ($colInfo=~/intragenic/) || ($colInfo=~/upstream/) || ($colInfo=~/downstream/)) {
           #print STDERR "2. filter=$filter\n";
@@ -657,6 +674,7 @@ while ($data=<FILE>) {
         #my $varQD = "";
         my $varFS = "";
         my $varMQ = "";
+        my $varSOR = "";
         my $varHapScore = "";
         my $varMQRankSum = "";
         my $varReadPosRankSum = "";
@@ -667,21 +685,20 @@ while ($data=<FILE>) {
           $cI = $splitTab[$cR];
           #print STDERR "cH=$cH\n";
           #print STDERR "cI=$cI\n";
-
           if ($cH eq $sb) {
             $varFS = $cI;
             #print STDERR "varFS=$varFS\n";
           } elsif ($cH eq $mq) {
             $varMQ = $cI;
             #print STDERR "varMQ=$varMQ\n";
-          } elsif ($cH eq $hapScore) {
-            $varHapScore = $cI;
-            #print STDERR "varHapScore=$varHapScore\n";
           } elsif ($cH eq $mqRankSum) {
             $varMQRankSum = $cI;
             #print STDERR "varMQRankSum=$varMQRankSum\n";
           } elsif ($cH eq $readposRankSum) {
             $varReadPosRankSum = $cI;
+            #print STDERR "varReadPosRankSum=$varReadPosRankSum\n";
+          } elsif ($cH eq $sor) {
+            $varSOR = $cI;
             #print STDERR "varReadPosRankSum=$varReadPosRankSum\n";
           }
         }
@@ -691,18 +708,16 @@ while ($data=<FILE>) {
             $qualFilter = 0;
             #print STDERR "SNP FS filtered out\n";
           }
+          if ($varSOR > $snpSOR) {
+            #$filter = 0;
+            $qualFilter = 0;
+            #print STDERR "SNP SOR filtered out\n";
+          }
           if ($varMQ < $snpMQ) {
             #$filter = 0;
             $qualFilter = 0;
             #print STDERR "SNP MQ filtered out\n";
           }
-
-          # if ($varHapScore > $snpHapScore) {
-          #   #############  Wei comment start ###############
-          #   #   $qualFilter = 0;
-          #   $HSlg13++;
-          #   #############  Wei comment stop  ###############
-          # }
           if (defined $varMQRankSum && $varMQRankSum ne "") {
             if ($varMQRankSum < $snpMQRankSum) {
               #$filter = 0;
@@ -725,6 +740,13 @@ while ($data=<FILE>) {
               $qualFilter = 0;
             }
           }
+          if ((defined $varSOR) && ($varSOR ne "")) {
+            if ($varSOR > $indelSOR) {
+              #print STDERR "indel SOR filtered out\n";
+              #$filter = 0;
+              $qualFilter = 0;
+            }
+          }
           if ((defined $varReadPosRankSum) && ($varReadPosRankSum ne "")) {
             if ($varReadPosRankSum < $indelReadPosRankSum) {
               #print STDERR "indel ReadPosRankSum filtered out\n";
@@ -735,7 +757,6 @@ while ($data=<FILE>) {
         } else {
           print STDERR "Variant type not recognized $colInfo\n";
         }
-
       } elsif ($cHeader eq $hgmdSid) {
         if ((defined $colInfo) && ($colInfo ne "")) {
           #print STDERR "hgmdsnp present - $data\n";
@@ -780,27 +801,27 @@ while ($data=<FILE>) {
     my $tidName = $splitTab[$colNum{'Transcript ID'}];
 
     if (($qualFilter == 1) && ($locationFilter == 1) && (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1))) {
-      print STDERR "1. key = $annChr:$annPos:$vtType\n";
+      #print STDERR "1. key = $annChr:$annPos:$vtType\n";
       if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) {
-        print STDERR "1. passed location filters $data\n";
+        #print STDERR "1. passed location filters $data\n";
         $useVar = 1;
       }
     }
     if ($hgmdClinVar == 1) { # if the variant has a hgmd or clinvar designation
-      print STDERR "2. In ClinVar\n";
-      print STDERR "2. key = $annChr:$annPos:$vtType\n";
+      #print STDERR "2. In ClinVar\n";
+      #print STDERR "2. key = $annChr:$annPos:$vtType\n";
       if (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"} && ($snpEffLoc=~/UTR/)) { #if it's in the UTR in the gene panel (inside the transcript start and stop location)
         $useVar = 1;
-        print STDERR "2. UTR\n";
+        #print STDERR "2. UTR\n";
       }
       if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) { #if it's in the genePanel
-        print STDERR "2. genepanel\n";
+        #print STDERR "2. genepanel\n";
         $useVar = 1;
       }
     }
 
     if ($useVar == 1) {
-      print STDERR "useVar=$useVar\n";
+      #print STDERR "useVar=$useVar\n";
       push @datatoprint, $data; #add variant into the rare filtered pile
 
       #count the variant as a rare variant for the transcript
@@ -923,7 +944,7 @@ sub printformat {
       }
 
     } elsif ($colHeader eq $snpEffAnnAA) {
-      print STDERR "snpEFF AA = $colI\n";
+      #print STDERR "snpEFF AA = $colI\n";
       if ((defined $colI) && ($colI ne "")) {
         $outputArray[8] = $colI;
       } else {
@@ -931,7 +952,7 @@ sub printformat {
       }
     } elsif ($colHeader eq $snpEffAnnCC) {
       if ((defined $colI) && ($colI ne "")) {
-        print STDERR "snpEFF CC = $colI\n";
+        #print STDERR "snpEFF CC = $colI\n";
         $outputArray[7] = $colI;
       } else {
         $outputArray[7] = "NA";
@@ -953,7 +974,7 @@ sub printformat {
         $outputArray[1] = $colI;
         #my $noVar = "";
         if (defined $rareVar{$snpEffTx}) { # > 1 variant/gene
-          print STDERR $snpEffTx . ", " . $rareVar{$snpEffTx} . "\n";
+          #print STDERR $snpEffTx . ", " . $rareVar{$snpEffTx} . "\n";
           $outputArray[12] = $rareVar{$snpEffTx};
         } else {
           $outputArray[12] = 0;
@@ -962,10 +983,10 @@ sub printformat {
       if ($snpEffTx ne "") {
         #need to take care of the cases where Intron cDNA or Exonic DNA
         if (($snpEffTx=~/ENS/) && ($colHeader=~/Ensembl/)) { #ensembl transcripts and ensembl exon or intron
-          print STDERR "ENSEMBL\n";
-          print STDERR "snpEffTx=$snpEffTx\n";
-          print STDERR "colI=$colI\n";
-          print STDERR "colHeader=$colHeader\n";
+          #print STDERR "ENSEMBL\n";
+          #print STDERR "snpEffTx=$snpEffTx\n";
+          #print STDERR "colI=$colI\n";
+          #print STDERR "colHeader=$colHeader\n";
           my ($cDNA, $aaChange) = findRightTx($snpEffTx, $colI, $colHeader);
 
           if (defined $outputArray[7] && $outputArray[7] ne "NA") { #cDNA HGVS
@@ -986,13 +1007,13 @@ sub printformat {
 
           #$outputArray[11] = $aaChange;
         } elsif ($colHeader=~/Refseq/) {
-          print STDERR "RefSeq\n";
-          print STDERR "snpEffTx=$snpEffTx\n";
-          print STDERR "colI=$colI\n";
-          print STDERR "colHeader=$colHeader\n";
+          #print STDERR "RefSeq\n";
+          #print STDERR "snpEffTx=$snpEffTx\n";
+          #print STDERR "colI=$colI\n";
+          #print STDERR "colHeader=$colHeader\n";
           my ($cDNA, $aaChange) = findRightTx($snpEffTx, $colI, $colHeader);
-          print STDERR "DONE cDNA=$cDNA\n";
-          print STDERR "DONE aaChange=$aaChange\n";
+          #print STDERR "DONE cDNA=$cDNA\n";
+          #print STDERR "DONE aaChange=$aaChange\n";
           #$outputArray[10] = $cDNA;
           #$outputArray[11] = $aaChange;
           if ((defined $outputArray[7]) && ($outputArray[7] ne "NA")) {
@@ -1398,7 +1419,25 @@ sub printformat {
       if (defined $colI && $colI ne "") {
         $outputArray[57] = $colI;
       } else {
-        $outputArray[57] = "NA";
+        $outputArray[57] = "";
+      }
+    } elsif ($colHeader eq $omimLink) { #OMIM disease
+      if (defined $colI && $colI ne "") {
+        $outputArray[58] = $colI;
+      } else {
+        $outputArray[58] = "";
+      }
+    } elsif ($colHeader eq $exacPLI) { #OMIM disease
+      if (defined $colI && $colI ne "") {
+        $outputArray[59] = $colI;
+      } else {
+        $outputArray[59] = "NA";
+      }
+    } elsif ($colHeader eq $exacmissenseZ) { #OMIM disease
+      if (defined $colI && $colI ne "") {
+        $outputArray[60] = $colI;
+      } else {
+        $outputArray[60] = "NA";
       }
     } elsif ($colHeader eq $cgWell) { #cgWellerdly
       if (defined $colI && $colI ne "") {
@@ -1467,15 +1506,17 @@ sub printformat {
     if ($l == 13) {
       my @splitOmim = split(/\t/,$outputArray[13]);
       #print STDERR "splitOmim=@splitOmim\n";
-      if ((defined $splitOmim[0]) && ($splitOmim[0] ne "")) {
+      if ((defined $splitOmim[1]) && ($splitOmim[1] ne "")) {
         # Modification made by Lily Jin 2015 Sep 09 1/2
         #if ($splitOmim[1]=~m/^\d+$/) {
-        print $splitOmim[0] . "|:|" . $splitOmim[1] ."\t";
-        #print $splitOmim[0] . "\t"; #print the omim description for the text file
+        #  print $splitOmim[0] . "|:|" . $splitOmim[1] ."\t";
+        print $splitOmim[1] . "\t"; #print the omim description for the text file
         #} else {
-        #print $splitOmim[1] . "\t"; #print the omim description for the text file
+        #  print $splitOmim[1] . "\t"; #print the omim description for the text file
         #}
         # Modification end 1/2
+      } elsif ((defined $splitOmim[0]) && ($splitOmim[0] ne "")) {
+        print $splitOmim[0] . "\t"; #print the omim description for the text file
       } else {
         print "\t";
       }
@@ -1506,8 +1547,10 @@ sub printformat {
           #} else {
           #  $worksheet->write($rowNum, ($l+3), "$splitOmim[1]");
           #}
-          $worksheet->write($rowNum, ($l+3), $splitOmim[0] . "|:|" . $splitOmim[1]);
+          $worksheet->write($rowNum, ($l+3), "$splitOmim[1]");
           # Modification end 2/2
+        } elsif (defined $splitOmim[0] && $splitOmim[0] ne "") {
+          $worksheet->write($rowNum, ($l+3), "$splitOmim[0]");
         }
         ##excel will use the description of omim instead of the number
       } elsif (($l >= 21) && ($l <=43)) { # all the allele frequencies
@@ -1602,9 +1645,9 @@ sub findRightTx {
   my $aaChange = "NA";
   my @splitTx = split(/\./,$txVerID);
   my $txID = $splitTx[0];
-  print STDERR "txID=$txID\n";
-  print STDERR "annovarInfo=$annovarInfo\n";
-  print STDERR "cHeader=$cHeader\n";
+  #print STDERR "txID=$txID\n";
+  #print STDERR "annovarInfo=$annovarInfo\n";
+  #print STDERR "cHeader=$cHeader\n";
 
   if ($cHeader=~/Exonic/) {
     my @splitC = split(/\,/,$annovarInfo);
@@ -1625,7 +1668,7 @@ sub findRightTx {
       if (defined $splitD[1]) {
         $tTxID = $splitD[1];
       }
-      print STDERR "tTxID=$tTxID\n";
+      #print STDERR "tTxID=$tTxID\n";
       if (uc($tTxID) eq uc($txID)) {
         $cDNA = $tcDNA;
         $aaChange = $taaC;
@@ -1638,7 +1681,7 @@ sub findRightTx {
       $splitB[1]=~/\)/;
       my @splitComma = split(/\,/,$splitB[1]);
       foreach my $isoforms (@splitComma) {
-        print STDERR "INTRON ISOFORM $isoforms\n";
+        #print STDERR "INTRON ISOFORM $isoforms\n";
         my @splitCol = split(/\:/,$isoforms);
 
         my $txTxID = "";
@@ -1660,8 +1703,8 @@ sub findRightTx {
       #genename #ignore for now
     }
   }
-  print STDERR "cDNA=$cDNA\n";
-  print STDERR "aaChange=$aaChange\n";
+  #print STDERR "cDNA=$cDNA\n";
+  #print STDERR "aaChange=$aaChange\n";
   return ($cDNA, $aaChange)
 }
 

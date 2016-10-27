@@ -44,14 +44,17 @@ my $hpoFile = $ARGV[9];
 
 my %omimInfo = (); #key is geneSymbol {geneSymbol}[0] = morbid, {geneSymbol}[1] = genemap
 
+my %omimMim2Gene = ();
+
 my $hgncFile = $ARGV[10];
 my $cgdFile = $ARGV[11];
 
 my $pipelineVersion = $ARGV[12];
 
-my $omimGeneMapFile = $ARGV[13];
+my $omimGeneMap2File = $ARGV[13];
 my $omimMorbidMapFile = $ARGV[14];
-
+my $omimGeneMap1File = $ARGV[15];
+my $omimMim2GeneFile = $ARGV[16];
 
 #reads in the windowBed files of the indels to find indels +/- 20bp
 my %hgmdWindowIndel = readInWindow($hgmdWindowIndelFile, "hgmd");
@@ -73,8 +76,8 @@ $annovarCmd=~s/\n//gi;
 $annovarCmd=~s/\t//gi;
 
 #all the annovar annotation files
-my @annovarFileSuffix = ("hg19_multianno.txt", "hg19_hgmd_generic_dropped", "hg19_region_homology_bed","hg19_cgWellderly_generic_dropped");
-my $annovarCounter = 28; #The number of elements that we are pulling out from annovar
+my @annovarFileSuffix = ("hg19_multianno.txt", "hg19_hgmd_generic_dropped", "hg19_region_homology_bed","hg19_cgWellderly_generic_dropped", "hg19_exacPLI_bed");
+my $annovarCounter = 29; #The number of elements that we are pulling out from annovar
 
 #my @annovarFileSuffix = ("hg19_avsnp144_dropped", "hg19_genomicSuperDups", "hg19_dbnsfp30a_dropped", "hg19_cg46_dropped", "hg19_esp6500siv2_all_dropped", "hg19_esp6500siv2_aa_dropped", "hg19_esp6500siv2_ea_dropped", "hg19_ALL.sites.2015_08_dropped", "hg19_AFR.sites.2015_08_dropped", "hg19_AMR.sites.2015_08_dropped", "hg19_EAS.sites.2015_08_dropped", "hg19_SAS.sites.2015_08_dropped", "hg19_EUR.sites.2015_08_dropped", "exonic_variant_function", "variant_function", "ensGene.exonic_variant_function", "ensGene.variant_function", "hg19_clinvar_20150629_dropped", "hg19_hgmd_generic_dropped", "hg19_region_homology_bed","hg19_cgWellderly_generic_dropped", "hg19_cosmic70_dropped", "hg19_exac03_dropped", "hg19_morbidmap_bed", "hg19_genemap_bed");
 
@@ -95,45 +98,9 @@ my %numHCCmpdHetPerGene = ();
 my $data = "";
 my %geneIDs = ();
 
-# #read in OMIM genemap
-# open (FILE, "< $omimGeneMapFile") or die "Can't open $omimGeneMapFile for read: $!\n";
-# while ($data=<FILE>) {
-#   chomp $data;
-#   if ($data!~/^#/) {
-#     my @splitTab = split(/\t/,$data);
-#     my $sort = $splitTab[0];
-#     my $month = $splitTab[1];
-#     my $day = $splitTab[2];
-#     my $year = $splitTab[3];
-#     my $cytoLoc = $splitTab[4];
-#     my $gSymbol = uc($splitTab[5]);
-#     my $confidence = $splitTab[6];
-#     my $geneName = $splitTab[7];
-#     my $mimNum = $splitTab[8];
-#     my $mappingMeth = $splitTab[9];
-#     my $comments = $splitTab[10];
-#     my $phenotypes = $splitTab[11];
-#     my $mGeneSym = $splitTab[12];
-
-#     if (defined $gSymbol && $gSymbol ne "") {
-#       $gSymbol=~s/ //gi;
-#       my @splitComma = split(/\,/,$gSymbol);
-#       foreach my $gS (@splitComma) {
-#         #print STDERR "omimGeneMap gS=$gS\n";
-#         #print STDERR "mimNum=$mimNum\n";
-#         if (defined $omimInfo{$gS}[1]) {
-#           $omimInfo{$gS}[1] = $omimInfo{$gS}[1] . " & " . $mimNum;
-#         } else {
-#           $omimInfo{$gS}[1] = $mimNum;
-#         }
-#       }
-#     }
-#   }
-# }
-# close(FILE);
 
 #read in OMIM genemap
-open (FILE, "< $omimGeneMapFile") or die "Can't open $omimGeneMapFile for read: $!\n";
+open (FILE, "< $omimGeneMap2File") or die "Can't open $omimGeneMap2File for read: $!\n";
 while ($data=<FILE>) {
   chomp $data;
   if ($data!~/^#/) {
@@ -144,7 +111,7 @@ while ($data=<FILE>) {
     my $cytoLoc = $splitTab[3];
     my $compCytoLoc = $splitTab[4];
     my $mimNum = $splitTab[5];
-    my $gSymbol = $splitTab[6];
+    my $gSymbol = uc($splitTab[6]);
     my $geneName = $splitTab[7];
     my $appSym = $splitTab[8];
     my $entrezGeneId = $splitTab[9];
@@ -153,11 +120,12 @@ while ($data=<FILE>) {
     my $phenotype = $splitTab[12];
     my $mouseSymGeneId = $splitTab[13];
 
-    my @splitSpace = split(/\, /,$phenotype);
     my $inherSym = "";
     my %inherit = ();
 
     if (defined $phenotype && $phenotype ne "") {
+      my @splitSpace = split(/\, /,$phenotype);
+
       foreach my $tmp (@splitSpace) {
         if (defined $tmp && $tmp ne "") {
           if ($tmp =~/autosomal recessive/i) {
@@ -195,38 +163,80 @@ while ($data=<FILE>) {
       }
     }
 
-    if (defined $appSym && $appSym ne "") {
-      if (defined $omimInfo{$appSym}[1] && $omimInfo{$appSym}[1]) {
-        $omimInfo{$appSym}[1] = $omimInfo{$appSym}[1] . " & " . $mimNum;
-      } else {
-        $omimInfo{$appSym}[1] = $mimNum;
-      }
-      if (defined $omimInfo{$appSym}[2] && $omimInfo{$appSym}[2] ne "") {
-        $omimInfo{$appSym}[2] = $omimInfo{$appSym}[2] . " & " . $inherSym;
-      } else {
-        $omimInfo{$appSym}[2] = $inherSym;
-      }
+
+    if (defined $omimInfo{$mimNum}[2] && $omimInfo{$mimNum}[2] ne "") {
+      $omimInfo{$mimNum}[2] = $omimInfo{$mimNum}[2] . " & " . $inherSym;
+    } else {
+      $omimInfo{$mimNum}[2] = $inherSym;
+    }
+    if (defined $omimInfo{$mimNum}[1] && $omimInfo{$mimNum}[1] ne "") {
+      $omimInfo{$mimNum}[1] = $omimInfo{$mimNum}[1] . " & " . $phenotype;
+    } else {
+      $omimInfo{$mimNum}[1] = $phenotype;
     }
 
-    if (defined $gSymbol && $gSymbol ne "") {
-      $gSymbol=~s/ //gi;
-      my @splitComma = split(/\,/,$gSymbol);
-      foreach my $gS (@splitComma) {
-        #print STDERR "omimGeneMap gS=$gS\n";
-        #print STDERR "mimNum=$mimNum\n";
-        if (defined $omimInfo{$gS}[1] && $omimInfo{$gS}[1]) {
-          $omimInfo{$gS}[1] = $omimInfo{$gS}[1] . " & " . $mimNum;
-        } else {
-          $omimInfo{$gS}[1] = $mimNum;
-        }
-        if (defined $omimInfo{$gS}[2] && $omimInfo{$gS}[2] ne "") {
-          $omimInfo{$gS}[2] = $omimInfo{$gS}[2] . " & " . $inherSym;
-        } else {
-          $omimInfo{$gS}[2] = $inherSym;
-        }
-      }
-    }
-    
+    # if (defined $appSym && $appSym ne "") {
+    #   if (defined $omimInfo{$appSym}[3] && $omimInfo{$appSym}[3]) {
+    #     ###make sure it's not in there
+    #     my $dup = 0;
+    #     my @splitLink = split(/ & /,$omimInfo{$appSym}[3]);
+    #     foreach my $link (@splitLink) {
+    #       if ($link eq $mimNum) {
+    #         $dup = 1;
+    #       }
+    #     }
+    #     if ($dup == 0) {
+    #       $omimInfo{$appSym}[3] = $omimInfo{$appSym}[3] . " & " . $mimNum;
+    #     }
+    #   } else {
+    #     $omimInfo{$appSym}[3] = $mimNum;
+    #   }
+
+    #   if (defined $omimInfo{$appSym}[2] && $omimInfo{$appSym}[2] ne "") {
+    #     $omimInfo{$appSym}[2] = $omimInfo{$appSym}[2] . " & " . $inherSym;
+    #   } else {
+    #     $omimInfo{$appSym}[2] = $inherSym;
+    #   }
+    #   if (defined $omimInfo{$appSym}[1] && $omimInfo{$appSym}[1] ne "") {
+    #     $omimInfo{$appSym}[1] = $omimInfo{$appSym}[1] . " & " . $phenotype;
+    #   } else {
+    #     $omimInfo{$appSym}[1] = $phenotype;
+    #   }
+    # }
+
+    # if (defined $gSymbol && $gSymbol ne "") {
+    #   $gSymbol=~s/ //gi;
+    #   my @splitComma = split(/\,/,$gSymbol);
+    #   foreach my $gS (@splitComma) {
+    #     #print STDERR "omimGeneMap gS=$gS\n";
+    #     #print STDERR "mimNum=$mimNum\n";
+    #     if (defined $omimInfo{$gS}[3] && $omimInfo{$gS}[3]) {
+    #       my $dup = 0;
+    #       my @splitLink = split(/ & /,$omimInfo{$gS}[3]);
+    #       foreach my $link (@splitLink) {
+    #         if ($link eq $mimNum) {
+    #           $dup = 1;
+    #         }
+    #       }
+    #       if ($dup == 0) {
+    #         $omimInfo{$gS}[3] = $omimInfo{$gS}[3] . " & " . $mimNum;
+    #       }
+    #     } else {
+    #       $omimInfo{$gS}[3] = $mimNum;
+    #     }
+
+    #     if (defined $omimInfo{$gS}[2] && $omimInfo{$gS}[2] ne "") {
+    #       $omimInfo{$gS}[2] = $omimInfo{$gS}[2] . "|" . $inherSym;
+    #     } else {
+    #       $omimInfo{$gS}[2] = $inherSym;
+    #     }
+    #     if (defined $omimInfo{$gS}[1] && $omimInfo{$gS}[1] ne "") {
+    #       $omimInfo{$gS}[1] = $omimInfo{$gS}[1] . " & " . $phenotype;
+    #     } else {
+    #       $omimInfo{$gS}[1] = $phenotype;
+    #     }
+    #   }
+    # }
   }
 }
 close(FILE);
@@ -242,17 +252,129 @@ while ($data=<FILE>) {
     my $mimNum = $splitTab[2];
     my $cytoLocation = $splitTab[3];
 
-    if (defined $gSymbol && $gSymbol ne "") {
-      $gSymbol=~s/ //gi;
-      my @splitComma = split(/\,/,$gSymbol);
-      foreach my $gS (@splitComma) {
-        #print STDERR "omimMorbidMap gS=$gS\n";
-        #print STDERR "omimMorbidMap phenotype=$phenotype\n";
-        if (defined $omimInfo{$gS}[0] && $omimInfo{$gS}[0]) {
-          $omimInfo{$gS}[0] = $omimInfo{$gS}[0] . " & " . $phenotype;
-        } else {
-          $omimInfo{$gS}[0] = $phenotype;
-        }
+
+    if (defined $omimInfo{$mimNum}[0] && $omimInfo{$mimNum}[0] ne "") {
+      $omimInfo{$mimNum}[0] = $omimInfo{$mimNum}[0] . " & " . $phenotype;
+    } else {
+      $omimInfo{$mimNum}[0] = $phenotype;
+    }
+
+
+    # if (defined $gSymbol && $gSymbol ne "") {
+    #   $gSymbol=~s/ //gi;
+    #   my @splitComma = split(/\,/,$gSymbol);
+    #   foreach my $gS (@splitComma) {
+    #     #print STDERR "omimMorbidMap gS=$gS\n";
+    #     #print STDERR "omimMorbidMap phenotype=$phenotype\n";
+    #     if (defined $omimInfo{$gS}[0] && $omimInfo{$gS}[0]) {
+    #       $omimInfo{$gS}[0] = $omimInfo{$gS}[0] . " & " . $phenotype;
+    #     } else {
+    #       $omimInfo{$gS}[0] = $phenotype;
+    #     }
+
+    #     if (defined $omimInfo{$gS}[3] && $omimInfo{$gS}[3]) {
+    #       my $dup = 0;
+    #       my @splitLink = split(/ & /,$omimInfo{$gS}[3]);
+    #       foreach my $link (@splitLink) {
+    #         if ($link eq $mimNum) {
+    #           $dup = 1;
+    #         }
+    #       }
+    #       if ($dup == 0) {
+    #         $omimInfo{$gS}[3] = $omimInfo{$gS}[3] . " & " . $mimNum;
+    #       }
+    #     } else {
+    #       $omimInfo{$gS}[3] = $mimNum;
+    #     }
+    #   }
+    # }
+  }
+}
+close(FILE);
+
+#read in OMIM genemap
+open (FILE, "< $omimGeneMap1File") or die "Can't open $omimGeneMap1File for read: $!\n";
+while ($data=<FILE>) {
+  chomp $data;
+  if ($data!~/^#/) {
+    my @splitTab = split(/\t/,$data);
+    my $sort = $splitTab[0];
+    my $month = $splitTab[1];
+    my $day = $splitTab[2];
+    my $year = $splitTab[3];
+    my $cytoLoc = $splitTab[4];
+    my $gSymbol = uc($splitTab[5]);
+    my $confidence = $splitTab[6];
+    my $gName = $splitTab[7];
+    my $mimNum = $splitTab[8];
+    my $mappingMethod = $splitTab[9];
+    my $comment = $splitTab[10];
+    my $phenotype = $splitTab[11];
+    my $mouseSymGeneId = $splitTab[12];
+
+
+    if (defined $omimInfo{$mimNum}[1] && $omimInfo{$mimNum}[1] ne "") {
+      $omimInfo{$mimNum}[1] = $omimInfo{$mimNum}[1] . " & " . $phenotype;
+    } else {
+      $omimInfo{$mimNum}[1] = $phenotype;
+    }
+    # if (defined $gSymbol && $gSymbol ne "") {
+    #   $gSymbol=~s/ //gi;
+    #   my @splitComma = split(/\,/,$gSymbol);
+    #   foreach my $gS (@splitComma) {
+    #     #print STDERR "omimGeneMap gS=$gS\n";
+    #     #print STDERR "mimNum=$mimNum\n";
+    #     if (defined $omimInfo{$gS}[1] && $omimInfo{$gS}[1] ne "") {
+    #       $omimInfo{$gS}[1] = $omimInfo{$gS}[1] . " & " . $phenotype;
+    #     } else {
+    #       $omimInfo{$gS}[1] = $phenotype;
+    #     }
+
+    #     if (defined $omimInfo{$gS}[3] && $omimInfo{$gS}[3]) {
+    #       my $dup = 0;
+    #       my @splitLink = split(/ & /,$omimInfo{$gS}[3]);
+    #       foreach my $link (@splitLink) {
+    #         if ($link eq $mimNum) {
+    #           $dup = 1;
+    #         }
+    #       }
+    #       if ($dup == 0) {
+    #         $omimInfo{$gS}[3] = $omimInfo{$gS}[3] . " & " . $mimNum;
+    #       }
+    #     } else {
+    #       $omimInfo{$gS}[3] = $mimNum;
+    #     }
+    #   }
+    # }
+
+  }
+}
+close(FILE);
+
+#read in OMIM mim2GeneFile
+open (FILE, "< $omimMim2GeneFile") or die "Can't open $omimMim2GeneFile for read: $!\n";
+while ($data=<FILE>) {
+  chomp $data;
+  if ($data!~/^#/) {
+    my @splitTab = split(/\t/,$data);
+    my $mimNum = $splitTab[0];
+    my $entry = $splitTab[1];
+    my $entrezID = $splitTab[2];
+    my $hgnc = uc($splitTab[3]);
+    my $ensemblID = $splitTab[4];
+    $ensemblID=~s/\,/\:/;
+
+    if (defined $hgnc && $hgnc ne "") {
+      if (defined $omimMim2Gene{$hgnc}) {
+        $omimMim2Gene{$hgnc} = $omimMim2Gene{$hgnc} . "|" . $mimNum;
+      } else {
+        $omimMim2Gene{$hgnc} = $mimNum;
+      }
+
+      if (defined $omimMim2Gene{$ensemblID}) {
+        $omimMim2Gene{$ensemblID} = $omimMim2Gene{$ensemblID} . "|" . $mimNum;
+      } else {
+        $omimMim2Gene{$ensemblID} = $mimNum;
       }
     }
   }
@@ -261,7 +383,7 @@ close(FILE);
 
 #read in the HGNC file to read in all the gene IDs and how they relate to each other
 open (FILE, "< $hgncFile") or die "Can't open $hgncFile for read: $!\n";
-print STDERR "hgncFile=$hgncFile\n";
+#print STDERR "hgncFile=$hgncFile\n";
 $data=<FILE>;                   #remove header
 while ($data=<FILE>) {
   chomp $data;
@@ -336,7 +458,7 @@ while ($data=<FILE>) {
       my @splitPrevSym = split(/\, /,$prevSymbols);
       foreach my $pSym (@splitPrevSym) {
         $pSym=~s/ //gi;
-        print STDERR "pSym=$pSym\n";
+        #print STDERR "pSym=$pSym\n";
         if (defined $geneIDs{$pSym}) {
           print STDERR "previous Symbol=$pSym is already defined\n";
           my @splitT = split(/\t/,$geneIDs{$pSym});
@@ -380,7 +502,7 @@ while ($data=<FILE>) {
         }
       }
     }
-    print STDERR "otherSym=$otherSym\n";
+    #print STDERR "otherSym=$otherSym\n";
     $geneInfo{$approvedGeneSymbol} = $otherSym . "\t" . $approvedName ."\t" . $geneFamilyDescrip;
     my @splitC = split(/\, /,$otherSym);
     foreach my $os (@splitC) {
@@ -393,7 +515,7 @@ close(FILE);
 #read in CGD file to get the CGD inheritance information
 my %cgd = ();
 open (FILE, "< $cgdFile") or die "Can't open $cgdFile for read: $!\n";
-print STDERR "cgdFile=$cgdFile\n";
+#print STDERR "cgdFile=$cgdFile\n";
 while ($data=<FILE>) {
   chomp $data;
   my @splitTab = split(/\t/,$data);
@@ -703,8 +825,8 @@ foreach my $suffix (@annovarFileSuffix) {
       } else {
         print STDERR "Mutation Assessor missing a prediction\n";
       }
-      print STDERR "mutAssScore=$mutAssScore\n";
-      print STDERR "maString=$maString\n";
+      #print STDERR "mutAssScore=$mutAssScore\n";
+      #print STDERR "maString=$maString\n";
 
       if ($mutAssScore ne ".") {
         if (defined $annovarInfo{"$chr:$startpos:$type"}[7]) {
@@ -915,7 +1037,7 @@ foreach my $suffix (@annovarFileSuffix) {
         if (defined $annovarInfo{"$chr:$startpos:$type"}[27]) {
           my @splitSC = split(/\;/,$annovarInfo{"$chr:$startpos:$type"}[27]);
 
-          $annovarInfo{"$chr:$startpos:$type"}[9] = $splitSC[0] . "|" . $geneEnsGene . ";" . $splitSC[1] . $geneDetailEnsGene;
+          $annovarInfo{"$chr:$startpos:$type"}[27] = $splitSC[0] . "|" . $geneEnsGene . ";" . $splitSC[1] . $geneDetailEnsGene;
 
         } else {
           $annovarInfo{"$chr:$startpos:$type"}[27] = $geneEnsGene . ";" . $geneDetailEnsGene;
@@ -1018,6 +1140,30 @@ foreach my $suffix (@annovarFileSuffix) {
       $annovarInfo{"$chr:$start:$type"}[15] = "Y";
       #}
 
+    } elsif ($suffix eq "hg19_exacPLI_bed") {
+      my $info = $splitTab[1];
+      $info=~s/Name=//gi;
+      my $chr = $splitTab[2];
+      my $start = $splitTab[3];
+      my $ref = $splitTab[5];
+      my $alt = $splitTab[6];
+      if ($alt eq "-") {
+        $start = $start - 1;
+      }
+      #determining the type in annovar
+      my $type = "snp";
+      if ($ref eq "-" || $alt eq "-") {
+        $type = "indel";
+      } elsif ((length($ref) == length($alt)) && (length($ref) != 1)) {
+        $type = "mnp";
+      }
+      if (defined $annovarInfo{"$chr:$start:$type"}[29]) {
+        #the region is probably big enough that only one is good enough
+        $annovarInfo{"$chr:$start:$type"}[29] = $annovarInfo{"$chr:$start:$type"}[29] . "," . $info;
+      } else {
+        $annovarInfo{"$chr:$start:$type"}[29] = $info;
+      }
+
     } elsif ($suffix eq "hg19_cgWellderly_generic_dropped") {
       my $wellderly = $splitTab[1];
       my @splitDots = split(/\:/,$wellderly);
@@ -1059,9 +1205,9 @@ $fName=~s/.gatk.snp.indel.vcf//gi;
 #print STDERR "fName=$fName\n";
 my @splitSlash = split(/\//,$fName);
 my $vcfDir = $splitSlash[scalar(@splitSlash) - 3];
-print STDERR "vcfDir=$vcfDir\n";
+#print STDERR "vcfDir=$vcfDir\n";
 print "##$fName\n";
-print "##Chrom\tPosition\tReference\tGenotype\tAlleles\tType of Mutation\tAllelic Depths for Reference\tAllelic Depths for Alternative Alleles\tFiltered Depth\tQuality By Depth\tFisher's Exact Strand Bias Test\tRMS Mapping Quality\tHaplotype Score\tMapping Quality Rank Sum Test\tRead Pos Rank Sum Test\tGatk Filters\tTranscript ID\tGene Symbol\tOther Symbols\tGene Name\tGene Family Description\tEntrez ID\tHGNC ID\tEffect\tEffect Impact\tCodon Change\tAmino Acid change\tDisease Gene Association\tOMIM Gene Map\tOMIM Morbidmap\tOMIM Inheritance\tOMIM Link\tCGD Condition\tCGD Inheritance\tHPO Terms\tHPO Disease\tMotif\tNextProt\tPercent CDS Affected\tPercent Transcript Affected\tdbsnp 144\tSegDup\tPolyPhen Score\tPolyPhen Prediction\tSift Score\tSift Prediction\tMutation Taster Score\tMutation Taster Prediction\tCADD Pred-Scaled Score\tCADD Prediction\tPhylop Score\tPhylop Prediction\tMutation Assessor Score\tMutation Assessor Prediction\tAnnovar Refseq Exonic Variant Info\tAnnovar Refseq Gene or Nearest Gene\tClinVar SIG\tClinVar CLNDBN\tClinVar CLNACC\tHGMD SIG SNVs\tHGMD ID SNVs\tHGMD HGVS SNVs\tHGMD Protein SNVs\tHGMD Description SNVs\tHGMD SIG microlesions\tHGMD ID microlesions\tHGMD HGVS microlesions\tHGMD Decription microlesions\tCosmic68\tcgWellderly all frequency\tRegion of Homology\tCG46 Allele Frequency\tESP All Allele Frequency\tESP AA Allele Frequency\tESP EA Allele Frequency\t1000G All Allele Frequency\t1000G AFR Allele Frequency\t1000G AMR Allele Frequency\t1000G EAS Allele Frequency\t1000G SAS Allele Frequency\t1000G EUR Allele Frequency\tAnnovar Ensembl Exonic Variant Info\tAnnovar Ensembl Gene or Nearest Gene\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tHGMD INDELs within 20bp window\tClinVar INDELs within 20bp window\tInternal SNPs Allele All Chromosomes Called\tInternal SNPs Allele All AF\tInternal SNPs Allele All AF genotype\tInternal SNPs Allele All Calls\tInternal INDELs Allele All Chromosomes Called\tInternal INDELs Allele All AF\tInternal INDELs Allele All AF genotype\tInternal INDELs Allele All Calls\tInternal SNPs Allele High Confidence Chromosomes Called\tInternal SNPs Allele High Confidence AF\tInternal SNPs Allele High Confidence AF genotype\tInternal SNPs Allele High Confidence Calls\tInternal INDELs Allele High Confidence Chromosomes Called\tInternal INDELs Allele High Confidence AF\tInternal INDELs Allele High Confidence AF genotype\tInternal INDELs Allele High Confidence Calls\n";
+print "##Chrom\tPosition\tReference\tGenotype\tAlleles\tType of Mutation\tAllelic Depths for Reference\tAllelic Depths for Alternative Alleles\tFiltered Depth\tQuality By Depth\tFisher's Exact Strand Bias Test\tRMS Mapping Quality\tStrand Odds Ratio\tMapping Quality Rank Sum Test\tRead Pos Rank Sum Test\tGatk Filters\tTranscript ID\tGene Symbol\tOther Symbols\tGene Name\tGene Family Description\tEntrez ID\tHGNC ID\tEffect\tEffect Impact\tCodon Change\tAmino Acid change\tDisease Gene Association\tOMIM Gene Map\tOMIM Morbidmap\tOMIM Inheritance\tOMIM Link\tCGD Condition\tCGD Inheritance\tHPO Terms\tHPO Disease\tMotif\tNextProt\tPercent CDS Affected\tPercent Transcript Affected\tdbsnp 144\tSegDup\tPolyPhen Score\tPolyPhen Prediction\tSift Score\tSift Prediction\tMutation Taster Score\tMutation Taster Prediction\tCADD Pred-Scaled Score\tCADD Prediction\tPhylop Score\tPhylop Prediction\tMutation Assessor Score\tMutation Assessor Prediction\tAnnovar Refseq Exonic Variant Info\tAnnovar Refseq Gene or Nearest Gene\tClinVar SIG\tClinVar CLNDBN\tClinVar CLNACC\tHGMD SIG SNVs\tHGMD ID SNVs\tHGMD HGVS SNVs\tHGMD Protein SNVs\tHGMD Description SNVs\tHGMD SIG microlesions\tHGMD ID microlesions\tHGMD HGVS microlesions\tHGMD Decription microlesions\tCosmic68\tcgWellderly all frequency\tRegion of Homology\tCG46 Allele Frequency\tESP All Allele Frequency\tESP AA Allele Frequency\tESP EA Allele Frequency\t1000G All Allele Frequency\t1000G AFR Allele Frequency\t1000G AMR Allele Frequency\t1000G EAS Allele Frequency\t1000G SAS Allele Frequency\t1000G EUR Allele Frequency\tAnnovar Ensembl Exonic Variant Info\tAnnovar Ensembl Gene or Nearest Gene\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tExAC PLI\tExAC missense Z-score\tHGMD INDELs within 20bp window\tClinVar INDELs within 20bp window\tInternal SNPs Allele All Chromosomes Called\tInternal SNPs Allele All AF\tInternal SNPs Allele All AF genotype\tInternal SNPs Allele All Calls\tInternal INDELs Allele All Chromosomes Called\tInternal INDELs Allele All AF\tInternal INDELs Allele All AF genotype\tInternal INDELs Allele All Calls\tInternal SNPs Allele High Confidence Chromosomes Called\tInternal SNPs Allele High Confidence AF\tInternal SNPs Allele High Confidence AF genotype\tInternal SNPs Allele High Confidence Calls\tInternal INDELs Allele High Confidence Chromosomes Called\tInternal INDELs Allele High Confidence AF\tInternal INDELs Allele High Confidence AF genotype\tInternal INDELs Allele High Confidence Calls\n";
 
 #my $title = 0;
 open (FILE, "< $vcfFile") or die "Can't open $vcfFile for read: $!\n";
@@ -1093,7 +1239,8 @@ while ($data=<FILE>) {
     my $dp = "";
     my $fs = "";
     my $mq = "";
-    my $haplotypeScore = "";
+  #  my $haplotypeScore = "";
+    my $sor = "";
     my $mqranksum = "";
     my $readposranksum = "";
     my $snpEff = "";
@@ -1115,8 +1262,8 @@ while ($data=<FILE>) {
         $fs = $splitVariable[1];
       } elsif ($splitVariable[0] eq "MQ") {
         $mq = $splitVariable[1];
-      } elsif ($splitVariable[0] eq "HaplotypeScore") {
-        $haplotypeScore = $splitVariable[1];
+      } elsif ($splitVariable[0] eq "SOR") {
+        $sor = $splitVariable[1];
       } elsif ($splitVariable[0] eq "MQRankSum") {
         $mqranksum = $splitVariable[1];
       } elsif ($splitVariable[0] eq "ReadPosRankSum") {
@@ -1165,11 +1312,11 @@ while ($data=<FILE>) {
       ($rGt, $geno, $vType, $cgFilter, $aDP, $gtDp) = split(/\t/,$x);
     }
     my $chrpos = "$chr:$pos:$vType";
-    print STDERR "chrpos=$chrpos\n";
-    print STDERR "rGt=$rGt\n";
-    print STDERR "geno=$geno\n";
-    print STDERR "vType=$vType\n";
-    print STDERR "cgFilter=$cgFilter\n";
+    #print STDERR "chrpos=$chrpos\n";
+    #print STDERR "rGt=$rGt\n";
+    #print STDERR "geno=$geno\n";
+    #print STDERR "vType=$vType\n";
+    #print STDERR "cgFilter=$cgFilter\n";
 
     #go through EFF -> from the refseqID or ensembl ID match up the HPO, OMIM, MPO, and CGD information
     #print STDERR "snpEff=$snpEff\n";
@@ -1333,7 +1480,7 @@ while ($data=<FILE>) {
     my $entrezID = "";
     my $mgiID = "";
     my $hgncID = "";
-    my $omimID = "";
+    #my $omimID = "";
     my $refseqID = "";
     if (defined $geneIDs{$geneName}) {
       my @splitIds = split(/\t/,$geneIDs{$geneName});
@@ -1341,7 +1488,7 @@ while ($data=<FILE>) {
       $entrezID = $splitIds[1];
       $mgiID = $splitIds[2];
       $hgncID = $splitIds[3];
-      $omimID = $splitIds[4];
+      #$omimID = $splitIds[4];
       $refseqID = $splitIds[5];
     }
 
@@ -1359,41 +1506,125 @@ while ($data=<FILE>) {
       $geneFamilyDescrip = $splitGeneInfo[2];
     }
 
-    ##get OMIM genemap info
-    my $ogeneMap = "";
-    if (defined $omimInfo{$geneName}[1]) {
-      $ogeneMap = $omimInfo{$geneName}[1];
-    }
-
+    # ##get OMIM genemap info
     ##get OMIM MorbidMap info
-    ###only for exomes ->
+    ###only for exomes -> ###combo phenotype
     my $omorbidmap = "";
-    if (defined $omimInfo{$geneName}[0]) {
-      $omorbidmap = $omimInfo{$geneName}[0];
-    }
-
-    ##get OMIM MorbidMap info
-    ###only for exomes ->
+    my $ogeneMap = "";
     my $omimInherit = "";
-    if (defined $omimInfo{$geneName}[2]) {
-      $omimInherit = $omimInfo{$geneName}[2];
+    my $omimLink = "";
+
+    if (defined $omimMim2Gene{$geneName}) {
+      $omimLink = $omimMim2Gene{$geneName};
+      ###get the other information
+      my @splitL = split(/\|/,$omimLink);
+      foreach my $mimId (@splitL) {
+        if (defined $omimInfo{$mimId}[0]) {
+          $omorbidmap = $omimInfo{$mimId}[0];
+        }
+
+        if (defined $omimInfo{$mimId}[1]) {
+          $ogeneMap = $omimInfo{$mimId}[1];
+        }
+
+        if (defined $omimInfo{$mimId}[2]) {
+          my @splitLine = split(/\|/,$omimInfo{$mimId}[2]);
+          my %rmDup = ();
+          foreach my $inArray (@splitLine) {
+            $rmDup{$inArray} = "1";
+          }
+          foreach my $inHash (keys %rmDup) {
+            if ($omimInherit eq "") {
+              $omimInherit = $inHash;
+            } else {
+              $omimInherit = $omimInherit . "|" . $inHash;
+            }
+          }
+        }
+      }
+    } else {
+      ###try the ensembl Link
+      my $ensemblInfo = $annovarInfo{$chrpos}[26];
+      my @splitCo = split(/\,/,$ensemblInfo);
+      foreach my $ensInfo (@splitCo) {
+        my @splitDos = split(/\:/,$ensInfo);
+        my $ensID = $splitDos[0] . ":" . $splitDos[1];
+        #print STDERR "ensID=$ensID\n";
+        if (defined $omimMim2Gene{$ensID}) {
+          $omimLink = $omimMim2Gene{$ensID};
+          my @splitL = split(/\|/,$omimLink);
+          foreach my $mimId (@splitL) {
+            if (defined $omimInfo{$mimId}[0]) {
+              $omorbidmap = $omimInfo{$mimId}[0];
+            }
+
+            if (defined $omimInfo{$mimId}[1]) {
+              $ogeneMap = $omimInfo{$mimId}[1];
+            }
+
+            if (defined $omimInfo{$mimId}[2]) {
+              my @splitLine = split(/\|/,$omimInfo{$mimId}[2]);
+              my %rmDup = ();
+              foreach my $inArray (@splitLine) {
+                $rmDup{$inArray} = "1";
+              }
+              foreach my $inHash (keys %rmDup) {
+                if ($omimInherit eq "") {
+                  $omimInherit = $inHash;
+                } else {
+                  $omimInherit = $omimInherit . "|" . $inHash;
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
-    my $omimLink = "";
-    if (defined $omimInfo{$geneName}[3]) {
-      $omimLink = $omimInfo{$geneName}[3];
-    }
+
+    # my $omorbidmap = "";
+    # if (defined $omimInfo{$geneName}[0]) {
+    #   $omorbidmap = $omimInfo{$geneName}[0];
+    # }
+
+    # my $ogeneMap = "";
+    # if (defined $omimInfo{$geneName}[1]) {
+    #   $ogeneMap = $omimInfo{$geneName}[1];
+    # }
+
+    # ##get OMIM MorbidMap info
+    # ###only for exomes ->
+    # my $omimInherit = "";
+    # if (defined $omimInfo{$geneName}[2]) {
+
+    #   my @splitLine = split(/\|/,$omimInfo{$geneName}[2]);
+    #   my %rmDup = ();
+    #   foreach my $inArray (@splitLine) {
+    #     $rmDup{$inArray} = "1";
+    #   }
+    #   foreach my $inHash (keys %rmDup) {
+    #     if ($omimInherit eq "") {
+    #       $omimInherit = $rmDup{$inHash};
+    #     } else {
+    #       $omimInherit = $omimInherit . "|" . $inHash;
+    #     }
+    #   }
+    # }
+    # my $omimLink = "";
+    # if (defined $omimInfo{$geneName}[3]) {
+    #   $omimLink = $omimInfo{$geneName}[3];
+    # }
 
     ##get CDG info
     my $cgdCondition = "";
     my $cgdInheritance = "";
     if (defined $cgd{$hgncID}) {
-      print STDERR "CGD hgncID=$hgncID|\n";
+      #print STDERR "CGD hgncID=$hgncID|\n";
       my @splitCGDT = split(/\t/,$cgd{$hgncID});
       $cgdCondition = $splitCGDT[0];
-      print STDERR "cgdCondition=$cgdCondition\n";
+      #print STDERR "cgdCondition=$cgdCondition\n";
       $cgdInheritance = $splitCGDT[1];
-      print STDERR "cgdInheritance=$cgdInheritance\n";
+      #print STDERR "cgdInheritance=$cgdInheritance\n";
     }
 
     ##get HPO Term Info
@@ -1425,10 +1656,10 @@ while ($data=<FILE>) {
     #format the other Symbols to look nicer
     $otherSymbols =~s/\"//gi;
     $otherSymbols =~s/\|/\,/gi;
-    print STDERR "AFTER otherSymbols=$otherSymbols\n";
+    #print STDERR "AFTER otherSymbols=$otherSymbols\n";
     $motif =~s/TF_binding_site_variant://gi;
 
-    print $chr . "\t" . $pos . "\t" . $ref . "\t" . $rGt ."\t" . $geno ."\t" . $vType . "\t" .$cgFilter ."\t" . $aDP ."\t" .$gtDp . "\t" . $qd . "\t" .  $fs . "\t" . $mq . "\t" . $haplotypeScore . "\t" . $mqranksum . "\t" . $readposranksum . "\t" . $filter . "\t" . $txID ."\t" . $geneName . "\t" . $otherSymbols . "\t" . $geneNameFull . "\t" . $geneFamilyDescrip ."\t" . $entrezID . "\t" . $hgncID . "\t" . $effect . "\t" . $effectImpact . "\t" . $codonChange . "\t" . $aaChange . "\t" . $diseaseAss . "\t" . $ogeneMap . "\t" . $omorbidmap . "\t" . $omimInherit . "\t" . $omimLink . "\t" . $cgdCondition . "\t" . $cgdInheritance . "\t" . $hpoTermsInfo . "\t" . $hpoDiseaseInfo . "\t" . $motif . "\t" . $nextprot . "\t" . $perCDSaffected . "\t" . $pertxaffected . "\t";
+    print $chr . "\t" . $pos . "\t" . $ref . "\t" . $rGt ."\t" . $geno ."\t" . $vType . "\t" .$cgFilter ."\t" . $aDP ."\t" .$gtDp . "\t" . $qd . "\t" .  $fs . "\t" . $mq . "\t" . $sor . "\t" . $mqranksum . "\t" . $readposranksum . "\t" . $filter . "\t" . $txID ."\t" . $geneName . "\t" . $otherSymbols . "\t" . $geneNameFull . "\t" . $geneFamilyDescrip ."\t" . $entrezID . "\t" . $hgncID . "\t" . $effect . "\t" . $effectImpact . "\t" . $codonChange . "\t" . $aaChange . "\t" . $diseaseAss . "\t" . $ogeneMap . "\t" . $omorbidmap . "\t" . $omimInherit . "\t" . $omimLink . "\t" . $cgdCondition . "\t" . $cgdInheritance . "\t" . $hpoTermsInfo . "\t" . $hpoDiseaseInfo . "\t" . $motif . "\t" . $nextprot . "\t" . $perCDSaffected . "\t" . $pertxaffected . "\t";
 
     #my $chrpos = "$chr:$pos:$vType";
     #print out all the data ---> old method
@@ -1436,7 +1667,32 @@ while ($data=<FILE>) {
       for (my $i= 0; $i <= $annovarCounter; $i++ ) {
         #print STDERR "i=$i\n";
         if ((defined $annovarInfo{$chrpos}[$i]) && ($annovarInfo{$chrpos}[$i] ne "")) {
-          print $annovarInfo{$chrpos}[$i];
+          if ($i == 29) {       #exac pLI check geneSymbol
+            my @splitL = split(/\,/,$annovarInfo{$chrpos}[$i]);
+            my $rpliNum = "";
+            my $rmisenseZ = "";
+            foreach my $pli (@splitL) {
+              my @splitPLI = split(/\|/,$pli);
+              my $pliNum = $splitPLI[0];
+              my $misenseZ = $splitPLI[1];
+              my $pligS = $splitPLI[2];
+              if ($pligS eq $geneName) {
+                if ($rpliNum eq "") {
+                  $rpliNum = sprintf("%.2f", $pliNum);
+                } else {
+                  $rpliNum = $rpliNum . "|" .sprintf("%.2f", $pliNum);
+                }
+                if ($rmisenseZ eq "") {
+                  $rmisenseZ = sprintf("%.2f", $pliNum);
+                } else {
+                  $rmisenseZ = $rmisenseZ . "|" .sprintf("%.2f", $pliNum);
+                }
+              }
+            }
+            print $rpliNum . "\t" . $rmisenseZ;
+          } else {
+            print $annovarInfo{$chrpos}[$i];
+          }
         } else {
           if (($i == 2) || ($i == 3) || ($i == 4) || ($i == 6) || ($i ==7) || ($i == 5)) {
             print "\t";
@@ -1449,6 +1705,8 @@ while ($data=<FILE>) {
           } elsif ($i == 28) {  #for Exac
             #print STDERR "Exac spacing!\n";
             print "\t\t\t\t\t\t\t";
+          } elsif ($i == 29) {
+            print "\t";
           }
         }
         print "\t";
@@ -1579,8 +1837,8 @@ sub getGenotype {               #determines the genotype
   } else {
     print STDERR "ERROR alleleTwo case not handled splitGt[1]=$splitGt[1]\n";
   }
-  print STDERR "alleleOne=$alleleOne\n";
-  print STDERR "alleleTwo=$alleleTwo\n";
+  #print STDERR "alleleOne=$alleleOne\n";
+  #print STDERR "alleleTwo=$alleleTwo\n";
   if ($realGt eq "hap") {
     $genotype = $alleleOne;
   } elsif ($realGt eq "no-call") {
@@ -1588,7 +1846,7 @@ sub getGenotype {               #determines the genotype
   } else {
     $genotype = $alleleOne . "|" . $alleleTwo;
   }
-  print STDERR "genotype=$genotype\n";
+  #print STDERR "genotype=$genotype\n";
 
   #determine if it's a snp, indel, sub, or na
 
@@ -1700,7 +1958,7 @@ sub readInInternalAF {
     if (defined $splitL[1]) { #only if there is a alternative allele - do not report reference
       for (my $l = 1; $l < scalar(@splitL); $l++) {
         my @splitD = split(/\:/,$splitL[$l]);
-        my $a = $splitD[0];                                  #allele
+        my $a = $splitD[0];     #allele
         my $freq = $splitD[1];  #frequency
         if ($maf eq "") {
           $maf = $freq;
@@ -1731,7 +1989,7 @@ sub readInWindow {
   my %indels = (); #key -> chr:pos, value -> all indels in the +/- 10bp window
   my $data = "";
   #$data=~s/\t//gi;
-  print STDERR "filename=$filename\n";
+  #print STDERR "filename=$filename\n";
   open (FILE, "< $filename") or die "Can't open $filename for read: $!\n";
   while ($data=<FILE>) {
     chomp $data;

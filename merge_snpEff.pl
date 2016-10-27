@@ -83,6 +83,7 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
 
       my @splitTab = split(/\t/,$data);
       my $chr = $splitTab[0];
+      $chr=~s/MT/M/gi;
       my $pos = $splitTab[1];
       my $ref = $splitTab[3];
       my $alt = $splitTab[4];
@@ -200,6 +201,7 @@ sub isoformPrint{
 
       my @splitTab =split(/\t/,$data);
       my $chr = $splitTab[0];
+      $chr=~s/MT/M/gi;
       my $pos = $splitTab[1];
 
       #print STDERR "$chr:$pos\n";
