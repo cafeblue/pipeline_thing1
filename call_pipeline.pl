@@ -188,9 +188,9 @@ sub exome {
 
  annovar:                   @jobID_and_Pfolder    = &annovar(@jobID_and_Pfolder);
   sleep 1;
-  # $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder[0] . "," . $jobID_and_Pfolder2[0];
-  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder2[0];
-  #  push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
+   $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder[0] . "," . $jobID_and_Pfolder2[0];
+  #$jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder2[0];
+    push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[2];
  snpEff:                    @jobID_and_Pfolder    = &snpEff(@jobID_and_Pfolder);
@@ -262,11 +262,11 @@ sub cancerN {
   # gatkFilteredRecalVariant:  @jobID_and_Pfolder1   =  &gatkFilteredRecalVariant(@jobID_and_Pfolder);
   sleep 1;
  windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder);
- annovar:                   @jobID_and_Pfolder    = &annovar(@jobID_and_Pfolder);
+ annovar:                   @jobID_and_Pfolder1    = &annovar(@jobID_and_Pfolder);
   sleep 1;
-#  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder[0] . "," . $jobID_and_Pfolder2[0];
-  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder2[0];
-  #  push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
+ $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
+#  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder2[0];
+  push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[2];
  snpEff:                    @jobID_and_Pfolder    = &snpEff(@jobID_and_Pfolder);
@@ -834,7 +834,7 @@ sub gatkJointGenotyping {
         . 'module load ' . $GATK . ' && ' . " \\\n"
           . 'module load ' . $JAVA . ' && ' . " \\\n"
             . "\\\n"
-              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T CombineGVCFs' . " -R $reference " . all_chr_files("--variant ", "$runfolder/" . "gatkRawVariantsCall", "$sampleID.$postprocID.raw_variants.chr", ".g.vcf")
+              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T GenotypeGVCFs' . " -R $reference " . all_chr_files("--variant ", "$runfolder/" . "gatkRawVariantsCall", "$sampleID.$postprocID.raw_variants.chr", ".g.vcf")
                 . " -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf" . " && \\\n"
                   . "perl $SCRIPTDIR/removeNoCalls.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf && \\\n"
                     . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval ' . " \\\n"
