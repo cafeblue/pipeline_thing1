@@ -48,6 +48,8 @@ for (11..$#interOp) {
   }
 }
 
+my $perReadsPF = sprintf('%5.2f', $metrics{'ReadsPF'}/$metrics{'Reads'}*100);
+
 my $updateFCStats = "UPDATE thing1JobStatus SET `reads Cluster Density` = '".$metrics{"Density"}."', clusterPF = '" . $metrics{"ClusterPF"}. "', `# of Total Reads` = '" .$metrics{"Reads"}. "', `% Reads Passing Filter` = '" . $perReadsPF . "', `% Q30 Score` = '" . $metrics{'%>=Q30'} . "', aligned = '" . $metrics{'Aligned'} . "', `Error Rate` = '". $metrics{'Error'}."' WHERE flowcellID = '".$flowcellID."'";
 print STDERR "updateFCStats=$updateFCStats\n";
 my $sthUFCS = $dbh->prepare($updateFCStats) or die "Can't query database for flowcell info: ". $dbh->errstr() . "\n";

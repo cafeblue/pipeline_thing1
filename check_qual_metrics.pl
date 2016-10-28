@@ -45,7 +45,7 @@ sub update_qualMetrics {
             my $sthQUQ = $dbh->prepare($update_sql);
             $sthQUQ->execute();
         }
-        $query = "UPDATE sampleInfo SET currentStatus = '" . &check_qual($sampleInfo) . "' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'";
+        $query = "UPDATE sampleInfo SET currentStatus = '" . &check_qual($sampleInfo->{'postprocID'}, $dbh) . "' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'";
         print $query,"\n";
         $sthQUF = $dbh->prepare($query);
         $sthQUF->execute();
@@ -53,19 +53,22 @@ sub update_qualMetrics {
     else {
         my $msg = "No successful job generate sql file for sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} ? it is impossible!!!!\n";
         print STDERR $msg;
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for QC ", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for sample QC", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
         return 2;
     }
 }
 
 sub check_qual {
-    my $sampleInfo = shift;
+    my ($postprocID, $dbh) = @_;
+    my $sthQNS = $dbh->prepare("SELECT * from sampleInfo where postprocID = '$postprocID'");
+    $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+    my $sampleInfo = $sthQNS->fetchrow_hashref; 
     my $machineType = $sampleInfo->{"machine"};
     $machineType =~ s/_.+//;
 
     my $msg = Common::qc_sample($sampleInfo->{'sampleID'}, $machineType, $sampleInfo->{'captureKit'}, $sampleInfo, '2', $dbh); 
     if ($msg ne '') {
-        $msg = "sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} on machine $sampleInfo->{'machine'} flowcellID $sampleInfo->{'flowcellID'} has finished analysis using gene panel, $sampleInfo->{'genePanelVer'}. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through.\n\n" . $msg;
+        $msg = "sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} on machine $sampleInfo->{'machine'} flowcellID $sampleInfo->{'flowcellID'} has finished analysis using gene panel, $sampleInfo->{'genePanelVer'}. Unfortunately, it has failed the quality thresholds for target coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through.\n\n" . $msg;
         Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "SampleID $sampleInfo->{'sampleID'} on flowcell $sampleInfo->{'flowcellID'} failed to pass the QC", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
         return 7;
     }

@@ -261,7 +261,7 @@ sub qc_flowcell {
       foreach my $val (split(/,/, $flowcellMx->{$rule})) {
         $val =~ s/\+.+//;
         if (not eval($val . $equa)) {
-          $message .= "One of the $rule (Value: $flowcellMx->{$rule}) is not in our acceptable range: $flowcellQC->{$rule}->{'Value'}.\n";
+          $message .= "One of the $rule (Value: $flowcellMx->{$rule}) is not in our acceptable range: $flowcellQC->{$rule}->{'Value'}.\n\n";
           last FQC;
         }
       }
@@ -374,6 +374,7 @@ sub get_sequencing_qual_stat {
       ###calculate the % index for each sample including Undetermined
       foreach my $sid (keys %perQ30) {
         $sample_cont{$sid}{'perIndex'} = $sample_cont{$sid}{'numReads'}/$totalReads*100;
+        $sample_cont{$sid}{'perPCRdup'} = 0;
       }
 
       ###update to store number of undetermined reads
