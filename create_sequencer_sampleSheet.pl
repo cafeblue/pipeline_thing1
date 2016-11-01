@@ -65,6 +65,7 @@ sub write_samplesheet {
 sub write_samplesheet_miseq {
   my ($machine,@cont_tmp) = @_;
   my $flowcellID;
+  my ($cycle1, $cycle2, $machineType) = (151,151, "MiSeqDx");
   my $output = eval($config->{'SEQ_SAMPLESHEET_INFO'}) . "\n"; 
   $output =~ s/\n/\r\n/g;
   foreach my $line (@cont_tmp) {
