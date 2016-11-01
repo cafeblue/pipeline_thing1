@@ -66,10 +66,10 @@ sub write_samplesheet_miseq {
   my ($machine,@cont_tmp) = @_;
   my $flowcellID;
   my ($cycle1, $cycle2, $machineType) = (151,151, "MiSeqDx");
-  my $output = eval($config->{'SEQ_SAMPLESHEET_INFO'}) . "\n"; 
+  my $output = eval($config->{'SEQ_SAMPLESHEET_INFO'}) . "\n" . eval($config->{'SAMPLESHEET_HEADER_miseqdx'}); 
   $output =~ s/\n/\r\n/g;
   foreach my $line (@cont_tmp) {
-    $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes->{$line->{'barcode'}} . ",,\r\n";
+    $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes->{$line->{'barcode'}} . ",,,,,,\r\n";
     $flowcellID = $line->{'flowcell_ID'};
   }
 
