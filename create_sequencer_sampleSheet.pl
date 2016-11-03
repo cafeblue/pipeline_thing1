@@ -1,4 +1,10 @@
 #!/usr/bin/env perl
+# Function: This script checkes the table "sampleSheet" in the database,
+#     Fetch the information insert into the table within 61 seconds.
+#     Create the sampleSheet on the Desktop of the Sequencer.
+#     Email to the status (successful/failed) to the email list.
+# Date:  Nov. 03 2016
+# Far any issues please contect lynette.lau@sickkids.ca weiw.wang@sickkids.ca
 
 use strict;
 use warnings;
