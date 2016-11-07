@@ -91,14 +91,31 @@ sub write_samplesheet {
 sub write_samplesheet_miseq {
     ## create the sampleSheet for MiSeqDx
     my ($machine,@cont_tmp) = @_;
-    my $flowcellID;
+
+    ## check if there barcode2 exists
+    my $barcode = 'I7';
+    my $commas = ',,';
+    my $tmpline_ref = $cont_tmp[0];
+    my $flowcellID = $tmpline_ref->{'flowcell_ID'};
+    if (defined $tmpline_ref->{'barcode2'} && exists $ilmnBarcodes->{$tmpline_ref->{'barcode2'}} ) {
+        $barcode = 'I5';
+        $commas = ',,,,';
+    }
+    
     my ($cycle1, $cycle2, $machineType) = (151,151, "MiSeq");
-    my $output = eval($config->{'SEQ_SAMPLESHEET_INFO'}) . "\n" . eval($config->{'SAMPLESHEET_HEADER_miseqdx'}); 
+    my $output = eval($config->{'SEQ_SAMPLESHEET_INFO'}) . "\n" . eval($config->{"SAMPLESHEET_HEADER_miseqdx_$barcode"}); 
     $output =~ s/\n/\r\n/g;
     ## generate each line for the sampleSheet.
     foreach my $line (@cont_tmp) {
-        $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes->{$line->{'barcode'}} . ",,,,,,\r\n";
-        $flowcellID = $line->{'flowcell_ID'};
+        $output .= $line->{'sampleID'} . ",,,," . $line->{'barcode'} . "," .  $ilmnBarcodes->{$line->{'barcode'}};
+        # single barcode
+        if ($barcode eq 'I7') {
+            $output .= "$commas\r\n";
+        }
+        # barcode2 exists
+        else {
+            $output .= "," . $line->{'barcode2'} . "," .  $ilmnBarcodes->{$line->{'barcode2'}} . "$commas\r\n";
+        }
     }
   
     my $file = Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
