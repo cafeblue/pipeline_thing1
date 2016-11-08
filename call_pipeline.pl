@@ -32,7 +32,7 @@ use Time::Piece;
 ###stress case #1
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 290929 -a 4236 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHLF2FBGXY/Sample_290929 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/290929-4236-20161002111111-exome.gp10-b37 -p exome
 ###stress case #2
-#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 290535 -a 4181 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH2VVYBCXY/Sample_290535 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/290535-4181-20161002111111-exome.gp10-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 290535 -a 4181 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH2VVYBCXY/Sample_290535 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/290535-4181-20161002111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
 
 ###first multi calling#### check gatkJointGenotyping to ensure enough memory is given
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 202214 -a 1411 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHK22CBCXX/Sample_202214 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-1411-20161014111111-exome.gp10-b37 -p exome
@@ -852,7 +852,7 @@ sub gatkJointGenotyping {
                     # . "perl $SCRIPTDIR/removeNoCalls.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf && \\\n"
                     . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval ' . " \\\n"
                       . "-L $captureKitFile -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt --eval $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf --dbsnp $dbSNP -R $reference && \\\n"
-. "bedtools intersect -a $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf -b $captureKitFile -wa > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.target.vcf && \\n"
+. "bedtools intersect -a $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf -b $captureKitFile -wa > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.target.vcf && \\\n"
                         . "perl $SCRIPTDIR/calculate_variant_exome_db.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt $sampleID $postprocID $runfolder/gatkJointGenotyping $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.target.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.variants_exome_metrics.sql && \\\n"
                           . "perl $SCRIPTDIR/addMT.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.M.vcf && \\\n"
                             . "\\\n"
