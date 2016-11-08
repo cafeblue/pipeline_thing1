@@ -1683,9 +1683,9 @@ while ($data=<FILE>) {
                   $rpliNum = $rpliNum . "|" .sprintf("%.2f", $pliNum);
                 }
                 if ($rmisenseZ eq "") {
-                  $rmisenseZ = sprintf("%.2f", $pliNum);
+                  $rmisenseZ = sprintf("%.2f", $misenseZ);
                 } else {
-                  $rmisenseZ = $rmisenseZ . "|" .sprintf("%.2f", $pliNum);
+                  $rmisenseZ = $rmisenseZ . "|" .sprintf("%.2f", $misenseZ);
                 }
               }
             }

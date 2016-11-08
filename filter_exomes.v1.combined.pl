@@ -616,7 +616,7 @@ while ($data=<FILE>) {
       if ($cHeader eq $effect) { # check to see if variant is non coding (but include splicing)
         #print STDERR "1. EFFECT colInfo=$colInfo\n";
         $snpEffLoc = $colInfo;
-        if (($colInfo=~/intergenic/) || ($colInfo=~/intragenic/) || ($colInfo=~/upstream/) || ($colInfo=~/downstream/)) {
+        if (($colInfo=~/intergenic/i) || ($colInfo=~/intragenic/i) || ($colInfo=~/upstream/i) || ($colInfo=~/downstream/i)) {
           #print STDERR "2. filter=$filter\n";
           #$filter = 0;
           $locationFilter = 0;
@@ -810,7 +810,7 @@ while ($data=<FILE>) {
     if ($hgmdClinVar == 1) { # if the variant has a hgmd or clinvar designation
       #print STDERR "2. In ClinVar\n";
       #print STDERR "2. key = $annChr:$annPos:$vtType\n";
-      if (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"} && ($snpEffLoc=~/UTR/)) { #if it's in the UTR in the gene panel (inside the transcript start and stop location)
+      if (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"} && (($snpEffLoc=~/utr/i) || ($snpEffLoc=~/splice/i)) ) { #if it's in the UTR in the gene panel (inside the transcript start and stop location)
         $useVar = 1;
         #print STDERR "2. UTR\n";
       }
@@ -818,6 +818,11 @@ while ($data=<FILE>) {
         #print STDERR "2. genepanel\n";
         $useVar = 1;
       }
+    }
+
+    ###addition of splice site variant reported if not on exon +/-10bp and within transcript start and stop
+    if (($qualFilter == 1) && ($snpEffLoc=~/splice/i) && (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"}) && (!defined $genePanelVar{"$annChr:$annPos:$vtType"})) {
+      $useVar = 1;
     }
 
     if ($useVar == 1) {

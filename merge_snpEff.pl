@@ -100,7 +100,7 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
       my $nepr = ".";
       my @splitComma = split(",",$snpEff);
       foreach my $isoform (@splitComma) {
-        #print "\nisoform=$isoform\n";
+        print "\nisoform=$isoform\n";
         my @splitterA = split(/\|/,$isoform);
         #print STDERR "splitterA=@splitterA\n";
         my $locMut = $splitterA[1];
@@ -165,9 +165,9 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
         if (defined $splitterA[3]) {
           $geneName = $splitterA[3];
         }
-        #print STDERR "geneName=$geneName\n";
-        #print STDERR "mo=$mo\n";
-        #print STDERR "nepr=$nepr\n";
+        print STDERR "geneName=$geneName\n";
+        print STDERR "mo=$mo\n";
+        print STDERR "nepr=$nepr\n";
         $motif{"$chr\t$pos\t$ref\t$alt"} = $mo;
         $nextprot{"$chr\t$pos\t$ref\t$alt\t$geneName"} = $nepr;
       }                         #foreach my $isoform (@splitComma)
@@ -544,8 +544,8 @@ sub isoformPrint{
       }                         #foreach my $isoform (@splitComma)
       #if we're going longest transcript then input it into the hash here -> because it' wasn't in the disease file
       if ((!defined $refAnn{"$chr\t$pos\t$ref\t$alt"}) && ($type eq "refseq")) {
-        #print STDERR "lastIsoformNames=$lastIsoformNames\n";
-        #print STDERR "lastIsoform=$lastIsoform\n";
+        print STDERR "lastIsoformNames=$lastIsoformNames\n";
+        print STDERR "lastIsoform=$lastIsoform\n";
         ###if the alt is a het-alt
         if ($alt=~/\,/) {
           if (defined $isoformHash{"$chr\t$pos\t$ref\t$alt\t$lastIsoformNames"}) {

@@ -6,16 +6,28 @@ use HPF::pipeline;
 use Time::localtime;
 use Time::Piece;
 
+
+###validation samples for miseq
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 245706 -a 3144 -f /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G106N/Sample_245706 -g noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/245706-3144-20161104111111-noonan_nf1.gp23-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 250734 -a 3145 -f /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G106N/Sample_250734 -g noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/250734-3145-20161104111111-noonan_nf1.gp23-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 250732 -a 3152 -f /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G106N/Sample_250732 -g noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/250732-3152-20161104111111-noonan_nf1.gp23-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 245705 -a 3153 -f /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G106N/Sample_245705 -g noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/245705-3153-20161104111111-noonan_nf1.gp23-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 202214 -a 3149 -f /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G106N/Sample_202214 -g noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-3149-20161104111111-noonan_nf1.gp23-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 275687 -a 3157 -f /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G106N/Sample_275687 -g noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/275687-3157-20161104111111-noonan_nf1.gp23-b37 -p exome
+
+##robyn's sample
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 283271 -a 3395 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHT2JLBCXX/Sample_283271 -g hl.gp22 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/283271-3395-20161002111111-hl.gp22-b37 -p exome -i snpEff
+
 ###miseq sample
-#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 260455 -a 4106 -f /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G11AL/Sample_260455 -g noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/260455-4106-20161002111111-noonan_nf1.gp23-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 260455 -a 4106 -f /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G11AL/Sample_260455 -g noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/260455-4106-20161002111111-noonan_nf1.gp23-b37 -p exome -i snpEff ##Done
 
 ###rebekah's sample
-#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 102654 -a 2988 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH33H2ADXY/Sample_102654 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/102654-2988-20161002111111-exome.gp10-b37 -p exome
-#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 277652 -a 3005 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH3GTFADXY/Sample_277652 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/277652-3005-20161002111111-exome.gp10-b37 -p exome
-#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 122937 -a 2988 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH33H2ADXY/Sample_122937 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/122937-2988-20161002111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 102654 -a 2988 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH33H2ADXY/Sample_102654 -g exome.gp26 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/102654-2988-20161002111111-exome.gp26-b37 -p exome -i snpEff
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 277652 -a 3005 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH3GTFADXY/Sample_277652 -g exome.gp26 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/277652-3005-20161002111111-exome.gp26-b37 -p exome -i snpEff
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 122937 -a 2988 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH33H2ADXY/Sample_122937 -g exome.gp26 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/122937-2988-20161002111111-exome.gp26-b37 -p exome -i snpEff
 
 ###Nasim's sample 293195
-#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 293195 -a 4422 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH33H2ADXY/Sample_122937 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/122937-2988-20161002111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 293195 -a 4422 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH32NJBCXY/Sample_293195 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/293195-4422-20161002111111-exome.gp10-b37 -p exome -i gatkQscoreRecalibration
 
 ###stress case #1
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 290929 -a 4236 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHLF2FBGXY/Sample_290929 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/290929-4236-20161002111111-exome.gp10-b37 -p exome
@@ -32,6 +44,7 @@ use Time::Piece;
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 245705 -a 3979 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_245705 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/245705-3979-20161017111111-exome.gp10-b37 -p exome
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 202214 -a 3980 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_202214 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-3980-20161017111111-exome.gp10-b37 -p exome
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 275687 -a 3981 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_275687 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/275687-3981-20161017111111-exome.gp10-b37 -p exome
+
 
 ###validation samples -- with cohort 50
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 245706 -a 3976 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_245706 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/245706-3976-20161019222222-exome.gp10-b37 -p exome -i gatkJointGenotyping
@@ -78,9 +91,9 @@ our %startPoint_lst = ( 'NEW' => '', 'bwaAlign' => '', 'picardMarkDup' => 'bwaAl
                         'mutectCombine' => "mutect", 'annovarMutect' => "mutectCombine/$sampleID.$postprocID.mutect.combine.annovar",
                         # 'gatkFilteredRecalSNP' => "gatkJointGenotyping/$sampleID.$postprocID.genotypeGVCF.vcf",
                         # 'gatkFilteredRecalINDEL' => "gatkFilteredRecalSNP/$sampleID.$postprocID.recalibrated_snps_raw_indels.vcf",
-                        'annovar'=>"gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf",
+                        'annovar'=>"gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf",
                         # 'gatkFilteredRecalVariant' => "gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.vcf",
-                        'snpEff' => ["annovar/$sampleID.$postprocID.gatk.snp.indel.annovar", "gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf",
+                        'snpEff' => ["annovar/$sampleID.$postprocID.gatk.snp.indel.annovar", "gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf",
                                      "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv","windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv"]);
 
 our $help =  <<EOF;
@@ -174,7 +187,7 @@ sub exome {
   sleep 1;
  gatkRawVariantsCall:       @jobID_and_Pfolder    = &gatkRawVariantsCall(@jobID_and_Pfolder);
   sleep 1;
- gatkJointGenotyping:           @jobID_and_Pfolder    = &gatkJointGenotyping(@jobID_and_Pfolder);
+ gatkJointGenotyping:           @jobID_and_Pfolder1    = &gatkJointGenotyping(@jobID_and_Pfolder);
   sleep 1;
   # gatkFilteredRecalSNP:      @jobID_and_Pfolder   = &gatkFilteredRecalSNP(@jobID_and_Pfolder);
   #  sleep 1;
@@ -184,13 +197,12 @@ sub exome {
   # $jobID_and_Pfolder[1] = $jobID_and_Pfolder1[1] ;
   # $jobID_and_Pfolder[2] = $jobID_and_Pfolder2[1] ;
   # #gatkFilteredRecalVariant:  @jobID_and_Pfolder1   = &gatkFilteredRecalVariant(@jobID_and_Pfolder);
- windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder);
+ windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder1);
 
- annovar:                   @jobID_and_Pfolder    = &annovar(@jobID_and_Pfolder);
+ annovar:                   @jobID_and_Pfolder    = &annovar(@jobID_and_Pfolder1);
   sleep 1;
-   $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder[0] . "," . $jobID_and_Pfolder2[0];
-  #$jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder2[0];
-    push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
+  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
+  push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[2];
  snpEff:                    @jobID_and_Pfolder    = &snpEff(@jobID_and_Pfolder);
@@ -202,9 +214,9 @@ sub exome_newGP {
   $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 3000';
   # alAF:                                            &calAF(@jobID_and_Pfolder);
  gatkCovCalGP:                                     &gatkCovCalGP(@jobID_and_Pfolder);
-  $jobID_and_Pfolder[1] = "gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf";
+  $jobID_and_Pfolder[1] = "gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf";
  annovar_newGP:             @jobID_and_Pfolder   =  &annovar_newGP(@jobID_and_Pfolder);
-  push @jobID_and_Pfolder, ("gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf",
+  push @jobID_and_Pfolder, ("gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf",
                             "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv",
                             "windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv");
  snpEff_newGP:                                      &snpEff(@jobID_and_Pfolder);
@@ -264,8 +276,8 @@ sub cancerN {
  windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder);
  annovar:                   @jobID_and_Pfolder1    = &annovar(@jobID_and_Pfolder);
   sleep 1;
- $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
-#  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder2[0];
+  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
+  #  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder2[0];
   push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[2];
@@ -836,18 +848,18 @@ sub gatkJointGenotyping {
             . "\\\n"
               . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T GenotypeGVCFs' . " -R $reference " . all_chr_files("--variant ", "$runfolder/" . "gatkRawVariantsCall", "$sampleID.$postprocID.raw_variants.chr", ".g.vcf")
                 . " -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf" . " && \\\n"
-                  . "perl $SCRIPTDIR/removeNoCalls.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf && \\\n"
-                    . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval ' . " \\\n"
-                      . "-L $captureKitFile -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt --eval $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf \\\n"
-                        . "--dbsnp $dbSNP -R $reference && \\\n"
-                          . "perl $SCRIPTDIR/calculate_variant_exome_db.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt $sampleID $postprocID $runfolder/gatkJointGenotyping $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.variants_exome_metrics.sql && \\\n"
-                            . "perl $SCRIPTDIR/addMT.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.M.vcf && \\\n"
-                              . "\\\n"
+                  # . "perl $SCRIPTDIR/removeNoCalls.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf && \\\n"
+                  . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval ' . " \\\n"
+                    . "-L $captureKitFile -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt --eval $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf \\\n"
+                      . "--dbsnp $dbSNP -R $reference && \\\n"
+                        . "perl $SCRIPTDIR/calculate_variant_exome_db.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt $sampleID $postprocID $runfolder/gatkJointGenotyping $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.variants_exome_metrics.sql && \\\n"
+                          . "perl $SCRIPTDIR/addMT.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.M.vcf && \\\n"
+                            . "\\\n"
                                 # . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' MergeBamAlignment' . all_chr_files("ALIGNED=","$runfolder/gatkRawVariantsCall","$sampleID.$postprocID.bamout.chr",".bam") . " OUTPUT=$runfolder/gatkJointGenotyping/$sampleID.$postprocID.bamout.bam &&" . " \\\n"
                                 #   . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' BuildBamIndex' . " INPUT=$runfolder/gatkJointGenotyping/$sampleID.$postprocID.bamout.bam;\\\n"
                                 ###merge the bamout files
-                                . "ln -f $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf* $BACKUP_BASEDIR/genotype_vcf/ ;"
-                                  . "\'| jsub -j gatkJointGenotyping -b $runfolder -nm 32000 -np 12 -nn 1 -nw 24:00:00 -ng localhd:10 $depend";
+                              . "ln -f $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf* $BACKUP_BASEDIR/genotype_vcf/ ;"
+                                . "\'| jsub -j gatkJointGenotyping -b $runfolder -nm 32000 -np 12 -nn 1 -nw 24:00:00 -ng localhd:10 $depend";
   print "\n\n************\ngatkJointGenotyping:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -1097,9 +1109,15 @@ sub snpEff {
   #Pfolder3: windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv
   #Pfolder4: windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv
   my ($jobID, $Pfolder1, $Pfolder2, $Pfolder3, $Pfolder4) = @_;
+  print "Pfolder1=$Pfolder1\n";
+  print "Pfolder2=$Pfolder2\n";
+  print "Pfolder3=$Pfolder3\n";
+  print "Pfolder4=$Pfolder4\n";
   my $Pfolder5 = $Pfolder2;
   $Pfolder5=~s/vcf/M.vcf/gi;
-  my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
+
+  my @jobs = split(/\,/,$jobID);
+  my $depend = $jobID eq '' ? "" : "-aft afterok -o " . $jobs[0] . "," . $jobs[2];
   if ( -d "$runfolder/snpEff") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/snpEff\n";
     `rm -rf $runfolder/snpEff`;
