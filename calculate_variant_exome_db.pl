@@ -31,14 +31,21 @@ open (FILE, "$gatkSnpEvalFile") or die "Can't open $gatkSnpEvalFile for read: $!
 while ($data=<FILE>) {
   chomp $data;
   my @splitHeader = split(/\s+/,$data);
-  if ($data=~/nEvalVariants/) {
+  if ($data=~/^CountVariants  CompRod/) {
     $data=<FILE>;
-
+    print "data=$data\n";
     my @splitS = split(/\s+/,$data);
 
     for (my $i=0; $i< scalar(@splitHeader); $i++) {
       if ($splitHeader[$i] eq "nSNPs") {
         $numSnps = $splitS[$i];
+      }
+    }
+    for (my $i=0; $i< scalar(@splitHeader); $i++) {
+      if ($splitHeader[$i] eq "nInsertions") {
+        $numIndels = $numIndels + $splitS[$i];
+      } elsif ($splitHeader[$i] eq "nDeletions") {
+        $numIndels = $numIndels + $splitS[$i];
       }
     }
   } elsif ($data=~/tiTvRatio/) {
@@ -47,16 +54,6 @@ while ($data=<FILE>) {
     for (my $i=0; $i< scalar(@splitHeader); $i++) {
       if ($splitHeader[$i] eq "tiTvRatio") {
         $titvSnps = $splitT[$i];
-      }
-    }
-  } elsif ($data=~/nEvalVariants/) {
-    $data=<FILE>;
-    my @splitS = split(/\s+/,$data);
-    for (my $i=0; $i< scalar(@splitHeader); $i++) {
-      if ($splitHeader[$i] eq "nInsertions") {
-        $numIndels = $numIndels + $splitS[$i];
-      } elsif ($splitHeader[$i] eq "nDeletions") {
-        $numIndels = $numIndels + $splitS[$i];
       }
     }
   }
@@ -120,6 +117,7 @@ while ($data=<FILE>) {
     } else {
       $varType = "indel";
     }
+    
     if ($varType eq "snp") {
       if ($qd < $qdThreshold) {
         $numFilterSnps++;
