@@ -1162,7 +1162,7 @@ sub snpEff {
                                                                         . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt  >  sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt.sha256sum && \\\n"
                                                                           . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
                                                                             . "\\\n"
-                                                                              . "\'| jsub -j snpEff -b $runfolder -nm 32000 -np 1 -nn 1 -nw 02:00:00 -ng localhd:1 $depend";
+                                                                              . "\'| jsub -j snpEff -b $runfolder -nm 32000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:1 $depend";
   print "\n\n************\nsnpeEff-annotation:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
