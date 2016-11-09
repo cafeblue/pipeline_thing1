@@ -70,7 +70,7 @@ GetOptions ("sampleID|s=s" => \$sampleID,
             "runnfolder|r=s"   => \$runfolder,
             "startPoint|i=s"   => \$startPoint,
             "normalPair|n=s"   => \$normalPair)
-  or die("Error in command line arguments\n");
+<  or die("Error in command line arguments\n");
 
 #our $bed4chr                 = '';
 our $depthct                 = '';

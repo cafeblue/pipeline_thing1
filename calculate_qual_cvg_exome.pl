@@ -73,15 +73,27 @@ my $meanAutoCvg = $totCvgAuto/$numBpAuto;
 my $meanXCvg = $numBpX == 0 ? 0 : $totCvgX/$numBpX;
 my $meanYCvg = $numBpY == 0 ? 0 : $totCvgY/$numBpY;
 
+
 my $normalCvgX = $meanXCvg/$meanAutoCvg;
 
 my $normalCvgY = $meanYCvg/$meanAutoCvg;
+
+
 
 my $nearestX = nearest(0.5, $normalCvgX);
 my $nearestY = nearest(0.5, $normalCvgY);
 my $numX = $nearestX/0.5;
 my $numY = $nearestY/0.5;
 
+print STDERR "meanAutoCvg = $meanAutoCvg\n";
+print STDERR "meanXCvg = $meanXCvg\n";
+print STDERR "meanYCvg = $meanYCvg\n";
+print STDERR "normalCvgX = $normalCvgX\n";
+print STDERR "normalCvgY=$normalCvgY\n";
+print STDERR "nearestX=$nearestX\n";
+print STDERR "nearestY=$nearestY\n";
+print STDERR "numX=$numX\n";
+print STDERR "numY=$numY\n";
 
 for (my $i=0; $i < $numX; $i++) {
     $predictedGender = $predictedGender . "X";

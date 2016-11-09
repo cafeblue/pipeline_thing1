@@ -33,7 +33,7 @@ while ($data=<FILE>) {
   my @splitHeader = split(/\s+/,$data);
   if ($data=~/^CountVariants  CompRod/) {
     $data=<FILE>;
-    print "data=$data\n";
+    #print "data=$data\n";
     my @splitS = split(/\s+/,$data);
 
     for (my $i=0; $i< scalar(@splitHeader); $i++) {
