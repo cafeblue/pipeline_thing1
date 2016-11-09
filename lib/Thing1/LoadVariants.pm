@@ -129,8 +129,11 @@ sub code_type_of_mutation_gEnd {
 }
 
 sub add_flag {
-  my ($segdup, $homology, $lowCvgExon, $altDP, $refDP, $zygosity, $config) = @_;
+  my ($segdup, $homology, $lowCvgExon, $altDP, $refDP, $zygosity, $varType, $qd, $strand, $mq, $mqranksum, $readposranksum, $config, $dbh) = @_;
   my $flag = 0;
+  my @splitComma = split(/\,/,$strand);
+  my $fs = $splitComma[0];
+  my $sor = $splitComma[1];
 
   if ($segdup eq "Y" || $homology eq "Y") {
     $flag = 1;
@@ -162,6 +165,36 @@ sub add_flag {
     }
   }
 
+  ###ADD GATK 3.6.0 filters to see if they passed variant filters
+  if ($varType == '1') {        # indel
+    my $indelQualRef = {IndelQD => $qd, IndelFS => $fs, IndelRPRS => $readposranksum, IndelSOR => $sor};
+    $flag = qc_variant('ALL', 'ALL', $indelQualRef, '2', $dbh);
+  } elsif ($varType == '3') {   # snp
+    # $qd, $fs, $sor, $mq, $mqranksum, $readposranksum,
+    my $snpQualRef = {SnpQD => $qd, SnpFS => $fs, SnpMQ => $mq, SnpMQRS => $mqranksum, SnpRPRS => $readposranksum, SnpSOR => $sor};
+    
+    $flag = qc_variant('ALL', 'ALL', $snpQualRef, '2', $dbh);
+  }
+  return $flag;
+}
+
+sub qc_variant {
+  my ($machineType, $captureKit, $sampleMx, $level, $dbh) = @_;
+  my $message = '';
+  my $flag = 0;
+  my $sthT = $dbh->prepare("SELECT FieldName,Value FROM qcMetricsVariant WHERE machineType = '$machineType' AND captureKit = '$captureKit' AND level = $level") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+  $sthT->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+  my $sampleQC = $sthT->fetchall_hashref('FieldName') ;
+  foreach my $rule (keys %$sampleQC) {
+    foreach my $equa (split(/\&\&/, $sampleQC->{$rule}->{'Value'})) {
+      if (not eval($sampleMx->{$rule} . $equa)) {
+        $message .= "The $rule (Value: $sampleMx->{$rule}) of sampleID $sampleID is not in our acceptable range: $sampleQC->{$rule}->{'Value'} .\n";
+        $flag = 1;
+        last;
+      }
+    }
+  }
+  print $message;
   return $flag;
 }
 
