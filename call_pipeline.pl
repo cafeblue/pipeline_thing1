@@ -70,7 +70,7 @@ GetOptions ("sampleID|s=s" => \$sampleID,
             "runnfolder|r=s"   => \$runfolder,
             "startPoint|i=s"   => \$startPoint,
             "normalPair|n=s"   => \$normalPair)
-<  or die("Error in command line arguments\n");
+  or die("Error in command line arguments\n");
 
 #our $bed4chr                 = '';
 our $depthct                 = '';
@@ -852,15 +852,15 @@ sub gatkJointGenotyping {
                     # . "perl $SCRIPTDIR/removeNoCalls.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf && \\\n"
                     . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval ' . " \\\n"
                       . "-L $captureKitFile -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt --eval $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf --dbsnp $dbSNP -R $reference && \\\n"
-. "bedtools intersect -a $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf -b $captureKitFile -wa > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.target.vcf && \\\n"
-                        . "perl $SCRIPTDIR/calculate_variant_exome_db.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt $sampleID $postprocID $runfolder/gatkJointGenotyping $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.target.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.variants_exome_metrics.sql && \\\n"
-                          . "perl $SCRIPTDIR/addMT.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.M.vcf && \\\n"
-                            . "\\\n"
+                        . "bedtools intersect -a $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf -b $captureKitFile -wa > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.target.vcf && \\\n"
+                          . "perl $SCRIPTDIR/calculate_variant_exome_db.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt $sampleID $postprocID $runfolder/gatkJointGenotyping $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.target.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.variants_exome_metrics.sql && \\\n"
+                            . "perl $SCRIPTDIR/addMT.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.M.vcf && \\\n"
+                              . "\\\n"
                                 # . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' MergeBamAlignment' . all_chr_files("ALIGNED=","$runfolder/gatkRawVariantsCall","$sampleID.$postprocID.bamout.chr",".bam") . " OUTPUT=$runfolder/gatkJointGenotyping/$sampleID.$postprocID.bamout.bam &&" . " \\\n"
                                 #   . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' BuildBamIndex' . " INPUT=$runfolder/gatkJointGenotyping/$sampleID.$postprocID.bamout.bam;\\\n"
                                 ###merge the bamout files
-                              . "ln -f $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf* $BACKUP_BASEDIR/genotype_vcf/ ;"
-                                . "\'| jsub -j gatkJointGenotyping -b $runfolder -nm 32000 -np 12 -nn 1 -nw 24:00:00 -ng localhd:10 $depend";
+                                . "ln -f $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf* $BACKUP_BASEDIR/genotype_vcf/ ;"
+                                  . "\'| jsub -j gatkJointGenotyping -b $runfolder -nm 32000 -np 12 -nn 1 -nw 24:00:00 -ng localhd:10 $depend";
   print "\n\n************\ngatkJointGenotyping:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
