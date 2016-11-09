@@ -55,8 +55,8 @@ foreach my $flowcellID (keys %$sampleSheet) {
   
     if ($cancer_samples_msg ne '') {
         ## There are cancer samples on this flowcell.
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet", 
-                                      $cancer_samples_msg, $machine, $today, $flowcellID, $config->{'EMAIL_CANCERSAMPLE'});
+        #Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet", 
+        #                              $cancer_samples_msg, $machine, $today, $flowcellID, $config->{'EMAIL_CANCERSAMPLE'});
     }
 }
 
