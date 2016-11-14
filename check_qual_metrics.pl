@@ -102,7 +102,7 @@ sub check_gender {
       }
       if ($input_sex ne "") {
         if ($input_sex ne $pred_gender) {
-          $msg = "The inferred sex doesn't match the inputted gender\n";
+          my $msg = "For sample, $sampleID the inferred sex, $pred_gender doesn't match the inputted gender, $input_sex.\n";
           Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "SampleID $sampleID Gender mismatch", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
 
         }

@@ -188,7 +188,7 @@ sub qc_variant {
   foreach my $rule (keys %$sampleQC) {
     foreach my $equa (split(/\&\&/, $sampleQC->{$rule}->{'Value'})) {
       if (not eval($sampleMx->{$rule} . $equa)) {
-        $message .= "The $rule (Value: $sampleMx->{$rule}) of sampleID $sampleID is not in our acceptable range: $sampleQC->{$rule}->{'Value'} .\n";
+        #$message .= "The $rule (Value: $sampleMx->{$rule}) is not in our acceptable range: $sampleQC->{$rule}->{'Value'} .\n";
         $flag = 1;
         last;
       }
