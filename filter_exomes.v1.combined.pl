@@ -131,7 +131,7 @@ my $lowPerExon = 95.0;
 my $hgmdSsig = "HGMD SIG SNVs";
 my $hgmdSid = "HGMD ID SNVs";
 my $hgmdShgvs = "HGMD HGVS SNVs";
-my $hgmdSprotein = "HGMD Protein SNVs";3
+my $hgmdSprotein = "HGMD Protein SNVs";
 my $hgmdSdescrip = "HGMD Description SNVs";
 
 my $hgmdIsig = "HGMD SIG microlesions";

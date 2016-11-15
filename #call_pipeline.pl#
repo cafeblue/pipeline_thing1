@@ -8,6 +8,8 @@ use Time::Piece;
 
 ###nasim's sample
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 294519 -a 4577 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH5FWKBCXY/Sample_294519 -g hsp.gp21 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/294519-4577-20161104111111-hsp.gp21-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 291656 -a 4300 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHVMNMBCXX/Sample_291656 -g hsp.gp21 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/291656-4300-20161104111111-hsp.gp21-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 293127 -a 4423 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH32NJBCXY/Sample_293127 -g hsp.gp21 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/293127-4423-20161104111111-hsp.gp21-b37 -p exome
 
 
 ##jim's sample

@@ -100,7 +100,7 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
       my $nepr = ".";
       my @splitComma = split(",",$snpEff);
       foreach my $isoform (@splitComma) {
-        print "\nisoform=$isoform\n";
+        #print "\nisoform=$isoform\n";
         my @splitterA = split(/\|/,$isoform);
         #print STDERR "splitterA=@splitterA\n";
         my $locMut = $splitterA[1];

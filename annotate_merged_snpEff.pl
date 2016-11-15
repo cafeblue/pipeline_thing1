@@ -1659,7 +1659,7 @@ while ($data=<FILE>) {
     #print STDERR "AFTER otherSymbols=$otherSymbols\n";
     $motif =~s/TF_binding_site_variant://gi;
 
-    print $chr . "\t" . $pos . "\t" . $ref . "\t" . $rGt ."\t" . $geno ."\t" . $vType . "\t" .$cgFilter ."\t" . $aDP ."\t" .$gtDp . "\t" . $qd . "\t" .  $fs . "\t" . $mq . "\t" . $sor . "\t" . $mqranksum . "\t" . $readposranksum . "\t" . $filter . "\t" . $txID ."\t" . $geneName . "\t" . $otherSymbols . "\t" . $geneNameFull . "\t" . $geneFamilyDescrip ."\t" . $entrezID . "\t" . $hgncID . "\t" . $effect . "\t" . $effectImpact . "\t" . $codonChange . "\t" . $aaChange . "\t" . $diseaseAss . "\t" . $ogeneMap . "\t" . $omorbidmap . "\t" . $omimInherit . "\t" . $omimLink . "\t" . $cgdCondition . "\t" . $cgdInheritance . "\t" . $hpoTermsInfo . "\t" . $hpoDiseaseInfo . "\t" . $motif . "\t" . $nextprot . "\t" . $perCDSaffected . "\t" . $pertxaffected . "\t";
+    print $chr . "\t" . $pos . "\t" . $ref . "\t" . $rGt ."\t" . $geno ."\t" . $vType . "\t" .$cgFilter ."\t" . $aDP ."\t" .$gtDp . "\t" . $qd . "\t" .  $fs . "," . $sor . "\t" . $mq . "\t" . $mqranksum . "\t" . $readposranksum . "\t" . $filter . "\t" . $txID ."\t" . $geneName . "\t" . $otherSymbols . "\t" . $geneNameFull . "\t" . $geneFamilyDescrip ."\t" . $entrezID . "\t" . $hgncID . "\t" . $effect . "\t" . $effectImpact . "\t" . $codonChange . "\t" . $aaChange . "\t" . $diseaseAss . "\t" . $ogeneMap . "\t" . $omorbidmap . "\t" . $omimInherit . "\t" . $omimLink . "\t" . $cgdCondition . "\t" . $cgdInheritance . "\t" . $hpoTermsInfo . "\t" . $hpoDiseaseInfo . "\t" . $motif . "\t" . $nextprot . "\t" . $perCDSaffected . "\t" . $pertxaffected . "\t";
 
     #my $chrpos = "$chr:$pos:$vType";
     #print out all the data ---> old method
