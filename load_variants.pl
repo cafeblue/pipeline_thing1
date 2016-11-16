@@ -22,7 +22,7 @@ my $RSYNCCMD = "rsync -Lav -e 'ssh -i $config->{'RSYNCCMD_FILE'}' ";
 ###########################################
 my $sampleInfo_ref = Common::get_sampleInfo($dbh, '6'); 
 Common::cronControlPanel($dbh, "load_variants", "START");
-my ($dummy, $yesterdayDate, $todayDate, $yesterdayDate1, $dummy2,$today) = Common::print_time_stamp();
+my ($dummy, $yesterdayDate, $todayDate, $yesterdayDate1, $today) = Common::print_time_stamp();
 foreach my $postprocID (keys %$sampleInfo_ref) {
   if (&rsync_files($sampleInfo_ref->{$postprocID}) != 0) {
     &updateDB(1,$sampleInfo_ref->{$postprocID});
@@ -174,7 +174,9 @@ sub loadVariants2DB {
     $lines_ref->{'HGMD SIG SNVs'} =~ s/\|$//;
     $lines_ref->{'HGMD SIG microlesions'} =~ s/\|$//;
     my $altAllele = (split(/\|/, $lines_ref->{'Alleles'}))[1];
-    my ($aaChange,$cDNA) = LoadVariants::code_aa_change($lines_ref->{'Amino Acid change'});
+    my $aaChange = $lines_ref->{'Amino Acid change'}; 
+    my $cDNA = $lines_ref->{'Codon Change'};
+#    my ($aaChange,$cDNA) = LoadVariants::code_aa_change($lines_ref->{'Codon Change'});
     my ($typeVer, $gEnd) = LoadVariants::code_type_of_mutation_gEnd($lines_ref->{'Type of Mutation'}, $lines_ref->{'Reference'}, $altAllele, $lines_ref->{'Position'});
 
 
@@ -196,16 +198,12 @@ sub loadVariants2DB {
     my $flag = LoadVariants::add_flag($lines_ref->{"Segmental Duplication"},$lines_ref->{"Region of Homology"},$lines_ref->{"On Low Coverage Exon"},$lines_ref->{'Allelic Depths for Alternative Alleles'},$lines_ref->{'Allelic Depths for Reference'},$lines_ref->{'Genotype'}, $lines_ref->{'Type of Variant'}, $lines_ref->{'Quality By Depth'}, $lines_ref->{"Fisher's Exact Strand Bias Test"}, $lines_ref->{'RMS Mapping Quality'}, $lines_ref->{'Mapping Quality Rank Sum Test'}, $lines_ref->{'Read Pos Rank Sum test'}, $config);
     push (@splitFilter, $flag);
 
-    my $insert = "INSERT INTO interpretation (time, reporter, interpretation, note, historyInter, clinVarAcc, hgmdDbn, polyphen, sift, mutTaster, cgAF, espAF, thouGAF, internalAFSNP, internalAFINDEL, segdup, homology, lowCvgExon, espAFAA, espAFEA, thouGAFAFR, thouGAFAMR, thouGAFEASN, thouGAFSASN, thouGAFEUR, clinVarIndelWindow, hgmdIndelWindow, genePanelSnpsAF, genePanelIndelsAF, cgdInherit, variantPerGene, omimDisease, wellderly, mutAss, cadd, perCdsAff, perTxAff, acmgGene, exacALL, exacAFR, exacAMR, exacEAS, exacFIN, exacNFE, exacOTH, exacSAS, omimLink, omimInherit, exacPLI, exacMZ, diseaseAs,flag) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    my $insert = "INSERT INTO interpretation (time, reporter, interpretation, note, historyInter, clinVarAcc, hgmdDbn, polyphen, sift, mutTaster, cgAF, espAF, thouGAF, internalAFSNP, internalAFINDEL, segdup, homology, lowCvgExon, espAFAA, espAFEA, thouGAFAFR, thouGAFAMR, thouGAFEASN, thouGAFSASN, thouGAFEUR, clinVarIndelWindow, hgmdIndelWindow, genePanelSnpsAF, genePanelIndelsAF, cgdInherit, variantPerGene, omimDisease, wellderly, mutAss, cadd, perCdsAff, perTxAff, acmgGene, exacALL, exacAFR, exacAMR, exacEAS, exacFIN, exacNFE, exacOTH, exacSAS, omimInherit, omimLink, exacPLI, exacMZ, diseaseAs, flag) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     my $sth = $dbh->prepare($insert) or die "Can't prepare insert: ". $dbh->errstr() . "\n";
     $sth->execute(@splitFilter) or die "Can't execute insert: " . $dbh->errstr() . "\n";
     $interID = $sth->{'mysql_insertid'}; #LAST_INSERT_ID(); or try $dbh->{'mysql_insertid'}
 
-    print ALLFILE "$sampleInfo->{'postprocID'}\t" . $lines_ref->{'Chrom'} . "\t" . $lines_ref->{'Position'} . "\t$gEnd\t$typeVer\t" . $lines_ref->{'Genotype'} . "\t" . $lines_ref->{'Reference'} . "\t$altAllele\t$cDNA\t$aaChange\t" . $lines_ref->{'Effect'}
-      . "\t" . $lines_ref->{'Quality By Depth'} . "\t" . $lines_ref->{"Fisher's Exact Strand Bias Test"} . "\t" . $lines_ref->{'RMS Mapping Quality'} . "\t\t" . $lines_ref->{'Mapping Quality Rank Sum Test'}
-      . "\t" . $lines_ref->{'Read Pos Rank Sum Test'} . "\t" . $lines_ref->{'Filtered Depth'} . "\t" . $lines_ref->{'dbsnp'} . "\t" . $lines_ref->{'ClinVar SIG'} . "\t" . $lines_ref->{'HGMD SIG SNVs'}
-      . "\t" . $lines_ref->{'HGMD SIG microlesions'} . "\t$interID\t" . $lines_ref->{'Allelic Depths for Alternative Alleles'} . "\t" . $lines_ref->{'Allelic Depths for Reference'} . "\t" . $lines_ref->{'Gene Symbol'}
-      . "\t" . $lines_ref->{'Transcript ID'} . "\t" . $lines_ref->{'Gatk Filters'} . "\n";
+    print ALLFILE "$sampleInfo->{'postprocID'}\t" . $lines_ref->{'Chrom'} . "\t" . $lines_ref->{'Position'} . "\t$gEnd\t$typeVer\t" . $lines_ref->{'Genotype'} . "\t" . $lines_ref->{'Reference'} . "\t$altAllele\t$cDNA\t$aaChange\t" . $lines_ref->{'Effect'} . "\t" . $lines_ref->{'Quality By Depth'} . "\t" . $lines_ref->{"Fisher's Exact Strand Bias Test"} . "\t" . $lines_ref->{'RMS Mapping Quality'} . "\t\t" . $lines_ref->{'Mapping Quality Rank Sum Test'} . "\t" . $lines_ref->{'Read Pos Rank Sum Test'} . "\t" . $lines_ref->{'Filtered Depth'} . "\t" . $lines_ref->{'dbsnp'} . "\t" . $lines_ref->{'ClinVar SIG'} . "\t" . $lines_ref->{'HGMD SIG SNVs'} . "\t" . $lines_ref->{'HGMD SIG microlesions'} . "\t$interID\t" . $lines_ref->{'Allelic Depths for Alternative Alleles'} . "\t" . $lines_ref->{'Allelic Depths for Reference'} . "\t" . $lines_ref->{'Gene Symbol'} . "\t" . $lines_ref->{'Transcript ID'} . "\t" . $lines_ref->{'Gatk Filters'} . "\t" . $lines_ref->{"Strand Odds Ratio"} . "\n";
   }
 
   close(VARIANTS);

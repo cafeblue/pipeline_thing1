@@ -12,6 +12,7 @@ use Carp qw(croak);
 
 my $dbh = Common::connect_db($ARGV[0]);
 my $config = Common::get_all_config($dbh);
+my $pipelineHPF = Common::get_pipelineHPF($dbh);
 $|++;
 
 my $allerr = "";
@@ -47,7 +48,7 @@ sub main {
             return(1);
         }
         elsif ( $sampleInfo_ref->{'sampleType'} eq 'tumour') {
-            &insert_jobstatus($sampleInfo_ref->{'sampleID'},$sampleInfo_ref->{'postprocID'},"cancerT", $sampleInfo_ref->{'genePanelVer'});
+            &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
 
             my $normal_bam = Common::get_normal_bam($dbh, $sampleInfo_ref->{'pairID'});
             if ($normal_bam =~ /No normal/) {
@@ -61,12 +62,12 @@ sub main {
             $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerT -n $normal_bam\"";
         }
         else {
-            &insert_jobstatus($sampleInfo_ref->{'sampleID'},$sampleInfo_ref->{'postprocID'},"cancerN", $sampleInfo_ref->{'genePanelVer'});
+            &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
             $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerN\"";
         }
     }
     else {
-       &insert_jobstatus($sampleInfo_ref->{'sampleID'},$sampleInfo_ref->{'postprocID'},"exome", $sampleInfo_ref->{'genePanelVer'});
+       &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
        $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p exome \"";
     }
     return(&insert_run_command($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $command));
@@ -99,7 +100,7 @@ sub update_submit_status {
 }
 
 sub insert_jobstatus {
-    my ($sampleID, $postprocID, $pipeline, $genePanelVer) = @_;
+    my ($sampleID, $postprocID, $pipeID, $genePanelVer) = @_;
 
     # delete the old record if exists.
     my $check_old = "SELECT * FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
@@ -113,19 +114,7 @@ sub insert_jobstatus {
         $sth_rm->execute() or $allerr .= "Can't execute delete for old samples: " . $dbh->errstr() . "\n";
     }
 
-    my %joblist = ('exome' => ["calAF", "bwaAlign", "picardMarkDup", "picardMarkDupIdx", "picardMeanQualityByCycle", "CollectAlignmentSummaryMetrics", "picardCollectGcBiasMetrics",
-                               "picardQualityScoreDistribution", "picardCalculateHsMetrics", "picardCollectInsertSizeMetrics", "gatkLocalRealign", "gatkQscoreRecalibration",
-                               "offtargetChr1Counting", "gatkGenoTyper", "gatkCovCalExomeTargets", "gatkCovCalGP", "gatkRawVariantsCall", "gatkRawVariants", "gatkFilteredRecalSNP", "gatkFilteredRecalINDEL",
-                               "gatkFilteredRecalVariant", "windowBed", "annovar", "snpEff"],
-                   'cancerN' => ["bwaAlign", "picardMarkDup", "picardMarkDupIdx", "picardMeanQualityByCycle", "CollectAlignmentSummaryMetrics", "picardCollectGcBiasMetrics",
-                               "picardQualityScoreDistribution", "picardCalculateHsMetrics", "picardCollectInsertSizeMetrics", "gatkLocalRealign", "gatkQscoreRecalibration",
-                               "gatkGenoTyper", "gatkCovCalGP", "gatkRawVariantsCall", "gatkRawVariants", "gatkFilteredRecalSNP", "gatkFilteredRecalINDEL", "gatkFilteredRecalVariant",
-                               "windowBed", "annovar", "snpEff"],
-                   'cancerT' => ["bwaAlign", "picardMarkDup", "picardMarkDupIdx", "picardMeanQualityByCycle", "CollectAlignmentSummaryMetrics", "picardCollectGcBiasMetrics",
-                               "picardQualityScoreDistribution", "picardCalculateHsMetrics", "picardCollectInsertSizeMetrics", "gatkLocalRealign", "gatkQscoreRecalibration",
-                               "gatkCovCalGP", "muTect", "mutectCombine", "annovarMutect"],
-                   'newGP' => [ "calAF", "gatkCovCalGP", "annovar", "snpEff"]);
-    foreach my $jobName (@{$joblist{$pipeline}}) {
+    foreach my $jobName (split(/,/, $pipelineHPF->{$pipeID}->{'steps'})) {
         my $insert_sql = "INSERT INTO hpfJobStatus (sampleID, postprocID, jobName) VALUES ('$sampleID', '$postprocID', '$jobName')";
         my $sth = $dbh->prepare($insert_sql) or $allerr .= "Can't insert into database for new hpf jobs: ". $dbh->errstr() . "\n";
         $sth->execute() or $allerr .= "Can't excute insert for new hpf jobs: " . $dbh->errstr() . "\n";

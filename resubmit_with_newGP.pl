@@ -31,7 +31,7 @@ my $CONFIG_VERSION_FILE = "/localhd/data/db_config_files/config_file.txt";
 my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
 my $CALL_SCREEN = "$PIPELINE_HPF_ROOT/call_screen.sh $PIPELINE_HPF_ROOT/call_pipeline.pl";
 my $SSH_DATA = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca';
-my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf26.ccm.sickkids.ca';
+my $SSH_HPF = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@hpf.ccm.sickkids.ca';
 my $RECYCLE_BIN = '/hpf/largeprojects/pray/recycle.bin/';
 my $allerr = "";
 
