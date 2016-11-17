@@ -1,4 +1,9 @@
 #! /usr/bin/env perl
+# Function: This scripts checks the disk usage and network connection on HPF and thing1.
+#     Emails out if unable to connect to sequencers connect to thing1 and if the disk usage 
+#     on either HPF or thing1 is above 90% full.      
+# Date: Nov. 17, 2016
+# For any issues please contact lynette.lau@sickkids.ca or weiw.wang@sickkids.ca
 
 use strict;
 use warnings;
@@ -32,54 +37,56 @@ sub check_sequencer_connections {
       my $pingLinesCmd = $config->{"CHECK_JOB_TIME"} . " 10 ls " . $runFolder;
       my $pinglines = `$pingLinesCmd `;
       if ($pinglines =~ /command taking too long - killing/) {
-        $errorMsg .= "Can't read the running folder of sequencer $machine \n";
+        $errorMsg .= "Can't access the flowcell folder of sequencer, $machine \n";
       }
 
       my $pingIPlines = `ping $ipAddress -c 4 -w 10 |tail -2 |head -1`;
       if ($pingIPlines !~ /4 packets transmitted, 4 received, 0% packet loss,/) {
-        my $errorMsg .= "No connections to " . $machine . ", please check the Network connections!\n";
+        my $errorMsg .= "No connection to " . $machine . "! please check network connection!\n";
       } else {
         my $nmap = `nmap $ipAddress  -PN -p 445 | grep open`;
         if ($nmap !~ /445\/tcp open  microsoft-ds/) {
-          $errorMsg .= "Samba Connections to " . $machine ." failed! Please check the connections\n";
+          $errorMsg .= "Samba connection to " . $machine ." failed! Please check the connection\n";
         }
       }
     }
   }
   if ($errorMsg ne '') {
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Sequencers connection warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Sequencer network connection warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
   }
   return 0;
 }
 
+# uses df to determine how much space is used on HPF
 sub check_disk_space_on_hpf {
   my $lastlineCmd = "ssh -i ". $config->{"SSH_DATA_FILE"} . " " . $config->{"HPF_USERNAME"} . '@' . $config->{"HPF_DATA_NODE"} ." \"df -h " . $config->{"HPF_DIR"} ." |tail -1\" 2>/dev/null";
   my $lastline = `$lastlineCmd`;
   my $percentage = (split(/\s+/, $lastline))[4];
   if ($percentage =~ /(\d+)\%/) {
     if ($1 >= 90) {
-      my $errorMsg = "Warning!!!   Disk usage on HPF is greater than $1\% now, please delete the useless files\n\n $lastline";
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF disk space warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+      my $errorMsg = "Warning!!! Disk usage on HPF is greater than $1\% . Please clean up HPF\n\n $lastline";
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF disk usage warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
     }
   } else {
-    my $errorMsg = "Failed to get the percentage of the free space on HPF\n please run the df again on HPF\n";
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF disk space warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+    my $errorMsg = "Failed to get the percentage of free space on HPF\n . Please run df command again on HPF\n";
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF disk usage warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
   }
   return 0;
 }
 
+# uses df to determine how much space is used on thing1
 sub check_disk_space_on_thing1 {
   my $lastlineCmd = "df -h " . $config->{"THING_DIR"} ."|tail -1 2>/dev/null";
   my $lastline = `$lastlineCmd`;
   my $percentage = (split(/\s+/, $lastline))[4];
   if ($percentage =~ /(\d+)\%/) {
     if ($1 >= 90) {
-      my $errorMsg = "Warning!!!   Disk usage on thing1 is greater than $1\% now, please delete the useless files\n\n $lastline";
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 disk space warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+      my $errorMsg = "Warning!!! Disk usage on thing1 is greater than $1\% . Please clean up Thing1\n\n $lastline";
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 disk usage warning",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
     }
   } else {
-    my $errorMsg = "Failed to get the percentage of the free space on HPF\n please run the df again on HPF\n";
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 disk space warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+    my $errorMsg = "Failed to get the percentage of the free space on Thing1\n . Please run the df command again on Thing1\n";
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 disk usage warning",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
   }
   return 0;
 }
