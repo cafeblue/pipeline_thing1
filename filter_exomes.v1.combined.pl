@@ -686,7 +686,10 @@ while ($data=<FILE>) {
           #print STDERR "cH=$cH\n";
           #print STDERR "cI=$cI\n";
           if ($cH eq $sb) {
-            $varFS = $cI;
+            #$varFS = $cI;
+	    my @splitFS = split(/\,/,$cI);
+	    $varFS = $splitFS[0];
+	    $varSOR = $splitFS[1];
             #print STDERR "varFS=$varFS\n";
           } elsif ($cH eq $mq) {
             $varMQ = $cI;
@@ -697,10 +700,10 @@ while ($data=<FILE>) {
           } elsif ($cH eq $readposRankSum) {
             $varReadPosRankSum = $cI;
             #print STDERR "varReadPosRankSum=$varReadPosRankSum\n";
-          } elsif ($cH eq $sor) {
-            $varSOR = $cI;
+          } #elsif ($cH eq $sor) {
+            #$varSOR = $cI;
             #print STDERR "varReadPosRankSum=$varReadPosRankSum\n";
-          }
+          #}
         }
         if ($colInfo eq "snp") {
           if ($varFS > $snpFS) {

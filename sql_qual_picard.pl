@@ -33,4 +33,11 @@ while (my $data=<FILE>) {
   }
 }
 close(FILE);
-print "UPDATE sampleInfo SET perOffBaits = '$pct_off_baits', perExcMapQ = '$pct_exc_mapq', perExcBaseQ = '$pct_exc_baseq', ATDropout = '$at_dropout', GCDropout = '$gc_dropout' WHERE postprocID = '$postprocID' AND sampleID = '$sampleID';\n";
+
+my $rpct_off_baits = sprintf("%.2f", $pct_off_baits);
+my $rpct_exc_mapq = sprintf("%.2f", $pct_exc_mapq);
+my $rpct_exc_baseq = sprintf("%.2f", $pct_exc_baseq);
+my $rat_dropout = sprintf("%.2f", $at_dropout);
+my $rgc_dropout = sprintf("%.2f", $gc_dropout);
+
+print "UPDATE sampleInfo SET perOffBaits = '$rpct_off_baits', perExcMapQ = '$rpct_exc_mapq', perExcBaseQ = '$rpct_exc_baseq', ATDropout = '$rat_dropout', GCDropout = '$rgc_dropout' WHERE postprocID = '$postprocID' AND sampleID = '$sampleID';\n";

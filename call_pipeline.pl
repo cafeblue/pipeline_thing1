@@ -8,10 +8,12 @@ use Time::Piece;
 
 ###nasim's sample
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 294519 -a 4577 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH5FWKBCXY/Sample_294519 -g hsp.gp21 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/294519-4577-20161104111111-hsp.gp21-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 291656 -a 4300 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHVMNMBCXX/Sample_291656 -g hsp.gp21 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/291656-4300-20161104111111-hsp.gp21-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 293127 -a 4423 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH32NJBCXY/Sample_293127 -g hsp.gp21 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/293127-4423-20161104111111-hsp.gp21-b37 -p exome
 
 
 ##jim's sample
-#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 256874 -a 886 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHVLVVADXX/Sample_256874 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/256874-886-20161104111111-exome.gp10-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 256874 -a 886 -f /hpf/largeprojects/pray/llau/clinical/fastq/Project_hiseq2500_2_AHVLVVADXX/Sample_256874 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/256874-886-20161104111111-exome.gp10-b37 -p exome
 
 ###crm's sample
 #/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 260738 -a 3492 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHNLCKADXX/Sample_260738 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/260738-3492-20161104111111-exome.gp10-b37 -p exome
@@ -607,13 +609,14 @@ sub picardCalculateHsMetrics {
   my $cmd = 'echo \''
     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
       . "\\\n"
-        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
+#        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
           . 'module load ' . $JAVA . ' && ' . " \\\n"
-            . "\\\n"
-              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G ' . $PICARDTOOLS . ' CollectHsMetrics VALIDATION_STRINGENCY=SILENT' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.txt BAIT_INTERVALS=" . $intervalFile . " TARGET_INTERVALS=" . $intervalFile." R=".$reference." && \\\n" . "head -n 8 $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.txt  | tsp > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.txt && \\\n"
-                #. "ln -f $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs* $BACKUP_BASEDIR/matrics/ ; \\\n"
-                . "perl $SCRIPTDIR/sql_qual_picard.pl $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.txt $sampleID $postprocID > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs_metrics.sql \\\n"
-                  . "\'| jsub -j picardCalculateHsMetrics -b $runfolder  -nm 24000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
+            . 'module load ' . $PERL . ' && ' . " \\\n"
+              . "\\\n"
+                . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G ' . $PICARDTOOLS . ' CollectHsMetrics VALIDATION_STRINGENCY=SILENT' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.txt BAIT_INTERVALS=" . $intervalFile . " TARGET_INTERVALS=" . $intervalFile." R=".$reference." && \\\n" . "head -n 8 $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.txt  | tsp > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.txt && \\\n"
+                  #. "ln -f $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs* $BACKUP_BASEDIR/matrics/ ; \\\n"
+                  . "perl $SCRIPTDIR/sql_qual_picard.pl $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.txt $sampleID $postprocID > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs_metrics.sql \\\n"
+                    . "\'| jsub -j picardCalculateHsMetrics -b $runfolder  -nm 24000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
   print "\n\n************\npicardCalculateHsMetrics:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
