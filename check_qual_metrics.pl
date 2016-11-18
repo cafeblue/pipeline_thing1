@@ -1,4 +1,7 @@
 #! /bin/env perl
+# Function: This script checks the sample quality metrics and sends out a fail or pass email.
+# Date: Nov, 17, 2016
+# Fur any issues please contact lynette.lau@sickkids.ca or weiw.wang@sickkids.ca
 
 use strict;
 use warnings;
@@ -10,16 +13,21 @@ use Carp qw(croak);
 my $dbh = Common::connect_db($ARGV[0]);
 my $config = Common::get_all_config($dbh);
 my $pipelineHPF = Common::get_pipelineHPF($dbh);
+my $encoding = Common::get_encoding($dbh, "sampleInfo");
+my $hpfDoneStatus = $encoding->{'currentStatus'}->{'Pipeline Completed Successfully'}->{'code'};
 
-my $sampleInfo_ref = Common::get_sampleInfo($dbh, '4');
+### main ###
+my $sampleInfo_ref = Common::get_sampleInfo($dbh, $hpfDoneStatus);
 Common::print_time_stamp();
 foreach my $postprocID (keys %$sampleInfo_ref) {
   &update_qualMetrics($sampleInfo_ref->{$postprocID});
+  &check_gender($sampleInfo_ref->{$postprocID});
 }
 
 ###########################################
 ######          Subroutines          ######
 ###########################################
+#updates the quality metrics check and currentStatus and ensures all the jobs ran have finished successfully
 sub update_qualMetrics {
   my $sampleInfo = shift;
   my $query = "SELECT jobName FROM hpfJobStatus WHERE jobName IN ($pipelineHPF->{$sampleInfo->{'pipeID'}}->{'sql_programs'}) AND exitcode = '0' AND sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}' ";
@@ -34,10 +42,11 @@ sub update_qualMetrics {
     my $joblst = join(" ", @joblst);
     my $cmd = "ssh -i $config->{'RSYNCCMD_FILE'} $config->{'HPF_USERNAME'}" . '@' . "$config->{'HPF_DATA_NODE'} \"$config->{'PIPELINE_HPF_ROOT'}/cat_sql.sh $config->{'HPF_RUNNING_FOLDER'} $sampleInfo->{'sampleID'}-$sampleInfo->{'postprocID'} $joblst\"";
     my @updates = `$cmd`;
-    if ($? != 0) {
+    my $updateErrors = $?;
+    if ($updateErrors != 0) {
       my $msg = "There is an error running the following command:\n\n$cmd\n";
       print STDERR $msg;
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for QC metrics", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Metrics Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
       return 2;
     }
 
@@ -50,13 +59,14 @@ sub update_qualMetrics {
     $sthQUF = $dbh->prepare($query);
     $sthQUF->execute();
   } else {
-    my $msg = "No successful job generate sql file for sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} ? it is impossible!!!!\n";
+    my $msg = "No successful jobs generated sql files for sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} ? It is impossible!!!!\n";
     print STDERR $msg;
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for sample QC", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Metrics Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 2;
   }
 }
 
+##checks to see if the sample has passed qc metrics based on machine and capture kit
 sub check_qual {
   my ($postprocID, $dbh) = @_;
   my $sthQNS = $dbh->prepare("SELECT * from sampleInfo where postprocID = '$postprocID'");
@@ -67,16 +77,16 @@ sub check_qual {
 
   my $msg = Common::qc_sample($sampleInfo->{'sampleID'}, $machineType, $sampleInfo->{'captureKit'}, $sampleInfo, '2', $dbh);
   if ($msg ne '') {
-    $msg = "sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} on machine $sampleInfo->{'machine'} flowcellID $sampleInfo->{'flowcellID'} has finished analysis using gene panel, $sampleInfo->{'genePanelVer'}. Unfortunately, it has failed the quality thresholds for target coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through.\n\n" . $msg;
+    $msg = "$sampleInfo->{'sampleID'} with postprocID, $sampleInfo->{'postprocID'} has finished analysis using gene panel, $sampleInfo->{'genePanelVer'}. Unfortunately, it has failed the quality thresholds. Please contact a lab director to review sample for inspection.\n\n" . $msg;
     Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "SampleID $sampleInfo->{'sampleID'} on flowcell $sampleInfo->{'flowcellID'} failed to pass the QC", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
-    return 7;
+    return $encoding->{'currentStatus'}->{'QC Failed'}->{'code'};
   }
-  return 6;
+  return $encoding->{'currentStatus'}->{'QC Passed'}->{'code'};
 }
 
+###checks to see if input gender matches inferred gender
 sub check_gender {
   my ($postprocID, $dbh) = @_;
-  ###compare sampleSheet=>sample_gender with sampleInfo=>gender
   my $queryG = "SELECT flowcellID,sampleID,gender FROM sampleInfo WHERE postprocID = '" . $postprocID . "';";
   my $sthG = $dbh->prepare($queryG);
   $sthG->execute();
@@ -100,11 +110,10 @@ sub check_gender {
       } else {
         ####input gender is NA or blank do not compare
       }
-      if ($input_sex ne "") {
+      if ($input_sex ne "" || $input_sex ne "NA") {
         if ($input_sex ne $pred_gender) {
-          my $msg = "For sample, $sampleID the inferred sex, $pred_gender doesn't match the inputted gender, $input_sex.\n";
-          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "SampleID $sampleID Gender mismatch", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
-
+          my $msg = "$sampleID inferred sex is $pred_gender and doesn't match the inputted gender, $input_sex.\n";
+          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleID Gender Warning", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
         }
       }
     }
