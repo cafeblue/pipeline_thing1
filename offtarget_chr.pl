@@ -22,6 +22,6 @@ print STDERR "ontarget=$ontarget\n";
 chomp($overall);
 chomp($ontarget);
 
-my $ratio = sprintf('%5.2f', ($overall-$ontarget)*100/$overall);
+my $ratio = sprintf('%.2f', ($overall-$ontarget)*100/$overall);
 
 print "UPDATE sampleInfo SET offTargetRatioChr1 = '$ratio' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID';\n";

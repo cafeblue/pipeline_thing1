@@ -1724,8 +1724,8 @@ sub alleleFreqComp {
   my ($alleleFreq) = @_;
   my $filter = 1;
   if ((defined $alleleFreq) && ($alleleFreq ne "")) {
-    if ($alleleFreq=~/\|/) {    #if
-      my @splitL = split(/\|/,$alleleFreq);
+    if ($alleleFreq=~/\;/) {    #if
+      my @splitL = split(/\;/,$alleleFreq);
       foreach my $sFreq (@splitL) {
         if ($sFreq eq ".") {
           $filter = 1;
