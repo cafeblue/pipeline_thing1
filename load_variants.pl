@@ -108,7 +108,7 @@ sub updateDB {
 	      my $cmpMsg = "$sampleInfo->{'sampleID'} has finished analysis using gene panel $sampleInfo->{'genePanelVer'}. The sample can be viewed through the website: http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary \n\nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx. Please login to thing1 using your Samba account in order to view this file.\n";
 	      my $cmpSub = $sampleInfo->{'sampleID'} . " Completed Analysis";
 	      print "EMAIL OUT = $cmpSub = $cmpMsg \n";
-	      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $cmpSub, $cmpMsg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+	      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $cmpSub, $cmpMsg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'},$sampleInfo->{'genePanelVer'});
 
 #Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$cmpSub", "$cmpMsg", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNING'});
 	      print "EMAIL SENT!\n";

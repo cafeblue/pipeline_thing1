@@ -15,7 +15,6 @@ use DBI;
 use Thing1::Common qw(:All);
 use Carp qw(croak);
 
-# HELP
 my $help = "\n\tUsage: $0 -d dbconfig -s sampleID -a postprocID -f flowcellID -g genePanel\n\tExample: $0 -d ~/.clinicalB.cfg -s 202214 -a 2542 -f AHK22CBCXX -g exome.gp10\n\n";
 my ($sampleID, $oldppID, $flowcellID, $genePanelVer, $dbConfig);
 GetOptions("sampleID|s=s" => \$sampleID, "postprocID|a=s"   => \$oldppID, "flowcell|f=s"   => \$flowcellID, "genePanel|g=s"   => \$genePanelVer, "dbConfig|d=s" => \$dbConfig) or die("Error in command line arguments\n");
@@ -70,8 +69,8 @@ sub insert_sampleInfo {
     my ($sampleInfo_ref) = shift;
     my $key = $genePanelVer . "\t" . $sampleInfo_ref->{'captureKit'};
     my ($pipething1ver, $pipehpfver, $webver) = Common::get_pipelinever($config);
-    #print "key=$key\n";
-    #print "pipeID=" . $gpConfig->{$key}{'pipeID'} . "\n";
+    print "key=$key\n";
+    print "pipeID=" . $gpConfig->{$key}{'pipeID'} . "\n";
     my $successHPF = $encoding->{'currentStatus'}->{'Successfully Submitted'}->{'code'};
     my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, machine, captureKit, pipeID, filterID, annotateID, yieldMB, numReads, perQ30bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer, webVer, perIndex)";
     $insert_sql .= " VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $genePanelVer . "','" . $sampleInfo_ref->{'machine'} . "','";
@@ -79,23 +78,16 @@ sub insert_sampleInfo {
     $insert_sql .= $gpConfig->{$key}{'annotationID'} . "','"  . $sampleInfo_ref->{'yieldMB'} . "','" . $sampleInfo_ref->{'numReads'} . "','";
     $insert_sql .= $sampleInfo_ref->{'perQ30bases'};
     $insert_sql .= "','" . $sampleInfo_ref->{'specimen'} . "','" . $sampleInfo_ref->{'sampleType'} . "','";
-    $insert_sql .= $sampleInfo_ref->{'testType'} . "','" . $sampleInfo_ref->{'priority'} . "','" . $successHPF . "','" . $pipething1ver . "','" . $pipehpfver . "','" . $webver . . "','" . $sampleInfo_ref->{'perIndex'} ."')"; 
+    $insert_sql .= $sampleInfo_ref->{'testType'} . "','" . $sampleInfo_ref->{'priority'} . "','" . $successHPF . "','" . $pipething1ver . "','" . $pipehpfver . "','" . $webver . "','" . $sampleInfo_ref->{'perIndex'} ."')"; 
     print "insert_sql=$insert_sql\n";
-    my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-    $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    return($sthQNS->{'mysql_insertid'}, $gpConfig->{$key}{'pipeID'});
+    my $sthI = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+    $sthI->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+    return($sthI->{'mysql_insertid'}, $gpConfig->{$key}{'pipeID'});
 }
 
 sub submit_newGP {
     my ($postprocID, $pipeID) = @_;
     &insert_jobstatus($postprocID, $pipeID);
-#Do not need this for v5.1    
-#print "$SSH_DATA \"mkdir -p $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.indel.$genePanelVer.AF.bed ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.snp.$genePanelVer.AF.bed \"\n";
-    #`$SSH_DATA "mkdir -p $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.indel.$genePanelVer.AF.bed ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.snp.$genePanelVer.AF.bed "`;
-    #if ( $? != 0 ) {
-    #    croak "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
-    #    return;
-    #}
     my $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleID-$postprocID-$currentTime-$genePanelVer-b37 -s $sampleID -a $postprocID -f $config->{'FASTQ_HPF'}$flowcellID/Sample_$sampleID -g $genePanelVer -p exome -i bwaAlign \"\n";
     print "\nCommand: $command\n";
     `$SSH_HPF "$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleID-$postprocID-$currentTime-$genePanelVer-b37 -s $sampleID -a $postprocID -f $config->{'FASTQ_HPF'}$flowcellID/Sample_$sampleID -g $genePanelVer -p exome -i bwaAlign"`;

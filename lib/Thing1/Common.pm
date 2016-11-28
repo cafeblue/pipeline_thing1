@@ -77,9 +77,14 @@ sub check_name {
 
 ### use this module to email out all emails used in the pipeline except for discordant variants due to the attachment
 sub email_error {
-  my ($email_subject_prefix, $email_content_prefix, $email_subject, $info, $machine, $today, $flowcellID, $mail_lst) = @_;
+  my ($email_subject_prefix, $email_content_prefix, $email_subject, $info, $machine, $today, $flowcellID, $mail_lst, $gp) = @_;
+  if (defined $gp) {
+      $info = $info . "\n\n\ngene panel:$gp\nsequencer:$machine\nflowcell:$flowcellID\n\n$email_content_prefix Do not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThanks,\nThing1";
+  } else {
+      $info = $info . "\n\n\nsequencer: $machine\nflowcell: $flowcellID\n\n$email_content_prefix Do not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThanks,\nThing1";
+}
   my $sender = Mail::Sender->new();
-  $info = $info . "\n\nmachine: $machine\nflowcell: $flowcellID\n\n$email_content_prefix Do not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThanks,\nThing1";
+  #$info = $info . "\n\n\nsequencer: $machine\nflowcell: $flowcellID\n\n$email_content_prefix Do not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca \n\nThanks,\nThing1";
   my $mail = {
               smtp                 => 'localhost',
               from                 => 'notice@thing1.sickkids.ca',
