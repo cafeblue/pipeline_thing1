@@ -1,3 +1,8 @@
+#!/usr/bin/env perl
+# Function: This is the common modules used for the pipeline on thing1
+# Date:  Nov. 22 2016
+# For any issues please contact lynette.lau@sickkids.ca or weiw.wang@sickkids.ca
+
 package Common;
 
 use strict;
@@ -15,6 +20,7 @@ our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(print_time_stamp check_name email_error get_all_config hpf_queue_status);
 our @EXPORT_TAGS = ( All => [qw(&connect_db &print_time_stamp &checkName &email_error &get_all_config &get_value &month_time_stamp &hpf_queue_status)],);
 
+### connects to the database
 sub connect_db {
   my ($dbCFile) = @_;
   open(ACCESS_INFO, "< $dbCFile") || die "Can't access login credentials";
@@ -25,6 +31,7 @@ sub connect_db {
   return $dbh;
 }
 
+### returns the current and one month ago timestamp from today
 sub month_time_stamp {
   my $now = DateTime->now;
   my $lastMonth = $now - DateTime::Duration->new( months => 1);
@@ -34,6 +41,8 @@ sub month_time_stamp {
   return ($currentTime, $lastMonthTime);
 
 }
+
+###prints current and yesterday's time stamps in different format
 sub print_time_stamp {
   my $retval = time();
   my $yetval = $retval - 86400;
@@ -46,6 +55,7 @@ sub print_time_stamp {
   return ($localTime->strftime('%Y%m%d'), $yetval->strftime('%Y%m%d'), $localTime->strftime('%Y%m%d%H%M%S'), $localTime->strftime('%m/%d/%Y'), $timestamp);
 }
 
+###check specific values from the database
 sub check_name {
   my ($dbh, $tableValue, $table, $field, $fieldValue, $inputValue) = @_;
   my $queryCheck = "SELECT $tableValue FROM $table WHERE $field='$fieldValue'";
@@ -65,6 +75,7 @@ sub check_name {
   }
 }
 
+### use this module to email out all emails used in the pipeline except for discordant variants due to the attachment
 sub email_error {
   my ($email_subject_prefix, $email_content_prefix, $email_subject, $info, $machine, $today, $flowcellID, $mail_lst) = @_;
   my $sender = Mail::Sender->new();
@@ -81,6 +92,7 @@ sub email_error {
   my $ret =  $sender->MailMsg($mail);
 }
 
+###gets a single config value from the database
 sub get_config {
   my ($dbh, $vName) = @_;
   my $queryConfig = "SELECT vValue FROM config WHERE vName='". $vName ."'";
@@ -94,6 +106,7 @@ sub get_config {
   }
 }
 
+###gets a single config value form the database
 sub get_value {
   my ($dbh, $tableValue, $table, $field, $fieldValue, $field2, $fieldValue2) = @_;
   if (defined $field2) {
@@ -119,6 +132,7 @@ sub get_value {
   }
 }
 
+###returns all the barcode in a hash with th ekey being the barcode name and value the barcode
 sub get_barcode {
   my $dbh = shift;
   my %tmpBC;
@@ -131,6 +145,7 @@ sub get_barcode {
   return(\%tmpBC);
 }
 
+### returns the entire config table in a hash
 sub get_all_config {
   my $dbh = shift;
   my %all_config;
@@ -143,6 +158,7 @@ sub get_all_config {
   return(\%all_config);
 }
 
+### returns all the encoding "tablename" table
 sub get_encoding {
   my ($dbh, $tablename) = @_;
   my $sth = $dbh->prepare("SELECT * FROM encoding WHERE tablename = '$tablename'") or die "Can't prepare SQL: SELECT * FROM encoding WHERE tablename = 'variants_sub', error: " . $dbh->error() . "\n";
@@ -150,6 +166,15 @@ sub get_encoding {
   return($sth->fetchall_hashref( [ qw(fieldname value) ] ));
 }
 
+### returns all the encoding "tablename" table
+sub get_encoding_code {
+  my ($dbh, $tablename) = @_;
+  my $sth = $dbh->prepare("SELECT * FROM encoding WHERE tablename = '$tablename'") or die "Can't prepare SQL: SELECT * FROM encoding WHERE tablename = 'variants_sub', error: " . $dbh->error() . "\n";
+  $sth->execute() or die "Can't execute query: SELECT * FROM encoding WHERE tablename = 'variants_sub', error: "  . $dbh->error() . "\n";
+  return($sth->fetchall_hashref( [ qw(fieldname code) ] ));
+}
+
+### returns all the active gene panel configuration
 sub get_gp_config {
   my $dbh = shift;
   my %all_gp_config;
@@ -159,12 +184,15 @@ sub get_gp_config {
   while (my $tmprow = $sthQC->fetchrow_hashref()) {
       my $hash_key = $tmprow->{'genePanelID'} . "\t" . $tmprow->{'captureKit'};
       foreach my $tmpkey (keys %{$tmprow}) {
+	  #print "hash_key=$hash_key\n";
+	  #print "tmpkey=$tmpkey\n";
           $all_gp_config{$hash_key}{$tmpkey} = $tmprow->{$tmpkey};
       }
   }
   return(\%all_gp_config);
 }
 
+### returns all active (currently being sequenced) folders
 sub get_active_runfolders {
   my $dbh = shift;
   my @runfolders = ();
@@ -177,6 +205,7 @@ sub get_active_runfolders {
   return join(" ", @runfolders);
 }
 
+### gets the runinfo from the runInfo.xml file for each run to determine if the sequencing run is complete
 sub get_RunInfo {
   my $folder = shift;
   my %runinfo = ('LaneCount' => 0, 'SurfaceCount' => 0, 'SwathCount' => 0, 'TileCount' => 0, 'SectionPerLane' => 0, 'LanePerSection' => 0);
@@ -195,6 +224,7 @@ sub get_RunInfo {
   return(\%runinfo);
 }
 
+#updates the cronControlPanel with the current active sequencing folders
 sub cronControlPanel {
   my ($dbh, $column, $status) = @_;
   my $config = &get_all_config($dbh);
@@ -225,7 +255,7 @@ sub cronControlPanel {
       $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
       my @status = $sthUDP->fetchrow_array();
       if ($status[0] eq '1') {
-        &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "WARNINGS", "$column is still running, aborting...\n", "NA", "NA", "NA", 'lynette.lau@sickkids.ca, weiw.wang@sickkids.ca' );
+        &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "WARNINGS", "$column is still running, aborting...\n", "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
         exit;
       }
       elsif ($status[0] eq '0') {
@@ -235,7 +265,7 @@ sub cronControlPanel {
         return;
       }
       else {
-        die "IMPOSSIBLE happened!! how could the status of $column be " . $status[0] . " in table cronControlPanel?\n";
+        die "The IMPOSSIBLE happened!! The status of $column is " . $status[0] . " in table cronControlPanel?\n";
       }
     }
     elsif ($status eq 'STOP') {
@@ -246,6 +276,7 @@ sub cronControlPanel {
   }
 }
 
+### gets the machine qc metrics to compare with the interOp information to ensure all qc is met
 sub qc_flowcell {
   my ($flowcellID, $machineType, $dbh) = @_;
   my $message = '';
@@ -270,6 +301,7 @@ sub qc_flowcell {
   return($message);
 }
 
+### gets the sample qc metrics to compare with sample information to ensure all qc is met
 sub qc_sample {
     my ($sampleID, $machineType, $captureKit, $sampleMx, $level, $dbh) = @_;
     my $message = '';
@@ -287,6 +319,7 @@ sub qc_sample {
     return($message);
 }
 
+###gets the pipeline version and git version
 sub get_pipelinever {
   my $config = shift;
   my $msg = "";
@@ -315,10 +348,14 @@ sub get_pipelinever {
   chomp(@commit_tag);
   my $web_ver = join('(',@commit_tag) . ")";
 
-  &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "Get pipeline version failed.", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'}) if $msg ne '';
+  if ($msg ne '') {
+      &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "Get pipeline version failed.", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'})
+  }
+  #&email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "Get pipeline version failed.", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'}) if $msg ne '';
   return($thing1_ver, $hpf_ver, $web_ver);
 }
 
+### returns the demultiplex information
 sub get_sequencing_qual_stat {
   my ($flowcellID, $machine, $destDir, $dbh, $config) = @_;
   my $query = "SELECT sampleID,barcode,barcode2 from sampleSheet where flowcell_ID = '" . $flowcellID . "' and machine = '" . $machine . "'";
@@ -378,7 +415,11 @@ sub get_sequencing_qual_stat {
       }
 
       ###update to store number of undetermined reads
-      my $updateUndetermined = "UPDATE thing1JobStatus SET undeterminedReads = '" . $sample_cont{'Undetermined'}{'numReads'} ."', perUndetermined = '" . $sample_cont{'Undetermined'}{'perIndex'} . "' WHERE flowcellID = '" . $flowcellID . "'";
+
+      my $rUndeterminedReads = sprintf("%.2f", $sample_cont{'Undetermined'}{'numReads'});
+      my $rPerUndermined = sprintf("%.2f", $sample_cont{'Undetermined'}{'perIndex'});
+      
+      my $updateUndetermined = "UPDATE thing1JobStatus SET undeterminedReads = '" . $rUndeterminedReads ."', perUndetermined = '" . $rPerUndermined . "' WHERE flowcellID = '" . $flowcellID . "'";
       my $sthUU = $dbh->prepare($updateUndetermined) or die "Can't prepare update: ". $dbh->errstr() . "\n";
       $sthUU->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
 
@@ -386,11 +427,12 @@ sub get_sequencing_qual_stat {
     }
   } else {
     my $msg = "No sampleID found in table sampleSheet for $machine of $flowcellID\n\n Please check the table carefully \n $query";
-    &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "Job Status on thing1 for update sample info", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+    &email_error($config->{'EMAIL_SUBJECT_PREFIX'}, $config->{'EMAIL_CONTENT_PREFIX'}, "Thing1 Job Status: Update sample info", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
     die $msg;
   }
 }
 
+###gets the sampleInfo by currentStatus
 sub get_sampleInfo {
     my ($dbh, $status) = @_;
     my $db_query = "SELECT * from sampleInfo where currentStatus = '$status'";
@@ -404,6 +446,7 @@ sub get_sampleInfo {
     }
 }
 
+###for cancer pipeline gets the normal ids
 sub get_normal_bam {
     my ($dbh, $pairID) = @_;
     my $search_pairID = "SELECT sampleID,postprocID FROM sampleInfo WHERE pairID = '$pairID' AND genePanelVer = 'cancer.gp19' AND sampleType = 'normal' order by postprocID desc limit 1";
@@ -414,6 +457,7 @@ sub get_normal_bam {
     return $data_ref[0] . "." . $data_ref[1] . ".realigned-recalibrated.bam";
 }
 
+###gets the jobs that have not finished on HPF and restarts them
 sub check_idle_jobs {
     my ($sampleID, $postprocID, $dbh, $config) = @_;
 
@@ -456,6 +500,7 @@ sub check_idle_jobs {
     }
 }
 
+### checks the HPF queue status
 sub hpf_queue_status {
     my ($qid, $config) = @_;
     my $cmd = "ssh -i $config->{'SSH_DATA_FILE'} $config->{'HPF_USERNAME'}" . '@' . "$config->{'HPF_HEAD_NODE'}  qstat -t $qid |tail -1";
@@ -464,51 +509,53 @@ sub hpf_queue_status {
     return($status_line);
 }
 
-sub resume_stuck_jobs {
-    my ($sampleInfo_ref, $dbh, $config) = @_;
-    my %RESUME_LIST = ( 'bwaAlign' => 'bwaAlign', 'picardMardDup' => 'picardMarkDup', 'gatkLocalRealgin' => 'gatkLocalRealign', 'gatkQscoreRecalibration' => 'gatkQscoreRecalibration',
-                    'gatkRawVariantsCall' => 'gatkRawVariantsCall', 'gatkRawVariants' => 'gatkRawVariants', 'muTect' => 'muTect', 'mutectCombine' => 'mutectCombine',
-                    'annovarMutect' => 'annovarMutect', 'gatkFilteredRecalSNP' => 'gatkRawVariants', 'gatkdwFilteredRecalINDEL' => 'gatkRawVariants',
-                    'gatkFilteredRecalVariant' => 'gatkFilteredRecalVariant', 'windowBed' => 'gatkFilteredRecalVariant', 'annovar' => 'gatkFilteredRecalVariant',
-                    'snpEff' => 'snpEff');
-    my %TRUNK_LIST = ( 'bwaAlign' => 0, 'picardMardDup' => 0, 'picardMarkDupIdx' => 0, 'gatkLocalRealgin' => 0, 'gatkQscoreRecalibration' => 0,
-                    'gatkRawVariantsCall' => 0, 'gatkRawVariants' => 0, 'muTect' => 0, 'mutectCombine' => 0, 'annovarMutect' => 0, 'gatkFilteredRecalSNP' => 0, 
-                    'gatkdwFilteredRecalINDEL' => 0, 'gatkFilteredRecalVariant' => 0, 'windowBed' => 0, 'annovar' => 0, 'snpEff' => 0);
-    my $sampleID     = $sampleInfo_ref->{'sampleID'};
-    my $postprocID   = $sampleInfo_ref->{'postrpicID'};
-    my $query_jobName = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1';";
-    my $sthQUF = $dbh->prepare($query_jobName);
-    $sthQUF->execute();
-    my @dataS = $sthQUF->fetchrow_array;
-    my $msg;
-    if (exists $RESUME_LIST{$dataS[0]}) {
-        $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, resubmission is running\n";
-        my $query = "SELECT command FROM hpfCommand WHERE sampleID = '$sampleID' AND postprocID = '$postprocID';";
-        my $sthSQ = $dbh->prepare($query) or die "Can't query database for command" . $dbh->errstr() . "\n";
-        $sthSQ->execute() or die "Can't excute query for command " . $dbh->errstr() . "\n";
-        if ($sthSQ->rows() == 1) {
-            my @tmpS = $sthSQ->fetchrow_array;
-            my $command = $tmpS[0];
-            chomp($command);
-            $command =~ s/"$//;
-            $command =~ s/ -startPoint .+//;
-            $command .= " -startPoint " . $dataS[0] . '"';
-            `$command`;
-            if ($? != 0) {
-                $msg .= "command \n\n $command \n\n failed with the error code $?, re-submission failed!!\n";
-            }
-        }
-        else {
-            $msg .= "\nMultiple/No submission command(s) found for sample $sampleID postprocID $postprocID, please check the table hpfCommand\n";
-        }
+###NOT IN USE => must use database to get get next jobID this is for v5.0
+# sub resume_stuck_jobs {
+#     my ($sampleInfo_ref, $dbh, $config) = @_;
+#     my %RESUME_LIST = ( 'bwaAlign' => 'bwaAlign', 'picardMardDup' => 'picardMarkDup', 'gatkLocalRealgin' => 'gatkLocalRealign', 'gatkQscoreRecalibration' => 'gatkQscoreRecalibration',
+#                     'gatkRawVariantsCall' => 'gatkRawVariantsCall', 'gatkRawVariants' => 'gatkRawVariants', 'muTect' => 'muTect', 'mutectCombine' => 'mutectCombine',
+#                     'annovarMutect' => 'annovarMutect', 'gatkFilteredRecalSNP' => 'gatkRawVariants', 'gatkdwFilteredRecalINDEL' => 'gatkRawVariants',
+#                     'gatkFilteredRecalVariant' => 'gatkFilteredRecalVariant', 'windowBed' => 'gatkFilteredRecalVariant', 'annovar' => 'gatkFilteredRecalVariant',
+#                     'snpEff' => 'snpEff');
+#     my %TRUNK_LIST = ( 'bwaAlign' => 0, 'picardMardDup' => 0, 'picardMarkDupIdx' => 0, 'gatkLocalRealgin' => 0, 'gatkQscoreRecalibration' => 0,
+#                     'gatkRawVariantsCall' => 0, 'gatkRawVariants' => 0, 'muTect' => 0, 'mutectCombine' => 0, 'annovarMutect' => 0, 'gatkFilteredRecalSNP' => 0, 
+#                     'gatkdwFilteredRecalINDEL' => 0, 'gatkFilteredRecalVariant' => 0, 'windowBed' => 0, 'annovar' => 0, 'snpEff' => 0);
+#     my $sampleID     = $sampleInfo_ref->{'sampleID'};
+#     my $postprocID   = $sampleInfo_ref->{'postrpicID'};
+#     my $query_jobName = "SELECT jobName FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' AND flag = '1';";
+#     my $sthQUF = $dbh->prepare($query_jobName);
+#     $sthQUF->execute();
+#     my @dataS = $sthQUF->fetchrow_array;
+#     my $msg;
+#     if (exists $RESUME_LIST{$dataS[0]}) {
+#         $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, resubmission is running\n";
+#         my $query = "SELECT command FROM hpfCommand WHERE sampleID = '$sampleID' AND postprocID = '$postprocID';";
+#         my $sthSQ = $dbh->prepare($query) or die "Can't query database for command" . $dbh->errstr() . "\n";
+#         $sthSQ->execute() or die "Can't excute query for command " . $dbh->errstr() . "\n";
+#         if ($sthSQ->rows() == 1) {
+#             my @tmpS = $sthSQ->fetchrow_array;
+#             my $command = $tmpS[0];
+#             chomp($command);
+#             $command =~ s/"$//;
+#             $command =~ s/ -startPoint .+//;
+#             $command .= " -startPoint " . $dataS[0] . '"';
+#             `$command`;
+#             if ($? != 0) {
+#                 $msg .= "command \n\n $command \n\n failed with the error code $?, re-submission failed!!\n";
+#             }
+#         }
+#         else {
+#             $msg .= "\nMultiple/No submission command(s) found for sample $sampleID postprocID $postprocID, please check the table hpfCommand\n";
+#         }
 
-    }
-    else {
-        $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, but the resubmission is NOT going to run, please re-submit the job by manual!\n";
-    }
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
-}
+#     }
+#     else {
+#         $msg .= $dataS[0] . " of sample $sampleID postprocID $postprocID idled over 6 hours, but the resubmission is NOT going to run, please re-submit the job by manual!\n";
+#     }
+#     Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job status on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+# }
 
+###gets the active pipelines on HPF
 sub get_pipelineHPF {
   my $dbh = shift;
   my $query = "SELECT * FROM pipelineHPF where active = '1'";

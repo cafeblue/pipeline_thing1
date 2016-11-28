@@ -1,5 +1,7 @@
 #! /bin/env perl
-
+# Function: This script rsyncs the flowcell folders with thing1 directory where sequencing is running
+# Date: Nov. 21, 2016
+# For any issues please contact lynette.lau@sickkids.ca or weiw.wang@.sickkids.ca
 use strict;
 use warnings;
 use lib './lib';
@@ -12,11 +14,13 @@ my $dbConfigFile = $ARGV[0];
 my $dbh = Common::connect_db($dbConfigFile);
 my $config = Common::get_all_config($dbh);
 
+### main ###
 Common::cronControlPanel($dbh, "rsync_sequencer", 'START');
 &rsync_folders;
 &check_failed_flowcell;
 Common::cronControlPanel($dbh, "rsync_sequencer", 'STOP');
 
+### subroutines ###
 sub rsync_folders {
     my $db_query = 'SELECT rundir,destinationDir,flowcellID FROM thing1JobStatus WHERE sequencing = "2"';
     my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";

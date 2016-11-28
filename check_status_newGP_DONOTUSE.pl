@@ -1,4 +1,7 @@
 #! /bin/env perl
+# Function: This script checks the status on HPF on any samples ran using a new gene panel
+# Date: Nov. 21, 2016
+# For any issues please contact lynette.lau@sickkids.ca or weiw.wang@.sickkids.ca
 
 use strict;
 use warnings;
@@ -25,6 +28,7 @@ my $SSHDATA    = "ssh -i " . $RSYNCCMD_FILE . " " . $HPF_USER . "@" . $HPF_DATA_
 
 my $NEWGP_JOBLST = "annovar gatkCovCalGP";
 
+### main ###
 my $sample_ref = &get_newGP_list;
 my ($today, $yesterda, $currentTime, $currentDate) = Common::print_time_stamp;
 
@@ -44,6 +48,7 @@ foreach my $ref (@$sample_ref) {
   }
 }
 
+### subroutine ***
 sub get_newGP_list {
   my $check_newGP = "SELECT sampleID,postprocID FROM sampleInfo where currentStatus = '1';";
   my $sth_chk = $dbh->prepare($check_newGP) or $allerr .= "Can't query database '$check_newGP' for old hpf jobs: ". $dbh->errstr() . "\n";
@@ -152,7 +157,7 @@ sub update_jobID {
     }
   }
   if ($msg ne '') {
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on thing1 for submit2HPF", $msg, "NA", $today, "NA", "ERROR");
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 Job Status Submit2HPF", $msg, "NA", $today, "NA", "ERROR");
   }
 }
 

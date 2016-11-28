@@ -1,5 +1,9 @@
 #! /bin/env perl
-
+# Function: This scripts resubmits any sample ran using a new gene panel. A separate entry in the 
+#     database will be generated for this sample
+# Date: Nov. 21, 2016
+# For any issues please contact lynette.lau@sickkids.ca or weiw.wang@.sickkids.ca
+     
 use strict;
 use warnings;
 use lib './lib';
@@ -22,8 +26,9 @@ my $dbh = Common::connect_db($dbConfig);
 my $config = Common::get_all_config($dbh);
 my $pipelineHPF = Common::get_pipelineHPF($dbh);
 my $gpConfig = Common::get_gp_config($dbh);
-my $SSH_DATA = "ssh -i $config->{'SSH_DATA_FILE'}  $config->{'HPF_USERNAME'}\@$config->{'HPF_DATA_NODE'}";
-my $SSH_HPF = "ssh -i $config->{'SSH_DATA_FILE'}  $config->{'HPF_USERNAME'}\@$config->{'HPF_HEAD_NODE'}";
+my $encoding = Common::get_encoding($dbh, "sampleInfo");
+my $SSH_DATA = "ssh -i $config->{'SSH_DATA_FILE'} $config->{'HPF_USERNAME'}\@$config->{'HPF_DATA_NODE'}";
+my $SSH_HPF = "ssh -i $config->{'SSH_DATA_FILE'} $config->{'HPF_USERNAME'}\@$config->{'HPF_HEAD_NODE'}";
 my $CALL_SCREEN = "$config->{'CALL_SCREEN'} $config->{'PIPELINE_HPF_ROOT'}call_pipeline.pl";
 my $retval = time();
 my $localTime = localtime( $retval );
@@ -35,24 +40,47 @@ my $query = "SELECT * from sampleInfo where sampleID = '$sampleID' AND postprocI
 my $sthQNS = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
 $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
 if ($sthQNS->rows() == 1) {  
-    &submit_newGP(&insert_sampleInfo($sthQNS->fetchrow_hashref));
+    my $tmpHashRef = $sthQNS->fetchrow_hashref;
+    # for my $tmp (keys %$tmpHashRef) {
+    # 	print "tmp=$tmp\n";
+    # 	print "hash=$tmpHashRef->{$tmp}\n";
+    # }
+    # #my $flowcellID = $tmpHashRef->{'flowcellID'};
+    my $queryCK = "SELECT capture_kit, machine from sampleSheet where sampleID = '$sampleID' AND flowcell_ID = '$flowcellID';";
+    my $sthCK = $dbh->prepare($queryCK) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+    $sthCK->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+    if ($sthCK->rows() == 1) {  
+	my $ck = $sthCK->fetchrow_hashref;
+	$tmpHashRef->{'captureKit'} = $ck->{'capture_kit'};
+	$tmpHashRef->{'machine'} = $ck->{'machine'};
+    }
+    &submit_newGP(&insert_sampleInfo($tmpHashRef));
 }
 elsif ($sthQNS->rows() == 0) {
-    croak "No information can be found in table sampleInfo for sampleID $sampleID postprocID $oldppID on flowcell $flowcellID, please check your input carefully\n";
+    croak "No information can be found in table sampleInfo for $sampleID ppID = $oldppID on flowcell $flowcellID. Please check your input.\n";
 }
 elsif ($sthQNS->rows() > 1) {
-    croak "Multiple rows found in table sampleInfo for sampleID $sampleID postprocID $oldppID on flowcell $flowcellID, it is impossible, please contact the bioinformaticians\n";
+    croak "Multiple entries found in table sampleInfo for $sampleID ppID = $oldppID on flowcell $flowcellID.This should never occur, please contact the bioinformaticians\n";
 }
 
 #######################
 #### Subroutines  #####
 #######################
 sub insert_sampleInfo {
-    my $sampleInfo_ref = shift;
+    my ($sampleInfo_ref) = shift;
     my $key = $genePanelVer . "\t" . $sampleInfo_ref->{'captureKit'};
     my ($pipething1ver, $pipehpfver, $webver) = Common::get_pipelinever($config);
-
-    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer, webVer) VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $genePanelVer . "','"  . $gpConfig->{$key}{'pipeID'} . "','"  . $gpConfig->{$key}{'filterID'} . "','"  . $gpConfig->{$key}{'annotateID'} . "','"  . $sampleInfo_ref->{'yieldMB'} . "','" . $sampleInfo_ref->{'numReads'} . "','" . $sampleInfo_ref->{'perQ30Bases'} . "','" . $sampleInfo_ref->{'specimen'} . "','" . $sampleInfo_ref->{'sampleType'} . "','" . $sampleInfo_ref->{'testType'} . "','" . $sampleInfo_ref->{'priority'} . "','2','" . $pipething1ver . "','" . $pipehpfver . "','" . $webver . "')"; 
+    #print "key=$key\n";
+    #print "pipeID=" . $gpConfig->{$key}{'pipeID'} . "\n";
+    my $successHPF = $encoding->{'currentStatus'}->{'Successfully Submitted'}->{'code'};
+    my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, machine, captureKit, pipeID, filterID, annotateID, yieldMB, numReads, perQ30bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer, webVer, perIndex)";
+    $insert_sql .= " VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $genePanelVer . "','" . $sampleInfo_ref->{'machine'} . "','";
+    $insert_sql .= $sampleInfo_ref->{'captureKit'} . "','" . $gpConfig->{$key}{'pipeID'} . "','"  . $gpConfig->{$key}{'filterID'} . "','";
+    $insert_sql .= $gpConfig->{$key}{'annotationID'} . "','"  . $sampleInfo_ref->{'yieldMB'} . "','" . $sampleInfo_ref->{'numReads'} . "','";
+    $insert_sql .= $sampleInfo_ref->{'perQ30bases'};
+    $insert_sql .= "','" . $sampleInfo_ref->{'specimen'} . "','" . $sampleInfo_ref->{'sampleType'} . "','";
+    $insert_sql .= $sampleInfo_ref->{'testType'} . "','" . $sampleInfo_ref->{'priority'} . "','" . $successHPF . "','" . $pipething1ver . "','" . $pipehpfver . "','" . $webver . . "','" . $sampleInfo_ref->{'perIndex'} ."')"; 
+    print "insert_sql=$insert_sql\n";
     my $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
     $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
     return($sthQNS->{'mysql_insertid'}, $gpConfig->{$key}{'pipeID'});
@@ -61,14 +89,16 @@ sub insert_sampleInfo {
 sub submit_newGP {
     my ($postprocID, $pipeID) = @_;
     &insert_jobstatus($postprocID, $pipeID);
-    print "$SSH_DATA \"mkdir -p $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.indel.$genePanelVer.AF.bed ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.snp.$genePanelVer.AF.bed \"\n";
-    `$SSH_DATA "mkdir -p $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.indel.$genePanelVer.AF.bed ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.snp.$genePanelVer.AF.bed "`;
-    if ( $? != 0 ) {
-        croak "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
-        return;
-    }
-    my $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $config->{'FASTQ_HPF'}/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome -i bwaAlign \"\n";
-    `$SSH_HPF "$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37  -s $sampleID -a $postprocID -f $config->{'FASTQ_HPF'}/$flowcellID/Sample_$sampleID -g $genePanelVer -p exome -i bwaAlign"`;
+#Do not need this for v5.1    
+#print "$SSH_DATA \"mkdir -p $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.indel.$genePanelVer.AF.bed ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.snp.$genePanelVer.AF.bed \"\n";
+    #`$SSH_DATA "mkdir -p $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.indel.$genePanelVer.AF.bed ; touch $config->{'HPF_RUNNING_FOLDER'}/$sampleID-$postprocID-$currentTime-$genePanelVer-b37/calAF/merged.snp.$genePanelVer.AF.bed "`;
+    #if ( $? != 0 ) {
+    #    croak "Failed to create runfolder for : $sampleID, $flowcellID, error code: $?\n";
+    #    return;
+    #}
+    my $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleID-$postprocID-$currentTime-$genePanelVer-b37 -s $sampleID -a $postprocID -f $config->{'FASTQ_HPF'}$flowcellID/Sample_$sampleID -g $genePanelVer -p exome -i bwaAlign \"\n";
+    print "\nCommand: $command\n";
+    `$SSH_HPF "$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleID-$postprocID-$currentTime-$genePanelVer-b37 -s $sampleID -a $postprocID -f $config->{'FASTQ_HPF'}$flowcellID/Sample_$sampleID -g $genePanelVer -p exome -i bwaAlign"`;
     if ( $? != 0 ) {
         croak "Failed to submit to HPF for : $sampleID, $flowcellID, error code: $?\n";
         return;
@@ -85,7 +115,7 @@ sub insert_jobstatus {
     }
     
     # create directory
-    `$SSH_DATA "mv $config->{'HPF_RUNNING_FOLDER'}$sampleID-$postprocID-*-b37 $config->{'HPF_RECYCLE_FOLDER'}"`;
+    `$SSH_DATA "mv $config->{'HPF_RUNNING_FOLDER'}$sampleID-$postprocID-*-b37 $config->{'HPF_RECYCLE_FOLDER'} 2>/dev/null "`;
     `$SSH_DATA "mkdir $config->{'HPF_RUNNING_FOLDER'}$sampleID-$postprocID-$currentTime-$genePanelVer-b37"`;
     if ( $? != 0 ) {
         croak "Failed to create runfolder for sampleID: $sampleID, postprocID: $postprocID, genePanelVer: $genePanelVer, error code: $?\n";

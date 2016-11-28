@@ -1,4 +1,7 @@
 #! /bin/env perl
+# Function: This scripts checks all the machine quality metrics and inputs them into the database
+# Date: Nov 21, 2016
+# For any issues please contact lynette.lau@sickkids.ca or weiw.wang@sickkids.ca
 
 use strict;
 use warnings;
@@ -13,14 +16,17 @@ $|++;
 my $dbh = Common::connect_db($ARGV[0]);
 my $config = Common::get_all_config($dbh);
 my $gpConfig = Common::get_gp_config($dbh);
+my $encoding = Common::get_encoding($dbh, "sampleInfo");
 
 my $chksum_ref = &get_chksum_list;
 my ($today, $dummy, $currentTime, $currentDate) = Common::print_time_stamp();
 
+### main ###
 foreach my $ref (@$chksum_ref) {
   &update_table(Common::get_sequencing_qual_stat(@$ref, $dbh, $config));
 }
 
+### subroutine ###
 sub update_table {
   my ($flowcellID, $machine, $table_ref) = @_;
   my $machineType = $machine;
@@ -32,12 +38,12 @@ sub update_table {
       next if $sampleID eq 'Undetermined';
       #delete the possible exists recoreds
       my $sthQNS = $dbh->prepare("SELECT * FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'") or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-      $sthQNS->execute()  or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+      $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
       if ($sthQNS->rows() > 0) {
-        my $msg = "sampleID $sampleID on flowcellID $flowcellID already exists in table sampleInfo, the following rows will be deleted!!!\n";
+        my $msg = "$sampleID sequenced on $flowcellID already exists in table sampleInfo, the following rows will be deleted!!!\n";
         my $hash = $sthQNS->fetchall_hashref('sampleID');
         $msg .= Dumper($hash);
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Status on thing1 for update sample info", $msg, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 Job Status: Updating sample info", $msg, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
         my $delete_sql = "DELETE FROM sampleInfo WHERE sampleID = '$sampleID' and flowcellID = '$flowcellID'";
         $dbh->do($delete_sql);
       }
@@ -49,14 +55,25 @@ sub update_table {
       my ($gp,$ck,$tt,$pt,$ps,$specimen,$sampletype) = $sthQNS->fetchrow_array;
       my ($pipething1ver, $pipehpfver, $webver) = Common::get_pipelinever($config);
       my $key = $gp . "\t" . $ck;
-      $ps = defined $ps ? $ps : "";
-      my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, machine, captureKit, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer , perIndex ) VALUES ('" . $sampleID . "','$flowcellID','$machine','$ck','$ps','$gp','" . $gpConfig->{$key}{'pipeID'} . "','"  . $gpConfig->{$key}{'filterID'} . "','"  . $gpConfig->{$key}{'annotationID'} . "','"  . $table_ref->{$sampleID}{'yieldMB'} . "','"  . $table_ref->{$sampleID}{'numReads'} . "','"  . $table_ref->{$sampleID}{'perQ30Bases'} . "','$specimen', '$sampletype', '$tt','$pt', '0', '$pipething1ver', '$pipehpfver', '$webver'" . ",'" . $table_ref->{$sampleID}{'perIndex'} . "')";
+      my $pipeID = $gpConfig->{$key}{'pipeID'};
+      if ($sampletype eq 'tumour') {
+          $pipeID .= '-t';
+      }
+      my $start = $encoding->{'currentStatus'}->{'Ready to submit'}->{'code'}; 
+      if (!defined $ps) {
+	  $ps = "";
+      } 
+      #$ps = defined $ps ? $ps : "";
+      my $rPerIndex = sprintf('%.2f', $table_ref->{$sampleID}{'perIndex'});
+      my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, machine, captureKit, pairID, genePanelVer, pipeID, filterID, annotateID, yieldMB, numReads, perQ30Bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer , webVer , perIndex ) VALUES ('" . $sampleID . "','$flowcellID','$machine','$ck','$ps','$gp','" . $pipeID . "','"  . $gpConfig->{$key}{'filterID'} . "','"  . $gpConfig->{$key}{'annotationID'} . "','"  . $table_ref->{$sampleID}{'yieldMB'} . "','"  . $table_ref->{$sampleID}{'numReads'} . "','"  . $table_ref->{$sampleID}{'perQ30Bases'} . "','$specimen', '$sampletype', '$tt','$pt', '".$start."', '$pipething1ver', '$pipehpfver', '$webver'" . ",'" . $rPerIndex . "')";
       $sthQNS = $dbh->prepare($insert_sql) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
       $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
 
       $qc_message .= Common::qc_sample($sampleID, $machineType, $ck, $table_ref->{$sampleID}, "1", $dbh);
   }
-  Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "QC warnings for flowcellID $flowcellID", $qc_message, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'}) if $qc_message ne '';
+  if ($qc_message ne '') {
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID QC warning", $qc_message, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+  }
 }
 
 sub get_chksum_list {

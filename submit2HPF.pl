@@ -1,4 +1,7 @@
 #! /bin/env perl
+# Function: This script will submit the sample to be analyzed on HPF
+# Date: Nov. 21, 2016
+# For any issues please contact lynette.lau@sickkids.ca or weiw.wang@sickkids.ca
 
 use strict;
 use warnings;
@@ -12,6 +15,7 @@ use Carp qw(croak);
 
 my $dbh = Common::connect_db($ARGV[0]);
 my $config = Common::get_all_config($dbh);
+my $currentStatus = Common::get_encoding($dbh, "sampleInfo");
 my $pipelineHPF = Common::get_pipelineHPF($dbh);
 $|++;
 
@@ -25,6 +29,7 @@ my $sample_ref = Common::get_sampleInfo($dbh, 0);
 Common::print_time_stamp;
 my $currentTime;
 
+### main ###
 foreach my $postprocID (keys %$sample_ref) {
     my $retval = time();
     my $localTime = localtime( $retval );
@@ -33,45 +38,50 @@ foreach my $postprocID (keys %$sample_ref) {
 }
 
 if ($allerr ne "") {
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "submit2HPF failed.", $allerr, "NA", "", "NA", $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "submit2HPF Failed", $allerr, "NA", "", "NA", $config->{'EMAIL_WARNINGS'});
     print STDERR $allerr,"\n";
 }
 
+### subroutines ###
 sub main {
     my $sampleInfo_ref = shift;
     my ($sampleID, $flowcellID, $postprocID, $genePanelVer, $pairID, $sampleType ) = @_;
     my $command = '';
 
+
     if ($sampleInfo_ref->{'genePanelVer'} =~ /cancer/) {
-        if (( $sampleInfo_ref->{'sampleType'} eq 'tumour') && $sampleInfo_ref->{'pairID '}!~ /\d/) {
-            $allerr .= "Tumor sample $sampleInfo_ref->{'sampleID'} (postprocID $sampleInfo_ref->{'postprocID'}) do not have the paired sampleID, pipeline could not be run, please update the database.\naborted...\n\n"; 
-            return(1);
-        }
-        elsif ( $sampleInfo_ref->{'sampleType'} eq 'tumour') {
-            &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
+	#return(1); ###3
+	return($currentStatus->{'currentStatus'}->{'Submission Failed'}->{'code'});
+        # if (( $sampleInfo_ref->{'sampleType'} eq 'tumour') && $sampleInfo_ref->{'pairID '}!~ /\d/) {
+        #     $allerr .= "Tumor sample $sampleInfo_ref->{'sampleID'} (postprocID $sampleInfo_ref->{'postprocID'}) do not have the paired sampleID, pipeline could not be run, please update the database.\naborted...\n\n"; 
+        #     return(1);
+        # }
+        # elsif ( $sampleInfo_ref->{'sampleType'} eq 'tumour') {
+        #     &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
 
-            my $normal_bam = Common::get_normal_bam($dbh, $sampleInfo_ref->{'pairID'});
-            if ($normal_bam =~ /No normal/) {
-                $allerr .= $normal_bam; 
-                return(1);
-            }
-            else {
-                $normal_bam = "$config->{'HPF_BACKUP_BAM'}$normal_bam";
-            }
-
-            $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerT -n $normal_bam\"";
-        }
-        else {
-            &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
-            $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerN\"";
-        }
+        #     my $normal_bam = Common::get_normal_bam($dbh, $sampleInfo_ref->{'pairID'});
+        #     if ($normal_bam =~ /No normal/) {
+        #         $allerr .= $normal_bam; 
+        #         return(1);
+        #     }
+        #     else {
+        #         $normal_bam = "$config->{'HPF_BACKUP_BAM'}$normal_bam";
+        #     }
+	#     ###cancer samples
+        #     $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerT -n $normal_bam\"";
+        # }
+        # else { ###normal samples with matching tumor samples
+        #     &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
+        #     $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37 -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerN\"";
+        # }
     }
-    else {
+    else {### clinical samples
        &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
-       $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p exome \"";
+       $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37 -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p exome \"";
     }
     return(&insert_run_command($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $command));
 }
+
 
 sub insert_run_command {
     my ($sampleID, $postprocID, $command) = @_;
@@ -86,14 +96,21 @@ sub insert_run_command {
     `$command`;
     if ( $? != 0 ) {
         $allerr .= "Failed to submit to HPF for sampleID: $sampleID on postprocID: $postprocID, error code:$?\nCommand: $command\n\n";
-        return(1);
+        #return(1); ###3
+	return($currentStatus->{'currentStatus'}->{'Submission Failed'}->{'code'});
     }
-    return(0);
+    #return(0); ### 2
+    return($currentStatus->{'currentStatus'}->{'Successfully Submitted'}->{'code'});
 }
 
 sub update_submit_status {
     my ($code, $postprocID) = @_;
-    $code = $code == 0 ? "2" : "3";
+    # if ($code == 0) {
+    # 	$code = 2;
+    # } else {
+    # 	$code = 3;
+    # }
+    #$code = $code == 0 ? "2" : "3";
     my $db_update = "UPDATE sampleInfo SET currentStatus = '$code' WHERE postprocID = '$postprocID'";
     my $sth = $dbh->prepare($db_update) or $allerr .= "Can't prepare update: ". $dbh->errstr() . "\n";
     $sth->execute() or $allerr .= "Can't execute update: " . $dbh->errstr() . "\n";

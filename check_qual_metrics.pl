@@ -15,13 +15,13 @@ my $config = Common::get_all_config($dbh);
 my $pipelineHPF = Common::get_pipelineHPF($dbh);
 my $encoding = Common::get_encoding($dbh, "sampleInfo");
 my $hpfDoneStatus = $encoding->{'currentStatus'}->{'Pipeline Completed Successfully'}->{'code'};
-
+#print "hpfDoneStatus=$hpfDoneStatus\n";
 ### main ###
 my $sampleInfo_ref = Common::get_sampleInfo($dbh, $hpfDoneStatus);
 Common::print_time_stamp();
 foreach my $postprocID (keys %$sampleInfo_ref) {
   &update_qualMetrics($sampleInfo_ref->{$postprocID});
-  &check_gender($sampleInfo_ref->{$postprocID});
+  &check_gender($postprocID, $dbh);
 }
 
 ###########################################
@@ -32,7 +32,7 @@ sub update_qualMetrics {
   my $sampleInfo = shift;
   my $query = "SELECT jobName FROM hpfJobStatus WHERE jobName IN ($pipelineHPF->{$sampleInfo->{'pipeID'}}->{'sql_programs'}) AND exitcode = '0' AND sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}' ";
   my $sthQUF = $dbh->prepare($query);
-  $sthQUF->execute();
+  $sthQUF->execute() or die "Can't execute select for hpfJobStatus: " . $dbh->errstr() . "\n";
   if ($sthQUF->rows() != 0) {
     my @joblst = ();
     my $data_ref = $sthQUF->fetchall_arrayref;
@@ -52,12 +52,12 @@ sub update_qualMetrics {
 
     foreach my $update_sql (@updates) {
       my $sthQUQ = $dbh->prepare($update_sql);
-      $sthQUQ->execute();
+      $sthQUQ->execute() or die "Can't execute update for qualMetrics: " . $dbh->errstr() . "\n";
     }
     $query = "UPDATE sampleInfo SET currentStatus = '" . &check_qual($sampleInfo->{'postprocID'}, $dbh) . "' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'";
     print $query,"\n";
     $sthQUF = $dbh->prepare($query);
-    $sthQUF->execute();
+    $sthQUF->execute() or die "Can't execute update for sampleInfo: " . $dbh->errstr() . "\n";
   } else {
     my $msg = "No successful jobs generated sql files for sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} ? It is impossible!!!!\n";
     print STDERR $msg;
@@ -88,18 +88,21 @@ sub check_qual {
 sub check_gender {
   my ($postprocID, $dbh) = @_;
   my $queryG = "SELECT flowcellID,sampleID,gender FROM sampleInfo WHERE postprocID = '" . $postprocID . "';";
+  print "queryG=$queryG\n";
   my $sthG = $dbh->prepare($queryG);
-  $sthG->execute();
+  $sthG->execute() or die "Can't execute query for gender on sampleInfo: " . $dbh->errstr() . "\n";
   if ($sthG->rows() != 0) {
-    my $data_ref = $sthG->fetchall_arrayref;
+    my $data_ref = $sthG->fetchrow_hashref;
     my $flowcellID = $data_ref->{"flowcellID"};
     my $sampleID = $data_ref->{"sampleID"};
     my $pred_gender = $data_ref->{"gender"};
-    my $queryInput = "SELECT sample_gender, machine FROM sampleSheet WHERE sampleID = '" . $sampleID ."'AND flowcellID = '" . $flowcellID ."';";
+    my $queryInput = "SELECT sample_gender, machine FROM sampleSheet WHERE sampleID = '" . $sampleID ."'AND flowcell_ID = '" . $flowcellID ."';";
+    print "queryInput=$queryInput\n";
     my $sthI = $dbh->prepare($queryInput);
-    $sthI->execute();
+
+    $sthI->execute() or die "Can't execute query for gender on sampleSheet: " . $dbh->errstr() . "\n";
     if ($sthI->rows() != 0) {
-      my $data_refI = $sthI->fetchall_arrayref;
+      my $data_refI = $sthI->fetchrow_hashref;
       my $input_gender = $data_refI->{"sample_gender"};
       my $machine = $data_refI->{"machine"};
       my $input_sex = "";
@@ -110,12 +113,20 @@ sub check_gender {
       } else {
         ####input gender is NA or blank do not compare
       }
-      if ($input_sex ne "" || $input_sex ne "NA") {
-        if ($input_sex ne $pred_gender) {
-          my $msg = "$sampleID inferred sex is $pred_gender and doesn't match the inputted gender, $input_sex.\n";
-          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleID Gender Warning", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
-        }
+      if ($input_sex eq "" || $input_sex eq "NA" || $pred_gender eq "NA" || $pred_gender eq "") {
+	  #do nothing
+      } elsif ($input_sex ne $pred_gender) {
+          my $genderMsg = "$sampleID (ppID = $postprocID) inferred sex is $pred_gender and doesn't match the inputted gender: $input_sex.\n";
+	  print "GENDER MISMATCH msg=$genderMsg\n";
+          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleID Gender Warning", $genderMsg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+	  
+###Add comment to this sample
+	  my $update = "UPDATE sampleInfo SET diagnosis = 'Pipeline, ".Common::print_time_stamp() . " : Gender Mismatch. Please check with lab director before proceeding.' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+	  print $update,"\n";
+	  my $sthU = $dbh->prepare($update);
+	  $sthU->execute() or die "Can't execute update for gender mismatch: " . $dbh->errstr() . "\n";	 
       }
+      
     }
   }
 }

@@ -23,6 +23,8 @@ my $GET_EXIT_STATUS   = 'ssh -i ' . $config->{'SSH_DATA_FILE'} . " " . $config->
 my $DEL_RUNDIR        = 'ssh -i ' . $config->{'SSH_DATA_FILE'} . " " . $config->{'HPF_USERNAME'} . '@' . $config->{'HPF_DATA_NODE'} . ' "' . $config->{'PIPELINE_HPF_ROOT'} . '/del_rundir_pl.sh ';
 
 ### main ###
+#my $sucess = $currentStatus->{'currentStatus'}->{'Successfully Submitted'}->{'code'};
+#print "sucess=$sucess\n";
 my $sampleInfo_ref = Common::get_sampleInfo($dbh, $currentStatus->{'currentStatus'}->{'Successfully Submitted'}->{'code'});
 Common::print_time_stamp();
 
@@ -87,10 +89,19 @@ sub update_hpfJobStatus {
 
 sub check_all_jobs {
     my ($sampleID, $postprocID, $pipeID) = @_;
+    print "sampleID=$sampleID\n";
+    print "postprocID = $postprocID\n";
+    print "pipeID=$pipeID\n";
     my $query_nonjobID = "SELECT jobID,exitcode FROM hpfJobStatus WHERE sampleID = '$sampleID' AND postprocID = '$postprocID' and jobName in ($pipelineHPF->{$pipeID}->{'end_programs'} )";
+    print "query_nonjobID=$query_nonjobID\n";
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     while (my @dataS = $sthQUF->fetchrow_array) {
+	# print "dataS[0]=$dataS[0]\n";
+	# print "dataS[1]=$dataS[1]\n";
+	# if (!defined $dataS[0] || !defined $dataS[1]) {
+	#     return 0;
+	# }
         if ($dataS[0] !~ /\d+/ || $dataS[1] ne '0') {
             return 0;
         }
