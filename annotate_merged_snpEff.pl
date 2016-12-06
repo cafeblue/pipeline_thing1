@@ -655,26 +655,30 @@ foreach my $suffix (@annovarFileSuffix) {
       my $thouEas = $splitTab[48];
       my $thouSas = $splitTab[49];
       my $thouEur = $splitTab[50];
-      my $clinVar = $splitTab[51];
-      my $funcRefGene = $splitTab[52];
-      my $geneRefGene = $splitTab[53];
-      my $geneDetailRefGene = $splitTab[54];
-      my $exonFuncRefGene = $splitTab[55];
-      my $aaChangeRefGene = $splitTab[56];
-      my $cosmic = $splitTab[57];
-      my $funcEnsGene = $splitTab[58];
-      my $geneEnsGene = $splitTab[59];
-      my $geneDetailEnsGene = $splitTab[60];
-      my $exonFuncEnsGene = $splitTab[61];
-      my $aaChangeEnsGene = $splitTab[62];
-      my $exacALL = $splitTab[63];
-      my $exacAFR = $splitTab[64];
-      my $exacAMR = $splitTab[65];
-      my $exacEAS = $splitTab[66];
-      my $exacFIN = $splitTab[67];
-      my $exacNFE = $splitTab[68];
-      my $exacOTH = $splitTab[69];
-      my $exacSAS = $splitTab[70];
+      my $clinVarSig = $splitTab[51];
+      my $clinVarDbn = $splitTab[52];
+      my $clinVarAcc = $splitTab[53];
+      my $clinVarSdb = $splitTab[54];
+      my $clinVarDbID = $splitTab[55];
+      my $funcRefGene = $splitTab[56];
+      my $geneRefGene = $splitTab[57];
+      my $geneDetailRefGene = $splitTab[58];
+      my $exonFuncRefGene = $splitTab[59];
+      my $aaChangeRefGene = $splitTab[60];
+      my $cosmic = $splitTab[61];
+      my $funcEnsGene = $splitTab[62];
+      my $geneEnsGene = $splitTab[63];
+      my $geneDetailEnsGene = $splitTab[64];
+      my $exonFuncEnsGene = $splitTab[65];
+      my $aaChangeEnsGene = $splitTab[66];
+      my $exacALL = $splitTab[67];
+      my $exacAFR = $splitTab[68];
+      my $exacAMR = $splitTab[69];
+      my $exacEAS = $splitTab[70];
+      my $exacFIN = $splitTab[71];
+      my $exacNFE = $splitTab[72];
+      my $exacOTH = $splitTab[73];
+      my $exacSAS = $splitTab[74];
 
       #if ($suffix eq "hg19_ljb23_pp2hvar_dropped") {
       my $pp2String = "";
@@ -965,23 +969,23 @@ foreach my $suffix (@annovarFileSuffix) {
       }
 
       # my $clinVar = $splitTab[51];
-      my @splitCol = split(/\;/,$clinVar);
-      my $sig = $splitCol[0];
-      $sig=~s/CLINSIG=//;
+      #my @splitCol = split(/\;/,$clinVarSig);
+      #my $sig = $splitCol[0];
+      #$sig=~s/CLINSIG=//;
 
-      my $clndbn = $splitCol[1];
-      $clndbn=~s/CLNDBN=//;
+      #my $clndbn = $splitCol[1];
+      #$clndbn=~s/CLNDBN=//;
 
-      my $clnacc = $splitCol[3];
-      $clnacc=~s/CLNACC=//;
-      my @splitLi = split(/\|/,$clnacc);
+      #my $clnacc = $splitCol[3];
+      #$clnacc=~s/CLNACC=//;
+      my @splitLi = split(/\|/,$clinVarAcc);
 
-      if ($clinVar ne ".") {
+      if ($clinVarSig ne ".") {
         if (defined $annovarInfo{"$chr:$startpos:$type"}[10]) {
           my @splitAT = split(/\t/,$annovarInfo{"$chr:$startpos:$type"}[10]);
-          $annovarInfo{"$chr:$startpos:$type"}[10] = $splitAT[0] . "|" . $sig . "\t" . $splitAT[1] . "|" . $clndbn ."\t" . $splitAT[2] . "|" . "=HYPERLINK(\"http://www.ncbi.nlm.nih.gov/clinvar/" . $splitLi[0] ."/\",\"" . $clnacc  . "\")";
+          $annovarInfo{"$chr:$startpos:$type"}[10] = $splitAT[0] . "|" . $clinVarSig . "\t" . $splitAT[1] . "|" . $clinVarDbn ."\t" . $splitAT[2] . "|" . "=HYPERLINK(\"http://www.ncbi.nlm.nih.gov/clinvar/" . $splitLi[0] ."/\",\"" . $clinVarAcc  . "\")";
         } else {
-          $annovarInfo{"$chr:$startpos:$type"}[10] = "$sig\t$clndbn\t" . "=HYPERLINK(\"http://www.ncbi.nlm.nih.gov/clinvar/" . $splitLi[0] ."/\",\"" . $clnacc  . "\")";
+          $annovarInfo{"$chr:$startpos:$type"}[10] = "$clinVarSig\t$clinVarDbn\t" . "=HYPERLINK(\"http://www.ncbi.nlm.nih.gov/clinvar/" . $splitLi[0] ."/\",\"" . $clinVarAcc  . "\")";
         }
       }
       # my $cosmic = $splitTab[57];
@@ -1659,7 +1663,7 @@ while ($data=<FILE>) {
     #print STDERR "AFTER otherSymbols=$otherSymbols\n";
     $motif =~s/TF_binding_site_variant://gi;
 
-    print $chr . "\t" . $pos . "\t" . $ref . "\t" . $rGt ."\t" . $geno ."\t" . $vType . "\t" .$cgFilter ."\t" . $aDP ."\t" .$gtDp . "\t" . $qd . "\t" .  $fs . "," . $sor . "\t" . $mq . "\t" . $mqranksum . "\t" . $readposranksum . "\t.\t" . $txID ."\t" . $geneName . "\t" . $otherSymbols . "\t" . $geneNameFull . "\t" . $geneFamilyDescrip ."\t" . $entrezID . "\t" . $hgncID . "\t" . $effect . "\t" . $effectImpact . "\t" . $codonChange . "\t" . $aaChange . "\t" . $diseaseAss . "\t" . $ogeneMap . "\t" . $omorbidmap . "\t" . $omimInherit . "\t" . $omimLink . "\t" . $cgdCondition . "\t" . $cgdInheritance . "\t" . $hpoTermsInfo . "\t" . $hpoDiseaseInfo . "\t" . $motif . "\t" . $nextprot . "\t" . $perCDSaffected . "\t" . $pertxaffected . "\t";
+    print $chr . "\t" . $pos . "\t" . $ref . "\t" . $rGt ."\t" . $geno ."\t" . $vType . "\t" .$cgFilter ."\t" . $aDP ."\t" .$gtDp . "\t" . $qd . "\t" .  $fs . "\t" . $mq . "\t" . $sor . "\t" . $mqranksum .  "\t" . $readposranksum . "\t" . $filter . "\t" . $txID ."\t" . $geneName . "\t" . $otherSymbols . "\t" . $geneNameFull . "\t" . $geneFamilyDescrip ."\t" . $entrezID . "\t" . $hgncID . "\t" . $effect . "\t" . $effectImpact . "\t" . $codonChange . "\t" . $aaChange . "\t" . $diseaseAss . "\t" . $ogeneMap . "\t" . $omorbidmap . "\t" . $omimInherit . "\t" . $omimLink . "\t" . $cgdCondition . "\t" . $cgdInheritance . "\t" . $hpoTermsInfo . "\t" . $hpoDiseaseInfo . "\t" . $motif . "\t" . $nextprot . "\t" . $perCDSaffected . "\t" . $pertxaffected . "\t";
 
     #my $chrpos = "$chr:$pos:$vType";
     #print out all the data ---> old method

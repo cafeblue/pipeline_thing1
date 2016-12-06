@@ -222,6 +222,7 @@ sub isoformPrint{
       my $dp = "";
       my $fs = "";
       my $mq = "";
+      my $sor = "";
       my $haplotypeScore = "";
       my $mqranksum = "";
       my $readposranksum = "";
@@ -288,6 +289,14 @@ sub isoformPrint{
         } elsif ($splitVariable[0] eq "ReadPosRankSum") {
           #print $splitI[$t] . ";";
           $readposranksum = $splitVariable[1];
+          if ($infoVcf eq "") {
+            $infoVcf = $splitI[$t];
+          } else {
+            $infoVcf = $infoVcf . ";" . $splitI[$t];
+          }
+        } elsif ($splitVariable[0] eq "SOR") {
+          #print $splitI[$t] . ";";
+          $sor = $splitVariable[1];
           if ($infoVcf eq "") {
             $infoVcf = $splitI[$t];
           } else {

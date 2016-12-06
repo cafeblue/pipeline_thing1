@@ -686,10 +686,7 @@ while ($data=<FILE>) {
           #print STDERR "cH=$cH\n";
           #print STDERR "cI=$cI\n";
           if ($cH eq $sb) {
-            #$varFS = $cI;
-	    my @splitFS = split(/\,/,$cI);
-	    $varFS = $splitFS[0];
-	    $varSOR = $splitFS[1];
+            $varFS = $cI;
             #print STDERR "varFS=$varFS\n";
           } elsif ($cH eq $mq) {
             $varMQ = $cI;
@@ -700,10 +697,10 @@ while ($data=<FILE>) {
           } elsif ($cH eq $readposRankSum) {
             $varReadPosRankSum = $cI;
             #print STDERR "varReadPosRankSum=$varReadPosRankSum\n";
-          } #elsif ($cH eq $sor) {
-            #$varSOR = $cI;
+          } elsif ($cH eq $sor) {
+            $varSOR = $cI;
             #print STDERR "varReadPosRankSum=$varReadPosRankSum\n";
-          #}
+          }
         }
         if ($colInfo eq "snp") {
           if ($varFS > $snpFS) {
@@ -824,7 +821,7 @@ while ($data=<FILE>) {
     }
 
     ###addition of splice site variant reported if not on exon +/-10bp and within transcript start and stop
-    if (($qualFilter == 1) && ($snpEffLoc=~/splice/i) && (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"}) && (!defined $genePanelVar{"$annChr:$annPos:$vtType"})) {
+    if (($qualFilter == 1) && ($snpEffLoc=~/splice/i) && (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"}) && (!defined $genePanelVar{"$annChr:$annPos:$vtType"}) && (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1))) {
       $useVar = 1;
     }
 
