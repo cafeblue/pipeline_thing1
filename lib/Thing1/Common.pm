@@ -372,7 +372,7 @@ sub get_sequencing_qual_stat {
 
     my $demuxSummaryFile = "$config->{'FASTQ_FOLDER'}$machine\_$flowcellID/Reports/html/$sub_flowcellID/default/all/all/laneBarcode.html";
     if (! -e "$demuxSummaryFile") {
-      &mail_error("Job Status on thing1 for update sample info", "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n", $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+      &email_error("Job Status on thing1 for update sample info", "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n", $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
       croak "File $demuxSummaryFile does not exists! This can be due to an error in the demultiplexing process. Please re-run demultiplexing\n";
     }
     print $demuxSummaryFile,"\n";
