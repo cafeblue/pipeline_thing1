@@ -52,7 +52,7 @@ sub check_sequencer_connections {
     }
   }
   if ($errorMsg ne '') {
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Sequencer network connection warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Sequencer Network Connection Error",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
   }
   return 0;
 }
@@ -65,11 +65,11 @@ sub check_disk_space_on_hpf {
   if ($percentage =~ /(\d+)\%/) {
     if ($1 >= 90) {
       my $errorMsg = "Warning!!! Disk usage on HPF is greater than $1\% . Please clean up HPF\n\n $lastline";
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF disk usage warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF Disk Space",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
     }
   } else {
     my $errorMsg = "Failed to get the percentage of free space on HPF\n . Please run df command again on HPF\n";
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF disk usage warnings",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF Disk Error",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
   }
   return 0;
 }
@@ -82,11 +82,11 @@ sub check_disk_space_on_thing1 {
   if ($percentage =~ /(\d+)\%/) {
     if ($1 >= 90) {
       my $errorMsg = "Warning!!! Disk usage on thing1 is greater than $1\% . Please clean up Thing1\n\n $lastline";
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 disk usage warning",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 Disk Space",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
     }
   } else {
     my $errorMsg = "Failed to get the percentage of the free space on Thing1\n . Please run the df command again on Thing1\n";
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 disk usage warning",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Thing1 Disk Error",$errorMsg,"NA","","NA",$config->{"EMAIL_WARNINGS"});
   }
   return 0;
 }

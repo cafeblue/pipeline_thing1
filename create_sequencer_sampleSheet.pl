@@ -50,8 +50,7 @@ foreach my $flowcellID (keys %$sampleSheet) {
         ## Email content for nextseq
         $info = "The sample sheet has been loaded into the database successfully.\n";
     }
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet" ,$info, 
-                                  $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID Samplesheet", $info, $machine, $today, $flowcellID, $config->{'EMAIL_SAMPLESHEET'});
   
     if ($cancer_samples_msg ne '') {
         ## There are cancer samples on this flowcell.
@@ -77,8 +76,7 @@ sub write_samplesheet {
     my $file = Common::get_value($dbh,"sampleSheetFolder","sequencers","machine",$machine) . "/" . $today . "_" . $flowcellID . ".sample_sheet.csv";
     if (-e $file) {
         ## the samplesheet file has been generated before, ignore this step. there should be something abnormal happened.
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet already exists", 
-                                      "ignored...\n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet already exists", "ignored...\n", $machine, $today, $flowcellID, $config->{'EMAIL_SAMPLESHEET'});
         return 1;
     }
     print $output; 
@@ -122,7 +120,7 @@ sub write_samplesheet_miseq {
     if (-e $file) {
         ## the samplesheet file has been generated before, ignore this step. there should be something abnormal happened.
         Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID samplesheet already exists", 
-                                      "ignored...\n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+                                      "ignored...\n", $machine, $today, $flowcellID, $config->{'EMAIL_SAMPLESHEET'});
         return 1;
     }
     print $output; 

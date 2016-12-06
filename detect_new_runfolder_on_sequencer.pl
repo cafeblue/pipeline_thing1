@@ -17,6 +17,7 @@ my $config = Common::get_all_config($dbh);
 
 my $folders_tobe_detected = Common::get_active_runfolders($dbh);
 my @newdetected = `find $folders_tobe_detected -maxdepth 1 -name "??????_[DNM]*_????_*" -mtime -1 `;
+
 my $folder_lst = Common::cronControlPanel($dbh, "sequencer_RF", ""); 
 
 my $print_parsed = "";
@@ -47,7 +48,7 @@ foreach (@worklist) {
     }
     my $cyclenum = 0;
     if ( not exists $runinfo->{'NumCycles'}) {
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error: $flowcellID ", $config->{'ERROR_MSG_3'}, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID Error", $config->{'ERROR_MSG_3'}, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
         next;
     }
     foreach (@{$runinfo->{'NumCycles'}}) {

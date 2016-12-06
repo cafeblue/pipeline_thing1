@@ -46,7 +46,7 @@ sub update_qualMetrics {
     if ($updateErrors != 0) {
       my $msg = "There is an error running the following command:\n\n$cmd\n";
       print STDERR $msg;
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Metrics Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
       return 2;
     }
 
@@ -59,9 +59,9 @@ sub update_qualMetrics {
     $sthQUF = $dbh->prepare($query);
     $sthQUF->execute() or die "Can't execute update for sampleInfo: " . $dbh->errstr() . "\n";
   } else {
-    my $msg = "No successful jobs generated sql files for sampleID $sampleInfo->{'sampleID'} postprocID $sampleInfo->{'postprocID'} ? It is impossible!!!!\n";
+    my $msg = "No successful jobs generated sql files for sampleID $sampleInfo->{'sampleID'} (ppID =  $sampleInfo->{'postprocID'}) ? It is impossible!!!!\n";
     print STDERR $msg;
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Metrics Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 2;
   }
 }
@@ -77,8 +77,8 @@ sub check_qual {
 
   my $msg = Common::qc_sample($sampleInfo->{'sampleID'}, $machineType, $sampleInfo->{'captureKit'}, $sampleInfo, '2', $dbh);
   if ($msg ne '') {
-    $msg = "$sampleInfo->{'sampleID'} with postprocID, $sampleInfo->{'postprocID'} has finished analysis using gene panel, $sampleInfo->{'genePanelVer'}. Unfortunately, it has failed the quality thresholds. Please contact a lab director to review sample for inspection.\n\n" . $msg;
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "SampleID $sampleInfo->{'sampleID'} on flowcell $sampleInfo->{'flowcellID'} failed to pass the QC", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    $msg = "$sampleInfo->{'sampleID'} with (ppID = $sampleInfo->{'postprocID'}) has finished analysis using gene panel, $sampleInfo->{'genePanelVer'}. Unfortunately, it has failed the following sample quality control thresholds:\n" . $msg .  "\nPlease contact a lab director to review sample for interpretation.\n";
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_QUALMETRICS'}, $sampleInfo->{'genePanelVer'});
     return $encoding->{'currentStatus'}->{'QC Failed'}->{'code'};
   }
   return $encoding->{'currentStatus'}->{'QC Passed'}->{'code'};
@@ -118,7 +118,7 @@ sub check_gender {
       } elsif ($input_sex ne $pred_gender) {
           my $genderMsg = "$sampleID (ppID = $postprocID) inferred sex is $pred_gender and doesn't match the inputted gender: $input_sex.\n";
 	  print "GENDER MISMATCH msg=$genderMsg\n";
-          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleID Gender Warning", $genderMsg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleID Gender Warning", $genderMsg, $machine, "NA", $flowcellID, $config->{'EMAIL_SAMPLESHEET'});
 	  
 ###Add comment to this sample
 	  my $update = "UPDATE sampleInfo SET diagnosis = 'Pipeline, ".Common::print_time_stamp() . " : Gender Mismatch. Please check with lab director before proceeding.' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";

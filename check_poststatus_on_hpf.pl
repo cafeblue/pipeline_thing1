@@ -75,7 +75,7 @@ sub update_jobStatus {
         if ($1 ne '0') {
           my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID with postprocID=$postprocID failed with exitcode $1\n\n . Please manually resubmit this job!\n";
           print STDERR $msg;
-          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Failure of Branch Jobs on HPF", $msg, "NA", $today, "NA", $config->{'EMAIL_WARNINGS'} );
+          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Branch Jobs on HPF Failed", $msg, "NA", $today, "NA", $config->{'EMAIL_WARNINGS'} );
         }
       }
     }

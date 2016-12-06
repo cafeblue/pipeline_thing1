@@ -97,12 +97,11 @@ sub check_all_jobs {
     my $sthQUF = $dbh->prepare($query_nonjobID);
     $sthQUF->execute();
     while (my @dataS = $sthQUF->fetchrow_array) {
-	# print "dataS[0]=$dataS[0]\n";
-	# print "dataS[1]=$dataS[1]\n";
-	# if (!defined $dataS[0] || !defined $dataS[1]) {
-	#     return 0;
-	# }
-        if ($dataS[0] !~ /\d+/ || $dataS[1] ne '0') {
+	#print "dataS[0]=$dataS[0]\n";
+	#print "dataS[1]=$dataS[1]\n";
+	if (!defined $dataS[0] || !defined $dataS[1]) {
+	    return 0;
+	} elsif ($dataS[0] !~ /\d+/ || $dataS[1] ne '0') {
             return 0;
         }
     }
@@ -176,7 +175,7 @@ sub update_jobStatus {
                 if ($1 ne '0') {
                     my $msg = "jobName " . $joblst[$i] . " for sampleID $sampleID postprocID $postprocID failed with exitcode $1\n";
                     print STDERR $msg;
-                    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Job Failed on HPF ", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
+                    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF Job Failures", $msg, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'});
                     $update_query = "UPDATE sampleInfo set currentStatus = '".$currentStatus->{'currentStatus'}->{'Pipeline Failed'}->{'code'}."', analysisFinishedTime = NOW(), displayed_at = NOW() WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
                     $sthUQ = $dbh->prepare($update_query)  or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
                     $sthUQ->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";

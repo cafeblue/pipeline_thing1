@@ -72,7 +72,7 @@ sub update_table {
       $qc_message .= Common::qc_sample($sampleID, $machineType, $ck, $table_ref->{$sampleID}, "1", $dbh);
   }
   if ($qc_message ne '') {
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID QC warning", $qc_message, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID QC Warning", $qc_message, $machine, $today, $flowcellID, $config->{'EMAIL_QUALMETRICS'});
   }
 }
 

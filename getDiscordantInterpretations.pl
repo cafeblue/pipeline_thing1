@@ -205,7 +205,7 @@ close(DISCORDFILE);
 #my $sender = Mail::Sender->new();
 #my $recipients= 'lynette.lau@sickkids.ca';
 my $sender = new Mail::Sender {smtp => 'localhost'};
-if ($sender->OpenMultipart({from => 'notice@thing1.sickkids.ca', to => $config->{'EMAIL_WARNINGS'},
+if ($sender->OpenMultipart({from => 'notice@thing1.sickkids.ca', to => $config->{'EMAIL_COORDINATORS'},
                             subject => "Discordant Interpretations $today",
                             boundary => 'boundary-test-1',
                             type => 'multipart/related'}) > 0) {

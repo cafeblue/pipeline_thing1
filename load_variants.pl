@@ -72,16 +72,16 @@ sub rsync_files {
   my $rsyncCMD = $RSYNCCMD . "wei.wang\@data1.ccm.sickkids.ca:" . $config->{'HPF_BACKUP_VARIANT'} . "/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}* $config->{'THING1_BACKUP_DIR'}/";
   `$rsyncCMD`;
   if ($? != 0) {
-    my $msg = "Copying the variants to thing1 for sampleID $sampleInfo->{'sampleID'}, postprocID $sampleInfo->{'postprocID'} failed with exitcode: $?\n";
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning HPF RSYNC", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    my $msg = "Copying the variants to thing1 for sampleID $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'} ) failed with exitcode: $?\n";
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF RSYNC ERROR", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   my $chksumCMD = "cd $config->{'THING1_BACKUP_DIR'}; sha256sum -c sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}*.sha256sum";
   my @chksum_output = `$chksumCMD`;
   foreach (@chksum_output) {
     if (/computed checksum did NOT match/) {
-      my $msg = "chksum of variant files from sampleID $sampleInfo->{'sampleID'}, postprocID $sampleInfo->{'postprocID'} failed, please check the following files:\n\n$config->{'THING1_BACKUP_DIR'}\n\n" . join("", @chksum_output);
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning CHKSUM HPF: Variant Files", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      my $msg = "chksum of variant files from sampleID $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'} ) failed, please check the following files:\n\n$config->{'THING1_BACKUP_DIR'}\n\n" . join("", @chksum_output);
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF chksum Error: Variant Files", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
       return 1;
     }
   }
@@ -105,16 +105,21 @@ sub updateDB {
       if ($msg eq '') {
 	  if ($sampleInfo->{'testType'} ne "validation") {
 	      
-	      my $cmpMsg = "$sampleInfo->{'sampleID'} has finished analysis using gene panel $sampleInfo->{'genePanelVer'}. The sample can be viewed through the website: http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary \n\nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx. Please login to thing1 using your Samba account in order to view this file.\n";
+	      my $cmpMsg = "$sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'}) has finished analysis using gene panel $sampleInfo->{'genePanelVer'}. The sample can be viewed through the website: http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary \n\nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx. Please login to thing1 using your Samba account in order to view this file.\n";
 	      my $cmpSub = $sampleInfo->{'sampleID'} . " Completed Analysis";
-	      print "EMAIL OUT = $cmpSub = $cmpMsg \n";
-	      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $cmpSub, $cmpMsg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'},$sampleInfo->{'genePanelVer'});
+	      print " EMAIL OUT = $cmpSub = $cmpMsg \n";
+	      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $cmpSub, $cmpMsg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_FINISHED'},$sampleInfo->{'genePanelVer'});
 
 #Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$cmpSub", "$cmpMsg", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNING'});
-	      print "EMAIL SENT!\n";
+	      print " EMAIL SENT!\n";
+	  } else {
+	      	      my $cmpMsg = "Validation $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'}) has finished analysis using gene panel $sampleInfo->{'genePanelVer'}. The sample can be viewed through the website: http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary \n\nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx. Please login to thing1 using your Samba account in order to view this file.\n";
+	      my $cmpSub = "Validation " . $sampleInfo->{'sampleID'} . " Completed Analysis";
+	      print "EMAIL OUT = $cmpSub = $cmpMsg \n";
+	      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $cmpSub, $cmpMsg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_QUALMETRICS'},$sampleInfo->{'genePanelVer'});
 	  }
       } else {
-	  Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variant: UpdateDB", "Failed to update the currentStatus to $currentStatus_code->{'currentStatus'}->{'Ready for Interpretation'}->{'code'} for sampleID: $sampleInfo->{'sampleID'} posrprocID: $sampleInfo->{'postprocID'}\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+	  Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variant: UpdateDB", "Failed to update the currentStatus to $currentStatus_code->{'currentStatus'}->{'Ready for Interpretation'}->{'code'} for sampleID: $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'} )\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
       }
     #$msg eq '' ? Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $sampleInfo->{'sampleID'} ." Completed Analysis", $sampleInfo->{'sampleID'} . " has finished analysis using gene panel " . $sampleInfo->{'genePanelVer'} . ". The sample can be viewed through the website. http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/" . $sampleInfo->{'sampleID'} ."/" . $sampleInfo->{'postprocID'} . "/summary \nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/" . $sampleInfo->{'genePanelVer'} . "." .$todayDate .".sid_" . $sampleInfo->{'sampleID'} . ".annotated.filter.pID_" . $sampleInfo->{'postprocID'} . ".xlsx.\n\nPlease login to thing1 using your Samba account in order to view this file.\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNING'}) : Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Failed to update the currentStatus set to 8 for sampleID: $sampleInfo->{'sampleID'} posrprocID: $sampleInfo->{'postprocID'}\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
   } elsif ($exitcode == 1) {
@@ -122,7 +127,7 @@ sub updateDB {
     my $sthUPS = $dbh->prepare($loadErr) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
     $sthUPS->execute() or $msg .= "Can't execute query:\n\n$sthUPS\n\n for running samples: " . $dbh->errstr() . "\n";
     if ($msg ne '') {
-      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variant: UpdateDB", "Failed to update the currentStatus to $currentStatus_code->{'currentStatus'}->{'Failed to Load Variants into db'}->{'code'} for sampleID: $sampleInfo->{'sampleID'} posrprocID: $sampleInfo->{'postprocID'}\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variant: UpdateDB", "Failed to update the currentStatus to $currentStatus_code->{'currentStatus'}->{'Failed to Load Variants into db'}->{'code'} for sampleID: $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'} ).\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     }
   } else {
     Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings Load Variant: UpdateDB", "The impossible happened! Exitcode = $exitcode ???\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
@@ -323,7 +328,7 @@ sub loadVariants2DB {
 
     print "segdup=" . $lines_ref_all->{"SegDup"} . "\n";
     print "typeVer=" . $typeVer . "\n";
-    my $flag = LoadVariants::add_flag($lines_ref_all->{"SegDup"},$lines_ref_all->{"Region of Homology"},$lines_ref_all->{"On Low Coverage Exon"},$lines_ref_all->{'Allelic Depths for Alternative Alleles'},$lines_ref_all->{'Allelic Depths for Reference'},$lines_ref_all->{'Genotype'}, $typeVer, $lines_ref_all->{'Quality By Depth'}, $lines_ref_all->{"Fisher's Exact Strand Bias Test"}, $lines_ref_all->{'RMS Mapping Quality'}, $lines_ref_all->{'Mapping Quality Rank Sum Test'}, $lines_ref_all->{'Read Pos Rank Sum test'},$lines_ref_all->{"Strand Odds Ratio"}, $config, $dbh);
+    my $flag = LoadVariants::add_flag($lines_ref_all->{"SegDup"},$lines_ref_all->{"Region of Homology"},$lines_ref_all->{"On Low Coverage Exon"},$lines_ref_all->{'Allelic Depths for Alternative Alleles'},$lines_ref_all->{'Allelic Depths for Reference'},$lines_ref_all->{'Genotype'}, $typeVer, $lines_ref_all->{'Quality By Depth'}, $lines_ref_all->{"Fisher's Exact Strand Bias Test"}, $lines_ref_all->{'RMS Mapping Quality'}, $lines_ref_all->{'Mapping Quality Rank Sum Test'}, $lines_ref_all->{'Read Pos Rank Sum Test'},$lines_ref_all->{"Strand Odds Ratio"}, $config, $dbh);
     push (@splitFilter, $flag);
 
     my $insert = "INSERT INTO interpretation (time, reporter, interpretation, note, historyInter, clinVarAcc, hgmdDbn, polyphen, sift, mutTaster, cgAF, espAF, thouGAF, internalAFSNP, internalAFINDEL, segdup, homology, lowCvgExon, espAFAA, espAFEA, thouGAFAFR, thouGAFAMR, thouGAFEASN, thouGAFSASN, thouGAFEUR, clinVarIndelWindow, hgmdIndelWindow, genePanelSnpsAF, genePanelIndelsAF, cgdInherit, variantPerGene, omimDisease, wellderly, mutAss, cadd, perCdsAff, perTxAff, acmgGene, exacALL, exacAFR, exacAMR, exacEAS, exacFIN, exacNFE, exacOTH, exacSAS, omimInherit, omimLink, exacPLI, exacMZ, diseaseAs, flag) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";

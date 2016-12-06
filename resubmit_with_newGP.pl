@@ -71,6 +71,9 @@ sub insert_sampleInfo {
     my ($pipething1ver, $pipehpfver, $webver) = Common::get_pipelinever($config);
     print "key=$key\n";
     print "pipeID=" . $gpConfig->{$key}{'pipeID'} . "\n";
+    if (!defined $gpConfig->{$key}{'pipeID'}) {
+	croak "Wrong genePanelVer=$genePanelVer and captureKit = $sampleInfo_ref->{'captureKit'}. Please double check your submission.\n";
+    }
     my $successHPF = $encoding->{'currentStatus'}->{'Successfully Submitted'}->{'code'};
     my $insert_sql = "INSERT INTO sampleInfo (sampleID, flowcellID, genePanelVer, machine, captureKit, pipeID, filterID, annotateID, yieldMB, numReads, perQ30bases, specimen, sampleType, testType, priority, currentStatus, pipeThing1Ver , pipeHPFVer, webVer, perIndex)";
     $insert_sql .= " VALUES ('" . $sampleID . "','"  . $flowcellID . "','"  . $genePanelVer . "','" . $sampleInfo_ref->{'machine'} . "','";

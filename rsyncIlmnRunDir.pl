@@ -33,7 +33,7 @@ sub rsync_folders {
             if ($? != 0) {
                 my $msg = "rsync $runs[0] to $runs[1] failed with the error code $?\n";
                 print STDERR "$msg";
-                Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "rsync Error", $msg, "NA", "NA", $runs[2], $config->{'EMAIL_WARNINGS'});
+                Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Rsync Error", $msg, "NA", "NA", $runs[2], $config->{'EMAIL_WARNINGS'});
             }
         }
     }

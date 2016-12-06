@@ -71,7 +71,7 @@ foreach my $ref (@$demultiplex_ref) {
 
 if ($allerr ne '') {
     print STDERR $allerr;
-    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $allerr, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'} );
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Fastq Chksum Error", $allerr, "NA", "NA", "NA", $config->{'EMAIL_WARNINGS'} );
 }
 Common::cronControlPanel($dbh, 'chksum_fastq', "STOP");
 
@@ -102,7 +102,7 @@ sub checksum_fastq {
             }
             else {
                 my $msg = "file $loca in error format, rename file aborted\n";
-                Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+                Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Fastq Chksum Error", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
                 Common::cronControlPanel($dbh, 'chksum_fastq', "STOP");
                 die "$msg\n";
             }
@@ -172,13 +172,13 @@ sub checksum_fastq {
 	`$rsyncCmd`;
         if ( $? != 0 ) {
             $msg .= "Error rsync msg: $sampleID, $machine, $flowcellID, $?\n";
-            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+            Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Fastq Chksum Error", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
             Common::cronControlPanel($dbh, 'chksum_fastq', "STOP");
             die $msg,"\n";
         }
     }
     if ($msg ne '') {
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error on chksum for fastq", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Fastq Chksum Error", $msg, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
     }
 }
 

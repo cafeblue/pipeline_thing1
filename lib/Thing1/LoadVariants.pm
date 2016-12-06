@@ -180,6 +180,17 @@ sub code_type_of_mutation_gEnd {
 sub add_flag {
   my ($segdup, $homology, $lowCvgExon, $altDP, $refDP, $zygosity, $varType, $qd, $fs, $mq, $mqranksum, $readposranksum, $sor, $config, $dbh) = @_;
   print "flag segdup=$segdup\n";
+  print "flag homology=$homology\n";
+  print "flag altDP = $altDP\n";
+  print "flag refDP = $refDP\n";
+  print "flag zygosity = $zygosity\n";
+  print "flag varType = $varType\n";
+  print "flag qd = $qd\n";
+  print "flag fs = $fs\n";
+  print "flag mq = $mq\n";
+  print "flag mqranksum = $mqranksum\n";
+  print "flag readposranksum=$readposranksum\n";
+  print "flag sor=$sor\n";
   my $flag = 0;
   # my @splitComma = split(/\,/,$strand);
   # my $fs = $splitComma[0];
@@ -215,17 +226,26 @@ sub add_flag {
     }
   }
 
+  my $variantQCFlag = 0;
   ###ADD GATK 3.6.0 filters to see if they passed variant filters
   if ($varType == "1" || $varType == "2" || $varType == "4" || $varType == "5") {        # indel
+      
     my %indelQualRef = ("IndelQD" => $qd, "IndelFS" => $fs, "IndelRPRS" => $readposranksum, "IndelSOR" => $sor);
-    $flag = qc_variant('ALL', 'ALL', \%indelQualRef, '2', $dbh);
+    $variantQCFlag = qc_variant('ALL', 'ALL', \%indelQualRef, '2', $dbh);
   } elsif ($varType == "3") {   # snp
     # $qd, $fs, $sor, $mq, $mqranksum, $readposranksum,
+      if (!defined $readposranksum) {
+	  $readposranksum = "";
+      }
     my %snpQualRef = ("SnpQD" => $qd, "SnpFS" => $fs, "SnpMQ" => $mq, "SnpMQRS" => $mqranksum, "SnpRPRS" => $readposranksum, "SnpSOR" => $sor);
     
-    $flag = qc_variant('ALL', 'ALL', \%snpQualRef, '2', $dbh);
+    $variantQCFlag = qc_variant('ALL', 'ALL', \%snpQualRef, '2', $dbh);
   }
-  return $flag;
+  if ($variantQCFlag == 1 || $flag == 1) {
+      return 1;
+  } else {
+      return 0;
+  }
 }
 
 sub qc_variant {
@@ -241,9 +261,11 @@ sub qc_variant {
   my $sampleQC = $sthT->fetchall_hashref('FieldName') ;
   foreach my $rule (keys %$sampleQC) {
     foreach my $equa (split(/\&\&/, $sampleQC->{$rule}->{'Value'})) {
-      if (not eval($sampleMx{$rule} . $equa)) {
+	if (!defined $sampleMx{$rule} || $sampleMx{$rule} eq "") {
+	    ###ignore
+	} elsif (not eval($sampleMx{$rule} . $equa)) {
         my $message = $message .  "The $rule (Value: $sampleMx{$rule}) is not in our acceptable range: $sampleQC->{$rule}->{'Value'} .\n";
-	#print "message=$message\n";
+	print "message=$message\n";
         $flag = 1;
         last;
       }
