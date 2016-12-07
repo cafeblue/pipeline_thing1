@@ -6,14 +6,45 @@ use HPF::pipeline;
 use Time::localtime;
 use Time::Piece;
 
+###miseq sample
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 260455 -a 4106 -f /hpf/largeprojects/pray/clinical/fastq_v5/000000000-G11AL/Sample_260455 -g noonan_nf1.gp23 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/260455-4106-20161002111111-noonan_nf1.gp23-b37 -p exome
+
+###rebekah's sample
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 102654 -a 2988 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH33H2ADXY/Sample_102654 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/102654-2988-20161002111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 102654 -a 2988 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH33H2ADXY/Sample_102654 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/102654-2988-20161002111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 102654 -a 2988 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH33H2ADXY/Sample_102654 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/102654-2988-20161002111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+
 ###stress case #1
-#/hpf/largeprojects/pray/AUTOTESTING/pipeline_hpf_v5/call_pipeline.pl -s 290929 -a 4236 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHLF2FBGXY/Sample_290929 -g ai.gp18 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/290929-4236-20161002111111-ai.gp18-b37 -p exome
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 290929 -a 4236 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHLF2FBGXY/Sample_290929 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/290929-4236-20161002111111-exome.gp10-b37 -p exome
+###stress case #2
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 290535 -a 4181 -f /hpf/largeprojects/pray/clinical/fastq_v5/BH2VVYBCXY/Sample_290535 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/290535-4181-20161002111111-exome.gp10-b37 -p exome
+
+###first multi calling#### check gatkJointGenotyping to ensure enough memory is given
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 202214 -a 1411 -f /hpf/largeprojects/pray/clinical/fastq_v5/AHK22CBCXX/Sample_202214 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-1411-20161014111111-exome.gp10-b37 -p exome
+
+###validation samples -- with multiple sample calling
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 245706 -a 3976 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_245706 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/245706-3976-20161017111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 250734 -a 3977 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_250734 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/250734-3977-20161017111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 250732 -a 3978 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_250732 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/250732-3978-20161017111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 245705 -a 3979 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_245705 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/245705-3979-20161017111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 202214 -a 3980 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_202214 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-3980-20161017111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 275687 -a 3981 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_275687 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/275687-3981-20161017111111-exome.gp10-b37 -p exome -i gatkJointGenotyping
+
+###validation samples -- with cohort 50
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 245706 -a 3976 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_245706 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/245706-3976-20161019222222-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 250734 -a 3977 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_250734 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/250734-3977-20161019222222-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 250732 -a 3978 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_250732 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/250732-3978-20161019222222-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 245705 -a 3979 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_245705 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/245705-3979-20161019222222-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 202214 -a 3980 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_202214 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/202214-3980-20161019222222-exome.gp10-b37 -p exome -i gatkJointGenotyping
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 275687 -a 3981 -f /hpf/largeprojects/pray/clinical/fastq_v5/BHY2W2BCXX/Sample_275687 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/275687-3981-20161019222222-exome.gp10-b37 -p exome -i gatkJointGenotyping
+
+#/hpf/largeprojects/pray/llau/pipeline/pipeline_hpf_v5_develop/pipeline_hpf_v5/call_pipeline.pl -s 269139 -a 1411 -f /hpf/largeprojects/pray/clinical/fastq_v5/AH3WYKADXX/Sample_269139 -g exome.gp10 -r /hpf/largeprojects/pray/llau/clinical_test/v5_miseq/269139-1411-20161002111111-exome.gp10-b37 -p exome
 
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 
-my $pipeline_config_file = "/hpf/largeprojects/pray/AUTOTESTING/config/v5.1_pipeline_config.txt"; #Future will be passed from the thing1 cmd
-my $genepanel_config_file = "/hpf/largeprojects/pray/AUTOTESTING/config/gene_panels_config.txt"; #Future will be passed from the thing1 cmd
+my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5_pipeline_config_develop.txt"; #Future will be passed from the thing1 cmd
+my $genepanel_config_file = "/hpf/largeprojects/pray/clinical/config_test/gene_panels_config.txt"; #Future will be passed from the thing1 cmd
 
 GetOptions ("sampleID|s=s" => \$sampleID,
             "postprocID|a=s"   => \$postprocID,
@@ -39,15 +70,14 @@ our %startPoint_lst = ( 'NEW' => '', 'bwaAlign' => '', 'picardMarkDup' => 'bwaAl
                         'gatkCovCalExomeTargets' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
                         'gatkCovCalGP' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
                         'gatkRawVariantsCall' => "gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam",
-                        'gatkRawVariants' => "gatkRawVariantsCall/$sampleID.$postprocID.raw_variants",
                         'gatkJointGenotyping' => "gatkRawVariantsCall/$sampleID.$postprocID.raw_variants",
-                        'muTect' => "gatkRawVariantsCall/$sampleID.$postprocID.realigned-recalibrated.bam",
+                        'muTect' => "gatkRawVariantsCall/$sampleID.$postprocID.bamout.bam",
                         'mutectCombine' => "mutect", 'annovarMutect' => "mutectCombine/$sampleID.$postprocID.mutect.combine.annovar",
-                        # 'gatkFilteredRecalSNP' => "gatkJointGenotyping/$sampleID.$postprocID.genotypeGVCF.vcf",
-                        # 'gatkFilteredRecalINDEL' => "gatkFilteredRecalSNP/$sampleID.$postprocID.recalibrated_snps_raw_indels.vcf",
-                        'annovar'=>"gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf",
+                        'gatkFilteredRecalSNP' => "gatkJointGenotyping/$sampleID.$postprocID.genotypeGVCF.vcf",
+                        'gatkFilteredRecalINDEL' => "gatkFilteredRecalSNP/$sampleID.$postprocID.recalibrated_snps_raw_indels.vcf",
+                        'annovar'=>"gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.vcf",
                         # 'gatkFilteredRecalVariant' => "gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.vcf",
-                        'snpEff' => ["annovar/$sampleID.$postprocID.gatk.snp.indel.annovar", "gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf",
+                        'snpEff' => ["annovar/$sampleID.$postprocID.gatk.snp.indel.annovar", "gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf",
                                      "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv","windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv"]);
 
 our $help =  <<EOF;
@@ -71,7 +101,7 @@ our $help =  <<EOF;
               pipeline list: cancerT, cancerN, exome, exome_newGP
               startPoint list: NEW, bwaAlign, picardMarkDup,
                                gatkQscoreRecalibration, gatkCovCalExomeTargets,
-                               gatkCovCalGP, gatkRawVariantsCall, gatkJointGenotyping, snpEff
+                               gatkCovCalGP, gatkRawVariantsCall, gatkJointGenotyping, gatkFilteredRecalINDEL, gatkFilteredSNP, snpEff
                                muTect, mutectCombine
 
 EOF
@@ -141,14 +171,12 @@ sub exome {
   sleep 1;
  gatkRawVariantsCall:       @jobID_and_Pfolder    = &gatkRawVariantsCall(@jobID_and_Pfolder);
   sleep 1;
- gatkRawVariants:                                   &gatkRawVariants(@jobID_and_Pfolder);
+ gatkJointGenotyping:           @jobID_and_Pfolder    = &gatkJointGenotyping(@jobID_and_Pfolder);
   sleep 1;
- gatkJointGenotyping:           @jobID_and_Pfolder1    = &gatkJointGenotyping(@jobID_and_Pfolder);
+ gatkFilteredRecalSNP:      @jobID_and_Pfolder   = &gatkFilteredRecalSNP(@jobID_and_Pfolder);
   sleep 1;
-  # gatkFilteredRecalSNP:      @jobID_and_Pfolder   = &gatkFilteredRecalSNP(@jobID_and_Pfolder);
-  #  sleep 1;
-  # gatkFilteredRecalINDEL:    @jobID_and_Pfolder1   = &gatkFilteredRecalINDEL(@jobID_and_Pfolder);
-  #  sleep 1;
+ gatkFilteredRecalINDEL:    @jobID_and_Pfolder1   = &gatkFilteredRecalINDEL(@jobID_and_Pfolder);
+  sleep 1;
   # $jobID_and_Pfolder[0] = $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
   # $jobID_and_Pfolder[1] = $jobID_and_Pfolder1[1] ;
   # $jobID_and_Pfolder[2] = $jobID_and_Pfolder2[1] ;
@@ -170,9 +198,9 @@ sub exome_newGP {
   $depthct   = $fastqDir !~ /0000000/ ? ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 500' :  ' -ct 1 -ct 10 -ct 20 -ct 30 --start 1 --stop 3000';
   # alAF:                                            &calAF(@jobID_and_Pfolder);
  gatkCovCalGP:                                     &gatkCovCalGP(@jobID_and_Pfolder);
-  $jobID_and_Pfolder[1] = "gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf";
+  $jobID_and_Pfolder[1] = "gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf";
  annovar_newGP:             @jobID_and_Pfolder   =  &annovar_newGP(@jobID_and_Pfolder);
-  push @jobID_and_Pfolder, ("gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf",
+  push @jobID_and_Pfolder, ("gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf",
                             "windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv",
                             "windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv");
  snpEff_newGP:                                      &snpEff(@jobID_and_Pfolder);
@@ -218,24 +246,23 @@ sub cancerN {
   sleep 1;
  gatkRawVariantsCall:       @jobID_and_Pfolder    =  &gatkRawVariantsCall(@jobID_and_Pfolder);
   sleep 1;
- gatkRawVariants:                                  &gatkRawVariants(@jobID_and_Pfolder);
-  sleep 1;
  gatkJointGenotyping:           @jobID_and_Pfolder    =  &gatkJointGenotyping(@jobID_and_Pfolder);
   sleep 1;
-  # gatkFilteredRecalSNP:      @jobID_and_Pfolder1   =  &gatkFilteredRecalSNP(@jobID_and_Pfolder);
-  #  sleep 1;
-  # gatkFilteredRecalINDEL:    @jobID_and_Pfolder2   =  &gatkFilteredRecalINDEL(@jobID_and_Pfolder);
-  #  sleep 1;
-  #  $jobID_and_Pfolder[0] =  $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
-  #  $jobID_and_Pfolder[1] =  $jobID_and_Pfolder1[1] ;
-  #  $jobID_and_Pfolder[2] =  $jobID_and_Pfolder2[1] ;
+
+
+ gatkFilteredRecalSNP:      @jobID_and_Pfolder1   =  &gatkFilteredRecalSNP(@jobID_and_Pfolder);
+  sleep 1;
+ gatkFilteredRecalINDEL:    @jobID_and_Pfolder2   =  &gatkFilteredRecalINDEL(@jobID_and_Pfolder);
+  sleep 1;
+  $jobID_and_Pfolder[0] =  $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
+  $jobID_and_Pfolder[1] =  $jobID_and_Pfolder1[1] ;
+  $jobID_and_Pfolder[2] =  $jobID_and_Pfolder2[1] ;
   # gatkFilteredRecalVariant:  @jobID_and_Pfolder1   =  &gatkFilteredRecalVariant(@jobID_and_Pfolder);
   sleep 1;
  windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder);
- annovar:                   @jobID_and_Pfolder1    = &annovar(@jobID_and_Pfolder);
+ annovar:                   @jobID_and_Pfolder    = &annovar(@jobID_and_Pfolder2);
   sleep 1;
   $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
-  #  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder2[0];
   push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[2];
@@ -416,14 +443,13 @@ sub picardMarkDup {
   $cmd = 'echo \''
     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
       . "\\\n"
-        . 'module load ' . $PERL . ' && ' . " \\\n"
-          . 'module load ' . $JAVA . ' && ' . " \\\n"
-            . "\\\n"
-              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx32G ' . $PICARDTOOLS . ' MarkDuplicates ' . $inputfiles . " REMOVE_DUPLICATES=false CREATE_INDEX=true ASSUME_SORTED=true OUTPUT=$runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam  METRICS_FILE=$runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file &&" . " \\\n"
-                . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx32G ' . $PICARDTOOLS . ' BuildBamIndex' . " INPUT=$runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam ;" . " \\\n"
-                  #. "ln -f $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $BACKUP_BASEDIR/matrics/ ; \\\n"
-                  . "perl $SCRIPTDIR/calculate_qual_rmdup.pl $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $sampleID $postprocID > $runfolder/picardMarkDup/$sampleID.$postprocID.rmdup.sql \\\n"
-                    . "\'| jsub -j picardMarkDup -b $runfolder -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
+        . 'module load ' . $PERL . ' ' . $JAVA . ' && ' . " \\\n"
+          . "\\\n"
+            . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx32G ' . $PICARDTOOLS . ' MarkDuplicates ' . $inputfiles . " REMOVE_DUPLICATES=false CREATE_INDEX=true ASSUME_SORTED=true OUTPUT=$runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam  METRICS_FILE=$runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file &&" . " \\\n"
+              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx32G ' . $PICARDTOOLS . ' BuildBamIndex' . " INPUT=$runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam ;" . " \\\n"
+                #. "ln -f $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $BACKUP_BASEDIR/matrics/ ; \\\n"
+                . "perl $SCRIPTDIR/calculate_qual_rmdup.pl $runfolder/picardMarkDup/$sampleID.$postprocID.picard.sort.merged.rmdup.bam.metric_file $sampleID $postprocID > $runfolder/picardMarkDup/$sampleID.$postprocID.rmdup.sql \\\n"
+                  . "\'| jsub -j picardMarkDup -b $runfolder -nm 64000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:30 $depend";
   #    }
   print "\n\n************\npicardMarkDup:\n $cmd\n************\n\n";
   my $cmdOut = `$cmd`;
@@ -548,7 +574,7 @@ sub picardMarkDup {
 sub picardCalculateHsMetrics {
   my ($jobID, $Pfolder) = @_;
   my $intervalFile = $captureKitFile;
-  $intervalFile=~s/bed/MT.interval_list/;
+  $intervalFile=~s/bed/interval_list/;
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/picardCalculateHsMetrics") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/picardCalculateHsMetrics\n";
@@ -557,13 +583,12 @@ sub picardCalculateHsMetrics {
   my $cmd = 'echo \''
     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
       . "\\\n"
-        #        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
-        . 'module load ' . $JAVA . ' && ' . " \\\n"
-          . 'module load ' . $PERL . ' && ' . " \\\n"
+        . 'module load ' . $RSCRIPT . ' && ' . " \\\n"
+          . 'module load ' . $JAVA . ' && ' . " \\\n"
             . "\\\n"
               . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G ' . $PICARDTOOLS . ' CollectHsMetrics VALIDATION_STRINGENCY=SILENT' . " INPUT=$runfolder/$Pfolder OUTPUT=$runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.txt BAIT_INTERVALS=" . $intervalFile . " TARGET_INTERVALS=" . $intervalFile." R=".$reference." && \\\n" . "head -n 8 $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.txt  | tsp > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.txt && \\\n"
                 #. "ln -f $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs* $BACKUP_BASEDIR/matrics/ ; \\\n"
-                . "perl $SCRIPTDIR/sql_qual_picard.pl $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.txt $sampleID $postprocID > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs_metrics.sql \\\n"
+                . "perl $SCRIPTDIR/sql_qual_picard $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs.metrics.tsp.txt $sampleID $postprocID > $runfolder/picardCalculateHsMetrics/$sampleID.$postprocID.hs_metrics.sql \\\n"
                   . "\'| jsub -j picardCalculateHsMetrics -b $runfolder  -nm 24000 -np 1 -nn 1 -nw 01:00:00 -ng localhd:10  $depend";
   print "\n\n************\npicardCalculateHsMetrics:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
@@ -618,14 +643,13 @@ sub gatkQscoreRecalibration {
           . 'module load ' . $JAVA . ' && ' . " \\\n"
             . "\\\n"
               . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T BaseRecalibrator'
-                . " -nct $threads -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/recal_data.table -R $reference -l INFO -knownSites $dbSNP -knownSites $g1k_indel_vcf -knownSites $g1k_indel_phase1_vcf && \\\n"
+                . " -nct $threads -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/recal_data.table -R $reference -l INFO -knownSites $dbSNP -knownSites $g1k_indel_vcf -knownSites $g1k_indel_phase1_vcf &&" . " \\\n"
                   # . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T BaseRecalibrator'
                   #   . " -nct $threads -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/post_recal_data.table -R $reference -l INFO -knownSites $dbSNP -knownSites $g1k_indel_vcf -BQSR $runfolder/gatkQscoreRecalibration/recal_data.table &&" . " \\\n"
                   . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T PrintReads'
-                    . " -nct $threads -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam -R $reference -l INFO -BQSR $runfolder/gatkQscoreRecalibration/recal_data.table && \\\n"
+                    . " -nct $threads -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam -R $reference -l INFO -BQSR $runfolder/gatkQscoreRecalibration/recal_data.table \\\n"
                       #. 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' BuildBamIndex' . " INPUT=$runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam \\\n"
-                      . "ln -f $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam $BACKUP_BASEDIR/bam/ ; \\\n"
-                        . "\'| jsub -j gatkQscoreRecalibration -b $runfolder  -nm 32000 -np 4 -nn 1 -nw 24:00:00 -ng localhd:100 $depend";
+                      . "\'| jsub -j gatkQscoreRecalibration -b $runfolder  -nm 32000 -np 4 -nn 1 -nw 24:00:00 -ng localhd:100 $depend";
   print "\n\n************\ngatkQscoreRecalibration:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -746,7 +770,7 @@ sub gatkRawVariantsCall {
                         . 'if [ ${chr} = "25" ]; then'
                           . '    chr=MT; fi;'
                             . " \\\n"
-                              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T HaplotypeCaller' . " -R $reference -I $runfolder/$Pfolder --genotyping_mode DISCOVERY -stand_emit_conf 10 -stand_call_conf 30 -rf BadCigar --dontUseSoftClippedBases \\\n"
+                              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T HaplotypeCaller' . " -R $reference -I $runfolder/$Pfolder --genotyping_mode DISCOVERY -stand_emit_conf 10 -stand_call_conf 30 -rf BadCigar \\\n"
                                 . " --min_base_quality_score 20 --emitRefConfidence GVCF". " \\\n"
                                   . ' -L ${chr}' . " \\\n"
                                     . " -o $runfolder/gatkRawVariantsCall/$sampleID.$postprocID" . '.raw_variants.chr${chr}.g.vcf' . " --dbsnp $dbSNP &&" . " \\\n"
@@ -763,34 +787,36 @@ sub gatkRawVariantsCall {
   }
 }
 
-sub gatkRawVariants {
-  my ($jobID, $Pfolder) = @_;
-  my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
-  if ( -d "$runfolder/gatkRawVariants") {
-    print "Jsub folder already exists, removing...\nrm -rf $runfolder/gatkRawVariants\n";
-    `rm -rf $runfolder/gatkRawVariants`;
-  }
+# sub gatkRawVariants {
+#   my ($jobID, $Pfolder) = @_;
+#   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
+#   if ( -d "$runfolder/gatkRawVariants") {
+#     print "Jsub folder already exists, removing...\nrm -rf $runfolder/gatkRawVariants\n";
+#     `rm -rf $runfolder/gatkRawVariants`;
+#   }
 
-  my $cmd = 'echo \''
-    . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
-      . "\\\n"
-        . 'module load ' . $GATK . ' && ' . " \\\n"
-          . 'module load ' . $JAVA . ' && ' . " \\\n"
-            . "\\\n"
-              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T CombineGVCFs ' . all_chr_files("--variant ", "$runfolder/" . "gatkRawVariantsCall", "$sampleID.$postprocID.raw_variants.chr", ".g.vcf") . " \\\n"
-                . "-R $reference -o $runfolder/gatkRawVariants/$sampleID.$postprocID.g.vcf && \\\n"
-                  . "ln -f $runfolder/gatkRawVariants/$sampleID.$postprocID.g.vcf* $BACKUP_BASEDIR/gVCF/ ; \\\n"
-                    . "\'| jsub -j gatkRawVariants -b $runfolder  -nm 32000 -np 1 -nn 1 -nw 12:00:00 -ng localhd:10 $depend";
-  print "\n\n************\ngatkRawVariants:\n$cmd\n************\n\n";
-  my $cmdOut = `$cmd`;
-  print "============\n$cmdOut============\n\n";
-  if ($cmdOut =~ /^(\d+)\n/) {
-    $jobID = $1;
-    return($jobID, "gatkRawVariants/$sampleID.$postprocID.g.vcf");
-  } else {
-    die "gatkRawVariants for $runfolder failed to be submitted!\n";
-  }
-}
+#   my $cmd = 'echo \''
+#     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
+#       . "\\\n"
+#         . 'module load ' . $GATK . ' && ' . " \\\n"
+#           . 'module load ' . $JAVA . ' && ' . " \\\n"
+#             . "\\\n"
+#               . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T SelectVariants -selectType SNP ' . " \\\n"
+#                 . " -o $runfolder/gatkRawVariants/$sampleID.$postprocID.raw.snps.vcf -R $reference --variant $runfolder/$Pfolder/$sampleID.$postprocID.genotypeGVCF.vcf &&" . " \\\n"
+#                   . "\\\n"
+#                     . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G $GATK -T SelectVariants -selectType INDEL' . " \\\n"
+#                       . " -o $runfolder/gatkRawVariants/$sampleID.$postprocID.raw.indels.vcf -R $reference --variant $runfolder/$Pfolder/$sampleID.$postprocID.genotypeGVCF.vcf ;" . " \\\n"
+#                         . "\'| jsub -j gatkRawVariants -b $runfolder  -nm 16000 -np 1 -nn 1 -nw 04:00:00 -ng localhd:10 $depend";
+#   print "\n\n************\ngatkRawVariants:\n$cmd\n************\n\n";
+#   my $cmdOut = `$cmd`;
+#   print "============\n$cmdOut============\n\n";
+#   if ($cmdOut =~ /^(\d+)\n/) {
+#     $jobID = $1;
+#     return($jobID, "gatkRawVariants/$sampleID.$postprocID.raw.snps.vcf", "gatkRawVariants/$sampleID.$postprocID.raw.indels.vcf");
+#   } else {
+#     die "gatkRawVariants for $runfolder failed to be submitted!\n";
+#   }
+# }
 
 sub gatkJointGenotyping {
   my ($jobID, $Pfolder) = @_;
@@ -804,107 +830,101 @@ sub gatkJointGenotyping {
       . "\\\n"
         . 'module load ' . $GATK . ' && ' . " \\\n"
           . 'module load ' . $JAVA . ' && ' . " \\\n"
-            . 'module load ' . $BEDTOOLS . ' && ' . " \\\n"
-              . "\\\n"
-                . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T GenotypeGVCFs' . " -R $reference " . all_chr_files("--variant ", "$runfolder/" . "gatkRawVariantsCall", "$sampleID.$postprocID.raw_variants.chr", ".g.vcf")
-                  . " -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf" . " && \\\n"
-                    # . "perl $SCRIPTDIR/removeNoCalls.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf && \\\n"
-                    . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval ' . " \\\n"
-                      . "-L $captureKitFile -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt --eval $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf --dbsnp $dbSNP -R $reference && \\\n"
-                        . "bedtools intersect -a $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf -b $captureKitFile -wa > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.target.vcf && \\\n"
-                          . "perl $SCRIPTDIR/calculate_variant_exome_db.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.raw.eval.txt $sampleID $postprocID $runfolder/gatkJointGenotyping $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.target.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.variants_exome_metrics.sql && \\\n"
-                            . "perl $SCRIPTDIR/addMT.pl $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.M.vcf && \\\n"
-                              . "\\\n"
-                                # . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' MergeBamAlignment' . all_chr_files("ALIGNED=","$runfolder/gatkRawVariantsCall","$sampleID.$postprocID.bamout.chr",".bam") . " OUTPUT=$runfolder/gatkJointGenotyping/$sampleID.$postprocID.bamout.bam &&" . " \\\n"
-                                #   . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' BuildBamIndex' . " INPUT=$runfolder/gatkJointGenotyping/$sampleID.$postprocID.bamout.bam;\\\n"
-                                ###merge the bamout files
-                                . "ln -f $runfolder/gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf* $BACKUP_BASEDIR/genotype_vcf/ ;"
-                                  . "\'| jsub -j gatkJointGenotyping -b $runfolder -nm 32000 -np 12 -nn 1 -nw 24:00:00 -ng localhd:10 $depend";
+            . "\\\n"
+              ##cohort . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T CombineGVCFs' . " -R $reference " . all_chr_files("--variant ", "$runfolder/" . "gatkRawVariantsCall", "$sampleID.$postprocID.raw_variants.chr", ".g.vcf")
+              ##cohort . " -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.genotypeGVCF.vcf" . " && \\\n"
+              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx52G $GATK -T GenotypeGVCFs' . " -R $reference " . all_chr_files("--variant ", "$runfolder/" . "gatkRawVariantsCall", "$sampleID.$postprocID.raw_variants.chr", ".g.vcf") . " " . gvcf_files("--variant", $gvcf_folder)
+                . " -o $runfolder/gatkJointGenotyping/$sampleID.$postprocID.genotypeGVCF.vcf -nt 3" . " && \\\n"
+                  # . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' MergeBamAlignment' . all_chr_files("ALIGNED=","$runfolder/gatkRawVariantsCall","$sampleID.$postprocID.bamout.chr",".bam") . " OUTPUT=$runfolder/gatkJointGenotyping/$sampleID.$postprocID.bamout.bam &&" . " \\\n"
+                  #   . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' BuildBamIndex' . " INPUT=$runfolder/gatkJointGenotyping/$sampleID.$postprocID.bamout.bam;\\\n"
+                  ###merge the bamout files
+                  . "ln -f $runfolder/gatkJointGenotyping/$sampleID.$postprocID.genotypeGVCF.vcf* $BACKUP_BASEDIR/genotype_vcf/ ;"
+                    . "\'| jsub -j gatkJointGenotyping -b $runfolder -nm 64000 -np 12 -nn 1 -nw 48:00:00 -ng localhd:10 $depend";
   print "\n\n************\ngatkJointGenotyping:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+)\n/) {
     $jobID = $1;
-    return($jobID, "gatkJointGenotyping/$sampleID.$postprocID.gatk.snp.indel.vcf");
+    return($jobID, "gatkJointGenotyping/$sampleID.$postprocID.genotypeGVCF.vcf");
   } else {
     die "gatkJointGenotyping for $runfolder failed to be submitted!\n";
   }
 }
 
-# sub gatkFilteredRecalSNP {
-#   my ($jobID, $Pfolder) = @_;
-#   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
-#   if ( -d "$runfolder/gatkFilteredRecalSNP") {
-#     print "Jsub folder already exists, removing...\nrm -rf $runfolder/gatkFilteredRecalSNP\n";
-#     `rm -rf $runfolder/gatkFilteredRecalSNP`;
-#   }
-#   my $cmd = 'echo \''
-#     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
-#       . "\\\n"
-#         . 'module load ' . $GATK . ' && ' . " \\\n"
-#           . 'module load ' . $JAVA . ' && ' . " \\\n"
-#             . "\\\n"
-#               . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantRecalibrator ' . " \\\n"
-#                 . "-R $reference -input $runfolder/$Pfolder -resource:hapmap,known=false,training=true,truth=true,prior=15.0 $hapmap_vcf -resource:omni,known=false,training=true,truth=true,prior=12.0 $omni_vcf -resource:1000G,known=false,training=true,truth=false,prior=10.0 $g1k_snp_vcf -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP -an QD -an FS -an SOR -an MQ -an MQRankSum -an ReadPosRankSum -an InbreedingCoeff -mode SNP -recalFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches && \\\n"
-#                   . "\\\n"
-#                     . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T ApplyRecalibration  ' . " \\\n"
-#                       . " -R $reference -input $runfolder/$Pfolder -mode SNP --ts_filter_level 99.5 -recalFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches -o $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.recalibrated_snps_raw_indels.vcf && \\\n"
-#                         # . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval -EV TiTvVariantEvaluator -EV CountVariants ' . " \\\n"
-#                         #   . "-L $captureKitFile -o $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal.eval.txt -eval:recal_snps $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.recal.filtered.snp.vcf \\\n"
-#                         #     . "--dbsnp $dbSNP -R $reference " . " \\\n"
-#                         #       . "\\\n"
-#                         . "\'| jsub -j gatkFilteredRecalSNP -b $runfolder  -nm 32000 -np 4 -nn 1 -nw 03:00:00 -ng localhd:10 $depend";
-#   print "\n\n************\ngatkFilteredRecalSNP:\n$cmd\n************\n\n";
-#   my $cmdOut = `$cmd`;
-#   print "============\n$cmdOut============\n\n";
-#   if ($cmdOut =~ /^(\d+)\n/) {
-#     $jobID = $1;
-#     return($jobID, "gatkFilteredRecalSNP/$sampleID.$postprocID.recalibrated_snps_raw_indels.vcf");
-#   } else {
-#     die "gatkFilteredRecalSNP for $runfolder failed to be submitted!\n";
-#   }
-# }
+sub gatkFilteredRecalSNP {
+  my ($jobID, $Pfolder) = @_;
+  my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
+  if ( -d "$runfolder/gatkFilteredRecalSNP") {
+    print "Jsub folder already exists, removing...\nrm -rf $runfolder/gatkFilteredRecalSNP\n";
+    `rm -rf $runfolder/gatkFilteredRecalSNP`;
+  }
+  my $cmd = 'echo \''
+    . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
+      . "\\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
+          . 'module load ' . $JAVA . ' && ' . " \\\n"
+            . "\\\n"
+              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantRecalibrator ' . " \\\n"
+                . "-R $reference -input $runfolder/$Pfolder -resource:hapmap,known=false,training=true,truth=true,prior=15.0 $hapmap_vcf -resource:omni,known=false,training=true,truth=true,prior=12.0 $omni_vcf -resource:1000G,known=false,training=true,truth=false,prior=10.0 $g1k_snp_vcf -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP -an QD -an FS -an SOR -an MQ -an MQRankSum -an ReadPosRankSum -an InbreedingCoeff -mode SNP -recalFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches && \\\n"
+                  . "\\\n"
+                    . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T ApplyRecalibration  ' . " \\\n"
+                      . " -R $reference -input $runfolder/$Pfolder -mode SNP --ts_filter_level 99.5 -recalFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal -tranchesFile $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.tranches -o $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.recalibrated_snps_raw_indels.vcf && \\\n"
+                        # . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval -EV TiTvVariantEvaluator -EV CountVariants ' . " \\\n"
+                        #   . "-L $captureKitFile -o $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.snp.recal.eval.txt -eval:recal_snps $runfolder/gatkFilteredRecalSNP/$sampleID.$postprocID.recal.filtered.snp.vcf \\\n"
+                        #     . "--dbsnp $dbSNP -R $reference " . " \\\n"
+                        #       . "\\\n"
+                        . "\'| jsub -j gatkFilteredRecalSNP -b $runfolder  -nm 32000 -np 4 -nn 1 -nw 03:00:00 -ng localhd:10 $depend";
+  print "\n\n************\ngatkFilteredRecalSNP:\n$cmd\n************\n\n";
+  my $cmdOut = `$cmd`;
+  print "============\n$cmdOut============\n\n";
+  if ($cmdOut =~ /^(\d+)\n/) {
+    $jobID = $1;
+    return($jobID, "gatkFilteredRecalSNP/$sampleID.$postprocID.recalibrated_snps_raw_indels.vcf");
+  } else {
+    die "gatkFilteredRecalSNP for $runfolder failed to be submitted!\n";
+  }
+}
 
-# sub gatkFilteredRecalINDEL {
-#   my ($jobID, $Pfolder) = @_;
-#   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
-#   if ( -d "$runfolder/gatkFilteredRecalINDEL") {
-#     print "Jsub folder already exists, removing...\nrm -rf $runfolder/gatkFilteredRecalINDEL\n";
-#     `rm -rf $runfolder/gatkFilteredRecalINDEL`;
-#   }
-#   my $cmd = 'echo \''
-#     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
-#       . "\\\n"
-#         . 'module load ' . $GATK . ' && ' . " \\\n"
-#           . 'module load ' . $JAVA . ' && ' . " \\\n"
-#             . "\\\n"
-#               . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantRecalibrator ' . " \\\n"
-#                 . "-R $reference -input $runfolder/$Pfolder -resource:mills,known=false,training=true,truth=true,prior=12.0 $g1k_indel_vcf -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP -an QD -an FS -an SOR -an MQRankSum -an ReadPosRankSum -an InbreedingCoeff -mode INDEL --maxGaussians 4 -recalFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.recal -tranchesFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.tranches && \\\n"
-#                   . "\\\n"
-#                     . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T ApplyRecalibration  ' . " \\\n"
-#                       . "-R $reference -input $runfolder/$Pfolder -mode INDEL --ts_filter_level 99.0 -recalFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.recal -tranchesFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.tranches -o $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.vcf && \\\n"
-#                         . "\\\n"
-#                           . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T SelectVariants ' . " \\\n"
-#                             . " -o $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf -R $reference -V $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.vcf -sn $sampleID && \\\n"
-#                               . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval ' . " \\\n"
-#                                 . "-L $captureKitFile -o $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.eval.txt --eval $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf \\\n"
-#                                   . "--dbsnp $dbSNP -R $reference && \\\n"
-#                                     . "perl $SCRIPTDIR/calculate_variant_exome_db.pl $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.eval.txt $sampleID $postprocID $runfolder/gatkFilteredRecalINDEL > $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.variants_exome_metrics.sql && \\\n"
-#                                       . "perl $SCRIPTDIR/removeNoCalls.pl $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf && \\\n"
-#                                         . "perl $SCRIPTDIR/addMT.pl $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.M.vcf && \\\n"
-#                                           . "\\\n"
-#                                             . "ln -f $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf* $BACKUP_BASEDIR/recal_vcf/ ;"
-#                                               . "\'| jsub -j gatkFilteredRecalINDEL -b $runfolder  -nm 32000 -np 4 -nn 1 -nw 03:00:00 -ng localhd:10 $depend";
-#   print "\n\n************\ngatkFilteredRecalINDEL:\n$cmd\n************\n\n";
-#   my $cmdOut = `$cmd`;
-#   print "============\n$cmdOut============\n\n";
-#   if ($cmdOut =~ /^(\d+)\n/) {
-#     $jobID = $1;
-#     return($jobID, "gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf");
-#   } else {
-#     die "gatkFilteredRecalINDEL for $runfolder failed to be submitted!\n";
-#   }
-# }
+sub gatkFilteredRecalINDEL {
+  my ($jobID, $Pfolder) = @_;
+  my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
+  if ( -d "$runfolder/gatkFilteredRecalINDEL") {
+    print "Jsub folder already exists, removing...\nrm -rf $runfolder/gatkFilteredRecalINDEL\n";
+    `rm -rf $runfolder/gatkFilteredRecalINDEL`;
+  }
+  my $cmd = 'echo \''
+    . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
+      . "\\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
+          . 'module load ' . $JAVA . ' && ' . " \\\n"
+            . "\\\n"
+              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantRecalibrator ' . " \\\n"
+                . "-R $reference -input $runfolder/$Pfolder -resource:mills,known=false,training=true,truth=true,prior=12.0 $g1k_indel_vcf -resource:dbsnp,known=true,training=false,truth=false,prior=2.0 $dbSNP -an QD -an FS -an SOR -an MQRankSum -an ReadPosRankSum -an InbreedingCoeff -mode INDEL --maxGaussians 4 -recalFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.recal -tranchesFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.tranches && \\\n"
+                  . "\\\n"
+                    . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T ApplyRecalibration  ' . " \\\n"
+                      . "-R $reference -input $runfolder/$Pfolder -mode INDEL --ts_filter_level 99.0 -recalFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.recal -tranchesFile $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.indel.tranches -o $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.vcf && \\\n"
+                        . "\\\n"
+                          . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T SelectVariants ' . " \\\n"
+                            . " -o $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf -R $reference -V $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.vcf -sn $sampleID && \\\n"
+                              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx16G $GATK -T VariantEval ' . " \\\n"
+                                . "-L $captureKitFile -o $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.eval.txt --eval $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf \\\n"
+                                  . "--dbsnp $dbSNP -R $reference && \\\n"
+                                    . "perl $SCRIPTDIR/calculate_variant_exome_db.pl $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.recalibrated_variants.eval.txt $sampleID $postprocID $runfolder/gatkFilteredRecalINDEL > $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.variants_exome_metrics.sql && \\\n"
+                                      . "perl $SCRIPTDIR/removeNoCalls.pl $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf && \\\n"
+                                        . "perl $SCRIPTDIR/addMT.pl $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf > $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.M.vcf && \\\n"
+                                          . "\\\n"
+                                            . "ln -f $runfolder/gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.vcf* $BACKUP_BASEDIR/recal_vcf/ ;"
+                                              . "\'| jsub -j gatkFilteredRecalINDEL -b $runfolder  -nm 32000 -np 4 -nn 1 -nw 03:00:00 -ng localhd:10 $depend";
+  print "\n\n************\ngatkFilteredRecalINDEL:\n$cmd\n************\n\n";
+  my $cmdOut = `$cmd`;
+  print "============\n$cmdOut============\n\n";
+  if ($cmdOut =~ /^(\d+)\n/) {
+    $jobID = $1;
+    return($jobID, "gatkFilteredRecalINDEL/$sampleID.$postprocID.gatk.snp.indel.rmNoGt.vcf");
+  } else {
+    die "gatkFilteredRecalINDEL for $runfolder failed to be submitted!\n";
+  }
+}
 
 # sub gatkFilteredRecalVariant {
 #   my ($jobID, $Pfolder_snp, $Pfolder_indel) = @_;
@@ -964,13 +984,13 @@ sub windowBed {
             . 'module load ' . $JAVA . ' && ' . " \\\n"
               . "\\\n"
                 . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T SelectVariants -selectType SNP ' . " \\\n"
-                  . " -o $runfolder/windowBed/$sampleID.$postprocID.raw_snps.vcf -R $reference --variant $runfolder/$Pfolder &&" . " \\\n"
+                  . " -o $runfolder/windowBed/$sampleID.$postprocID.recalibrated_snps.vcf -R $reference --variant $runfolder/$Pfolder &&" . " \\\n"
                     . "\\\n"
                       . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T SelectVariants -selectType INDEL' . " \\\n"
-                        . " -o $runfolder/windowBed/$sampleID.$postprocID.raw_indels.vcf -R $reference --variant $runfolder/$Pfolder &&" . " \\\n"
-                          . "windowBed -a $runfolder/windowBed/$sampleID.$postprocID.raw_indels.vcf -b $clinvar_indel_vcf -w 20 > $runfolder/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv &&" . " \\\n"
-                            . "windowBed -a $runfolder/windowBed/$sampleID.$postprocID.raw_indels.vcf -b $hgmdAML -w 20 > $runfolder/windowBed/$sampleID.$postprocID.hgmd.window20bp.indel.tsv &&" . " \\\n"
-                              . "windowBed -a $runfolder/windowBed/$sampleID.$postprocID.raw_snps.vcf -b $hgmdAS -w 3 > $runfolder/windowBed/$sampleID.$postprocID.hgmd.window3bp.snp.tsv &&" . " \\\n"
+                        . " -o $runfolder/windowBed/$sampleID.$postprocID.recalibrated_indels.vcf -R $reference --variant $runfolder/$Pfolder &&" . " \\\n"
+                          . "windowBed -a $runfolder/windowBed/$sampleID.$postprocID.recalibrated_indels.vcf -b $clinvar_indel_vcf -w 20 > $runfolder/windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv &&" . " \\\n"
+                            . "windowBed -a $runfolder/windowBed/$sampleID.$postprocID.recalibrated_indels.vcf -b $hgmdAML -w 20 > $runfolder/windowBed/$sampleID.$postprocID.hgmd.window20bp.indel.tsv &&" . " \\\n"
+                              . "windowBed -a $runfolder/windowBed/$sampleID.$postprocID.recalibrated_snps.vcf -b $hgmdAS -w 3 > $runfolder/windowBed/$sampleID.$postprocID.hgmd.window3bp.snp.tsv &&" . " \\\n"
                                 . "cat  $runfolder/windowBed/$sampleID.$postprocID.hgmd.window20bp.indel.tsv $runfolder/windowBed/$sampleID.$postprocID.hgmd.window3bp.snp.tsv > $runfolder/windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv ; " . " \\\n"
                                   . "\'| jsub -j windowBed -b $runfolder -nm 32000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:1 $depend";
   print "\n\n************\nwindowBed:\n$cmd\n************\n\n";
@@ -997,7 +1017,7 @@ sub annovar {
         . "$ANNOVAR/convert2annovar.pl -format vcf4 \\\n"
           . "$runfolder/$Pfolder > $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar &&" . " \\\n"
             . "\\\n"
-              . "$ANNOVAR/table_annovar.pl --protocol dbnsfp30a,segdup,cg46,avsnp147,esp6500siv2_all,esp6500siv2_aa,esp6500siv2_ea,1000g2015aug_all,1000g2015aug_afr,1000g2015aug_amr,1000g2015aug_eas,1000g2015aug_sas,1000g2015aug_eur,clinvar_20160302,refgene,cosmic70,ensGene,exac03 --operation f,r,f,f,f,f,f,f,f,f,f,f,f,f,g,f,g,f --buildver hg19 --remove --nastring . $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
+              . "$ANNOVAR/table_annovar.pl --protocol dbnsfp30a,segdup,cg46,avsnp144,esp6500siv2_all,esp6500siv2_aa,esp6500siv2_ea,1000g2015aug_all,1000g2015aug_afr,1000g2015aug_amr,1000g2015aug_eas,1000g2015aug_sas,1000g2015aug_eur,clinvar_20150629,refgene,cosmic70,ensGene,exac03 --operation f,r,f,f,f,f,f,f,f,f,f,f,f,f,g,f,g,f --buildver hg19 --remove --nastring . $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
                 . "\\\n"                                                                              . "$ANNOVAR/$ANNOVARANN -filter -buildver hg19_hgmd -dbtype generic --genericdbfile hg19_hgmd.txt \\\n"
                   . "$runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar $annovarHDB && \\\n"
                     . "\\\n"
@@ -1069,15 +1089,9 @@ sub snpEff {
   #Pfolder3: windowBed/$sampleID.$postprocID.hgmd.indel_window20bp.snp_window3bp.tsv
   #Pfolder4: windowBed/$sampleID.$postprocID.clinvar.window20bp.tsv
   my ($jobID, $Pfolder1, $Pfolder2, $Pfolder3, $Pfolder4) = @_;
-  print "Pfolder1=$Pfolder1\n";
-  print "Pfolder2=$Pfolder2\n";
-  print "Pfolder3=$Pfolder3\n";
-  print "Pfolder4=$Pfolder4\n";
   my $Pfolder5 = $Pfolder2;
   $Pfolder5=~s/vcf/M.vcf/gi;
-
-  my @jobs = split(/\,/,$jobID);
-  my $depend = $jobID eq '' ? "" : "-aft afterok -o " . $jobs[0] . "," . $jobs[2];
+  my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/snpEff") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/snpEff\n";
     `rm -rf $runfolder/snpEff`;
@@ -1112,7 +1126,7 @@ sub snpEff {
                                                       . "perl $SCRIPTDIR/filter_exomes.v1.combined.pl \\\n"
                                                         . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv  $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed \\\n"
                                                           . "$runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp.sample_interval_summary \\\n"
-                                                            . "$gpaf_folder/" . $genePanel . "_snp.bed $gpaf_folder/" . $genePanel . "_indel.bed $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_disease_associations_bed \\\n"
+                                                            . "$gpaf_folder/merged.snp.$genePanel.AF.bed $gpaf_folder/merged.indel.$genePanel.AF.bed $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_disease_associations_bed \\\n"
                                                               . "$runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv /hpf/largeprojects/pray/llau/gene_panels/ACMG_20140918/acmg_genes.HGMD2014.2.txt "
                                                                 . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > $runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt &&\\\n"
                                                                   . "\\\n"
@@ -1121,7 +1135,7 @@ sub snpEff {
                                                                         . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt  >  sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt.sha256sum && \\\n"
                                                                           . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
                                                                             . "\\\n"
-                                                                              . "\'| jsub -j snpEff -b $runfolder -nm 32000 -np 1 -nn 1 -nw 06:00:00 -ng localhd:1 $depend";
+                                                                              . "\'| jsub -j snpEff -b $runfolder -nm 32000 -np 1 -nn 1 -nw 02:00:00 -ng localhd:1 $depend";
   print "\n\n************\nsnpeEff-annotation:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -1165,7 +1179,7 @@ sub snpEff_newGP {
                                       . "perl $SCRIPTDIR/filter_exomes.v1.combined.pl \\\n"
                                         . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.var.annotated.tsv  $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_gene_panel_bed \\\n"
                                           . "$runfolder/gatkCovCalGP/$sampleID.$postprocID.genepanel.dp.sample_interval_summary \\\n"
-                                            . "$gpaf_folder/" . $genePanel. "_snp.bed $gpaf_folder/" . $genePanel . "_indel.bed $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_disease_associations_bed \\\n"
+                                            . "$gpaf_folder/merged.snp.$genePanel.AF.bed $gpaf_folder/merged.indel.$genePanel.AF.bed $runfolder/annovar/$sampleID.$postprocID.gatk.snp.indel.annovar.hg19_disease_associations_bed \\\n"
                                               . "$runfolder/snpEff/$sampleID.$postprocID.number.variant.tsv /hpf/largeprojects/pray/llau/gene_panels/ACMG_20140918/acmg_genes.HGMD2014.2.txt "
                                                 . "$runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.xlsx > $runfolder/snpEff/sid_$sampleID.aid_$postprocID.gp_$genePanel.annotated.filter.txt &&\\\n"
                                                   . "\\\n"
@@ -1464,20 +1478,20 @@ sub all_chr_files {
   return $fileString;
 }
 
-# sub gvcf_files {
-#   my ($param, $folder) = @_;
-#   my $fileString = "";
-#   my $lsCmd = "ls $folder" . "*.vcf";
-#   print STDERR "lsCmd=$lsCmd\n";
-#   my $lsCmdOut = `$lsCmd`;
-#   print STDERR "lsCmdOut=$lsCmdOut\n";
-#   my @splitNl = split(/\n/,$lsCmdOut);
-#   foreach my $gvcfFile (@splitNl) {
-#     if ($fileString eq "") {
-#       $fileString = $param . " " . $gvcfFile;
-#     } else {
-#       $fileString = $fileString . " " . $param . " " . $gvcfFile;
-#     }
-#   }
-#   return $fileString;
-# }
+sub gvcf_files {
+  my ($param, $folder) = @_;
+  my $fileString = "";
+  my $lsCmd = "ls $folder" . "*.vcf";
+  print STDERR "lsCmd=$lsCmd\n";
+  my $lsCmdOut = `$lsCmd`;
+  print STDERR "lsCmdOut=$lsCmdOut\n";
+  my @splitNl = split(/\n/,$lsCmdOut);
+  foreach my $gvcfFile (@splitNl) {
+    if ($fileString eq "") {
+      $fileString = $param . " " . $gvcfFile;
+    } else {
+      $fileString = $fileString . " " . $param . " " . $gvcfFile;
+    }
+  }
+  return $fileString;
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 #Author: Lynette Lau
-#Date: Dec 19,2013 -> Update Aug22,2014 -> Feb 17, 2015
+#Date: Dec 19,2013 -> Update Aug22,2014 -> Feb 17, 2015 -> July 6, 2016
 #reads in the final annotated file and filters the data on allelefrequency <= rareFreq, coding, on gene panel, with hgmd annotation
 #read in all the files from all the comparisons and put them all on the same line
 
@@ -122,7 +122,8 @@ my $exacFIN = "ExAC FIN Allele Frequency";
 my $exacNFE = "ExAC NFE Allele Frequency";
 my $exacOTH = "ExAC OTH Allele Frequency";
 my $exacSAS = "ExAC SAS Allele Frequency";
-
+my $exacPLI = "ExAC PLI";
+my $exacmissenseZ = "ExAC missense Z-score";
 my $clinVar = "ClinVar SIG";
 
 my $lowPerExon = 95.0;
@@ -143,12 +144,15 @@ my $refDepth = "Allelic Depths for Reference";
 my $qd = "Quality By Depth";
 my $sb = "Fisher's Exact Strand Bias Test";
 my $mq = "RMS Mapping Quality";
-my $hapScore = "Haplotype Score";
+my $sor = "Strand Odds Ratio";
 my $mqRankSum = "Mapping Quality Rank Sum Test";
 my $readposRankSum = "Read Pos Rank Sum Test";
 my $variantType = "Type of Mutation";
 
-my $snpEffAnnotation = "Amino Acid change";
+my $softFilter = "Gatk Filters";
+
+my $snpEffAnnAA = "Amino Acid change";
+my $snpEffAnnCC = "Codon Change";
 my $clinVarIndelWindow = "ClinVar INDELs within 20bp window";
 my $hgmdVarIndelWindow = "HGMD INDELs within 20bp window";
 
@@ -165,7 +169,7 @@ my $clinVarClnacc = "ClinVar CLNACC";
 my $polyphen = "PolyPhen Prediction";
 my $sift = "Sift Prediction";
 my $mutTaster = "Mutation Taster Prediction";
-my $dbsnp = "dbsnp 138";
+my $dbsnp = "dbsnp 144";
 my $cgAF = "CG46 Allele Frequency";
 my $internalAFSNPs = "Internal SNPs Allele All AF";
 my $internalAFIndels = "Internal INDELs Allele All AF";
@@ -181,6 +185,8 @@ my $CGDInh = "CGD Inheritance";
 
 my $omimDisease = "OMIM Gene Map";
 my $omimDiseaseMorbidmap = "OMIM Morbidmap";
+my $omimInher = "OMIM Inheritance";
+my $omimLink = "OMIM Link";
 
 my $cgWell = "cgWellderly all frequency";
 my $mutass = "Mutation Assessor Prediction";
@@ -196,8 +202,10 @@ my $rareFreqInternal = 0.1;     #rare frequency we want to filter on
 my $qdThreshold = 2.0;
 my $snpFS = 60.0;
 my $snpMQ = 40.0;
-my $snpHapScore = 13.0;
-my $HSlg13 = 0;
+my $snpSOR = 3.0;
+my $indelSOR = 10.0;
+#my $snpHapScore = 13.0;
+#my $HSlg13 = 0;
 my $snpMQRankSum = -12.5;
 my $snpReadPosRankSum = -8.0;
 my $indelFS = 200.0;
@@ -244,7 +252,7 @@ while ($data=<FILE>) {
     $type = "mnp";
   }
   if (defined $genePanelVar{"$chrom:$pos:$type"}) {
-    print STDERR "$data was already inserted\n";
+    print STDERR "$data was already inserted\n"; #these are het-alt
   } else {
     $genePanelVar{"$chrom:$pos:$type"} = "1";
   }
@@ -293,7 +301,7 @@ while ($data=<FILE>) {
   if ($data=~/##Chrom/) {       #grab the header
 
     #print the text file's header
-    print "Coordinator's Interpretation\tSanger Validation\tCoordinator's Comments\tGene Name\tTranscript ID\tReference Allele\tAlternative Allele\tZygosity\tType of Variant\tGenomic Location\tCoding HGVS\tProtein Change\tEffect\tPanel\tCGD Inheritance\t1 > variant/gene\tOMIM Disease\tClinVar Significance\tClinVar CLNDBN\tClinVar Indels within 20bp window\tHGMD Significance\tHGMD Disease\tHGMD Indels within 20bp window\tdbsnp 138\t1000G All Allele Frequency\tESP ALL Allele Frequency\tInternal All Allele Frequency SNVs\tInternal All Allele Frequency Indels\tInternal Gene Panel Allele Frequency SNVs\tInternal Gene Panel Allele Frequency Indels\tWellderly All 597 Allele Frequency\tCG 46 Unrelated Allele Frequency\tESP African Americans Allele Frequency\tESP European American Allele Frequency\t1000G African Allele Frequency\t1000G American Allele Frequency\t1000G East Asian Allele Frequency\t1000G South Asian Allele Frequency\t1000G European Allele Frequency\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tSift Prediction\tPolyPhen Prediction\tMutation Assessor Prediction\tCAAD prediction\tMutation Taster Prediction\t\% CDS Affected\t\% Transcripts Affected\tSegmental Duplication\tRegion of Homology\tOn Low Coverage Exon\tAlternative Allele(s) Depth of Coverage\tReference Allele Depth of Coverage\tACMG Incidental Gene\n";
+    print "Coordinator's Interpretation\tSanger Validation\tCoordinator's Comments\tGene Name\tTranscript ID\tReference Allele\tAlternative Allele\tZygosity\tType of Variant\tGenomic Location\tCoding HGVS\tProtein Change\tEffect\tPanel\tCGD Inheritance\t1 > variant/gene\tOMIM Disease\tClinVar Significance\tClinVar CLNDBN\tClinVar Indels within 20bp window\tHGMD Significance\tHGMD Disease\tHGMD Indels within 20bp window\tdbsnp 144\t1000G All Allele Frequency\tESP ALL Allele Frequency\tInternal All Allele Frequency SNVs\tInternal All Allele Frequency Indels\tInternal Gene Panel Allele Frequency SNVs\tInternal Gene Panel Allele Frequency Indels\tWellderly All 597 Allele Frequency\tCG 46 Unrelated Allele Frequency\tESP African Americans Allele Frequency\tESP European American Allele Frequency\t1000G African Allele Frequency\t1000G American Allele Frequency\t1000G East Asian Allele Frequency\t1000G South Asian Allele Frequency\t1000G European Allele Frequency\tExAC All Allele Frequency\tExAC AFR Allele Frequency\tExAC AMR Allele Frequency\tExAC EAS Allele Frequency\tExAC FIN Allele Frequency\tExAC NFE Allele Frequency\tExAC OTH Allele Frequency\tExAC SAS Allele Frequency\tSift Prediction\tPolyPhen Prediction\tMutation Assessor Prediction\tCAAD prediction\tMutation Taster Prediction\t\% CDS Affected\t\% Transcripts Affected\tSegmental Duplication\tRegion of Homology\tOn Low Coverage Exon\tAlternative Allele(s) Depth of Coverage\tReference Allele Depth of Coverage\tACMG Incidental Gene\tOMIM Inheritance\tOMIM Link\tExAC PLI\tExAC missense Z-score\n";
 
     #print the excel file's header
     my @groupHeader = ();
@@ -357,7 +365,7 @@ while ($data=<FILE>) {
     $colHeader[20] = "HGMD Significance";
     $colHeader[21] = "HGMD Disease";
     $colHeader[22] = "HGMD Indels within 20bp window";
-    $colHeader[23] = "dbsnp 138";
+    $colHeader[23] = "dbsnp 144";
     $colHeader[24] = "1000G All Allele Frequency";
     $colHeader[25] = "ESP ALL Allele Frequency";
     $colHeader[26] = "Internal All Allele Frequency SNVs";
@@ -394,6 +402,10 @@ while ($data=<FILE>) {
     $colHeader[57] = "Alternative Allele(s) Depth of Coverage";
     $colHeader[58] = "Reference Allele Depth of Coverage";
     $colHeader[59] = "ACMG Incidental Gene";
+    $colHeader[60] = "OMIM Inheritance";
+    $colHeader[61] = "OMIM Link";
+    $colHeader[62] = "ExAC PLI";
+    $colHeader[63] = "ExAC Missense Z-score";
 
     for (my $i=0; $i < scalar(@colHeader); $i++) {
       $worksheet->write($rowNum, $i, "$colHeader[$i]", $titleFormat);
@@ -443,7 +455,7 @@ while ($data=<FILE>) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i]=~/$mq/) {
         $colNum{$header[$i]} = $i;
-      } elsif ($header[$i]=~/$hapScore/) {
+      } elsif ($header[$i]=~/$sor/) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i]=~/$mqRankSum/) {
         $colNum{$header[$i]} = $i;
@@ -519,6 +531,10 @@ while ($data=<FILE>) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $omimDiseaseMorbidmap) {
         $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $omimInher) {
+        $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $omimLink) {
+        $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $cgWell) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $mutass) {
@@ -533,7 +549,9 @@ while ($data=<FILE>) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $annovarEnsNonCoding) {
         $colNum{$header[$i]} = $i;
-      } elsif ($header[$i] eq $snpEffAnnotation) {
+      } elsif ($header[$i] eq $snpEffAnnAA) {
+        $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $snpEffAnnCC) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $exacALL) {
         $colNum{$header[$i]} = $i;
@@ -551,9 +569,15 @@ while ($data=<FILE>) {
         $colNum{$header[$i]} = $i;
       } elsif ($header[$i] eq $exacSAS) {
         $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $exacPLI) {
+        $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $exacmissenseZ) {
+        $colNum{$header[$i]} = $i;
+      } elsif ($header[$i] eq $softFilter) {
+        $colNum{$header[$i]} = $i;
       }
     }
-  } elsif ($data=~/##/) {   #print out the version
+  } elsif ($data=~/##/) {       #print out the version
     print $data ."\n";
     $worksheet->write($rowNum, 0, "$data"); #print out to excel
     $rowNum++;                              #print out to excel
@@ -592,485 +616,49 @@ while ($data=<FILE>) {
       if ($cHeader eq $effect) { # check to see if variant is non coding (but include splicing)
         #print STDERR "1. EFFECT colInfo=$colInfo\n";
         $snpEffLoc = $colInfo;
-        if (($colInfo=~/intergenic/) || ($colInfo=~/intragenic/) || ($colInfo=~/upstream/) || ($colInfo=~/downstream/)) {
+        if (($colInfo=~/intergenic/i) || ($colInfo=~/intragenic/i) || ($colInfo=~/upstream/i) || ($colInfo=~/downstream/i)) {
           #print STDERR "2. filter=$filter\n";
           #$filter = 0;
           $locationFilter = 0;
         }
       } elsif ($cHeader eq $espMAF) {
-        #print STDERR "3. ESP colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "ESP defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $espAFFilter = 0;
-              } else {
-                $espAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "esp no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "esp filtered out\n";
-              #$filter = 0;
-              $espAFFilter = 0;
-            }
-          }
-        }
+        $espAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousG) {
-        #print STDERR "4. 1000G colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          if ($colInfo=~/\;/) {
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) {
-                #$filter = 0;
-                $thouAFFilter = 0;
-                #print STDERR "failed"
-              } else {
-                #$filter = 1;
-                $thouAFFilter = 1;
-                last;
-              }
-            }
-          } else {
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "1000G filtered out\n";
-              #$filter = 0;
-              $thouAFFilter = 0;
-            }
-          }
-        }
+        $thouAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacALL) {
-        #print STDERR "5. exacALL colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacALL defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacAFFilter = 0;
-              } else {
-                $exacAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "exac no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "exac filtered out\n";
-              #$filter = 0;
-              $exacAFFilter = 0;
-            }
-          }
-        }
+        $exacAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $espMAFAA) {
-        #print STDERR "5. espMAFAA colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "espMAFAA defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $espMAFAAAFFilter = 0;
-              } else {
-                $espMAFAAAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $espMAFAAAFFilter = 0;
-            }
-          }
-        }
+        $espMAFAAAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $espMAFEA) {
-        #print STDERR "5. espMAFEA colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "espMAFEA defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $espMAFEAAFFilter = 0;
-              } else {
-                $espMAFEAAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $espMAFEAAFFilter = 0;
-            }
-          }
-        }
+        $espMAFEAAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGAFR) {
-        #print STDERR "5. thousGAFR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGAFR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGAFRAFFilter = 0;
-              } else {
-                $thousGAFRAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGAFRAFFilter = 0;
-            }
-          }
-        }
+        $thousGAFRAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGAMR) {
-        #print STDERR "5. thousGAMR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGAMR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGAMRAFFilter = 0;
-              } else {
-                $thousGAMRAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGAMRAFFilter = 0;
-            }
-          }
-        }
+        $thousGAMRAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGEASN) {
-        #print STDERR "5. thousGEASN colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGEASN defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGEASNAFFilter = 0;
-              } else {
-                $thousGEASNAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGEASNAFFilter = 0;
-            }
-          }
-        }
+        $thousGEASNAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGSASN) {
-        #print STDERR "5. thousGSASN colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGSASN defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGSASNAFFilter = 0;
-              } else {
-                $thousGSASNAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGSASNAFFilter = 0;
-            }
-          }
-        }
+        $thousGSASNAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $thousGEUR) {
-        #print STDERR "5. thousGEUR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "thousGEUR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $thousGEURAFFilter = 0;
-              } else {
-                $thousGEURAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $thousGEURAFFilter = 0;
-            }
-          }
-        }
+        $thousGEURAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacAFR) {
-        #print STDERR "5. exacAFR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacAFR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacAFRAFFilter = 0;
-              } else {
-                $exacAFRAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacAFRAFFilter = 0;
-            }
-          }
-        }
+        $exacAFRAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacAMR) {
-        #print STDERR "5. exacAMR colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacAMR defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacAMRAFFilter = 0;
-              } else {
-                $exacAMRAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacAMRAFFilter = 0;
-            }
-          }
-        }
+        $exacAMRAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacEAS) {
-        #print STDERR "5. exacEAS colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacEAS defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacEASAFFilter = 0;
-              } else {
-                $exacEASAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacEASAFFilter = 0;
-            }
-          }
-        }
+        $exacEASAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacFIN) {
-        #print STDERR "5. exacFIN colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacFIN defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacFINAFFilter = 0;
-              } else {
-                $exacFINAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacFINAFFilter = 0;
-            }
-          }
-        }
+        $exacFINAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacNFE) {
-        #print STDERR "5. exacNFE colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacNFE defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacNFEAFFilter = 0;
-              } else {
-                $exacNFEAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacNFEAFFilter = 0;
-            }
-          }
-        }
+        $exacNFEAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacOTH) {
-        #print STDERR "5. exacOTH colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacOTH defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacOTHAFFilter = 0;
-              } else {
-                $exacOTHAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacOTHAFFilter = 0;
-            }
-          }
-        }
+        $exacOTHAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $exacSAS) {
-        #print STDERR "5. exacSAS colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "exacSAS defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $exacSASAFFilter = 0;
-              } else {
-                $exacSASAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreq) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $exacSASAFFilter = 0;
-            }
-          }
-        }
+        $exacSASAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $internalAFSNPs) {
-        #print STDERR "5. internalAFSNPs colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "internalAFSNPs defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreqInternal) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $internalAFSNPsAFFilter = 0;
-              } else {
-                $internalAFSNPsAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreqInternal) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $internalAFSNPsAFFilter = 0;
-            }
-          }
-        }
+        $internalAFSNPsAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $internalAFIndels) {
-        #print STDERR "5. internalAFIndels colInfo=$colInfo\n";
-        if ((defined $colInfo) && ($colInfo ne "")) {
-          #print STDERR "internalAFIndels defined\n";
-          if ($colInfo=~/\;/) { #if
-            my @splitL = split(/\;/,$colInfo);
-            foreach my $sFreq (@splitL) {
-              if ($sFreq >= $rareFreqInternal) { #if any of the frequencies are greater than rare freq filter them out
-                #$filter = 0;
-                $internalAFIndelsAFFilter = 0;
-              } else {
-                $internalAFIndelsAFFilter = 1;
-                #$filter = 1;
-                last;
-              }
-            }
-          } else {
-            #print STDERR "espMAF no |\n";
-            if ($colInfo >= $rareFreqInternal) {
-              #print STDERR "espMAF filtered out\n";
-              #$filter = 0;
-              $internalAFIndelsAFFilter = 0;
-            }
-          }
-        }
+        $internalAFIndelsAFFilter = alleleFreqComp($colInfo);
       } elsif ($cHeader eq $qd) {
         #print STDERR "QD colInfo=$colInfo\n";
         if ((defined $colInfo) && ($colInfo ne "")) {
@@ -1086,6 +674,7 @@ while ($data=<FILE>) {
         #my $varQD = "";
         my $varFS = "";
         my $varMQ = "";
+        my $varSOR = "";
         my $varHapScore = "";
         my $varMQRankSum = "";
         my $varReadPosRankSum = "";
@@ -1096,21 +685,20 @@ while ($data=<FILE>) {
           $cI = $splitTab[$cR];
           #print STDERR "cH=$cH\n";
           #print STDERR "cI=$cI\n";
-
           if ($cH eq $sb) {
             $varFS = $cI;
             #print STDERR "varFS=$varFS\n";
           } elsif ($cH eq $mq) {
             $varMQ = $cI;
             #print STDERR "varMQ=$varMQ\n";
-          } elsif ($cH eq $hapScore) {
-            $varHapScore = $cI;
-            #print STDERR "varHapScore=$varHapScore\n";
           } elsif ($cH eq $mqRankSum) {
             $varMQRankSum = $cI;
             #print STDERR "varMQRankSum=$varMQRankSum\n";
           } elsif ($cH eq $readposRankSum) {
             $varReadPosRankSum = $cI;
+            #print STDERR "varReadPosRankSum=$varReadPosRankSum\n";
+          } elsif ($cH eq $sor) {
+            $varSOR = $cI;
             #print STDERR "varReadPosRankSum=$varReadPosRankSum\n";
           }
         }
@@ -1120,17 +708,15 @@ while ($data=<FILE>) {
             $qualFilter = 0;
             #print STDERR "SNP FS filtered out\n";
           }
+          if ($varSOR > $snpSOR) {
+            #$filter = 0;
+            $qualFilter = 0;
+            #print STDERR "SNP SOR filtered out\n";
+          }
           if ($varMQ < $snpMQ) {
             #$filter = 0;
             $qualFilter = 0;
             #print STDERR "SNP MQ filtered out\n";
-          }
-
-          if ($varHapScore > $snpHapScore) {
-            #############  Wei comment start ###############
-            #   $qualFilter = 0;
-            $HSlg13++;
-            #############  Wei comment stop  ###############
           }
           if (defined $varMQRankSum && $varMQRankSum ne "") {
             if ($varMQRankSum < $snpMQRankSum) {
@@ -1154,6 +740,13 @@ while ($data=<FILE>) {
               $qualFilter = 0;
             }
           }
+          if ((defined $varSOR) && ($varSOR ne "")) {
+            if ($varSOR > $indelSOR) {
+              #print STDERR "indel SOR filtered out\n";
+              #$filter = 0;
+              $qualFilter = 0;
+            }
+          }
           if ((defined $varReadPosRankSum) && ($varReadPosRankSum ne "")) {
             if ($varReadPosRankSum < $indelReadPosRankSum) {
               #print STDERR "indel ReadPosRankSum filtered out\n";
@@ -1164,7 +757,6 @@ while ($data=<FILE>) {
         } else {
           print STDERR "Variant type not recognized $colInfo\n";
         }
-
       } elsif ($cHeader eq $hgmdSid) {
         if ((defined $colInfo) && ($colInfo ne "")) {
           #print STDERR "hgmdsnp present - $data\n";
@@ -1207,29 +799,34 @@ while ($data=<FILE>) {
     }
 
     my $tidName = $splitTab[$colNum{'Transcript ID'}];
-    
-    if (($qualFilter == 1) && ($locationFilter == 1) && ($espAFFilter == 1) && ($thouAFFilter == 1)) {
-      print STDERR "1. key = $annChr:$annPos:$vtType\n";
+
+    if (($qualFilter == 1) && ($locationFilter == 1) && (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1))) {
+      #print STDERR "1. key = $annChr:$annPos:$vtType\n";
       if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) {
-        print STDERR "1. passed location filters $data\n";
+        #print STDERR "1. passed location filters $data\n";
         $useVar = 1;
       }
     }
     if ($hgmdClinVar == 1) { # if the variant has a hgmd or clinvar designation
-      print STDERR "2. In ClinVar\n";
-      print STDERR "2. key = $annChr:$annPos:$vtType\n";
-      if (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"} && ($snpEffLoc=~/UTR/)) { #if it's in the UTR in the gene panel (inside the transcript start and stop location)
+      #print STDERR "2. In ClinVar\n";
+      #print STDERR "2. key = $annChr:$annPos:$vtType\n";
+      if (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"} && (($snpEffLoc=~/utr/i) || ($snpEffLoc=~/splice/i)) ) { #if it's in the UTR in the gene panel (inside the transcript start and stop location)
         $useVar = 1;
-        print STDERR "2. UTR\n";
+        #print STDERR "2. UTR\n";
       }
       if (defined $genePanelVar{"$annChr:$annPos:$vtType"}) { #if it's in the genePanel
-        print STDERR "2. genepanel\n";
+        #print STDERR "2. genepanel\n";
         $useVar = 1;
       }
     }
 
+    ###addition of splice site variant reported if not on exon +/-10bp and within transcript start and stop
+    if (($qualFilter == 1) && ($snpEffLoc=~/splice/i) && (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"}) && (!defined $genePanelVar{"$annChr:$annPos:$vtType"}) && (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1))) {
+      $useVar = 1;
+    }
+
     if ($useVar == 1) {
-      print STDERR "useVar=$useVar\n";
+      #print STDERR "useVar=$useVar\n";
       push @datatoprint, $data; #add variant into the rare filtered pile
 
       #count the variant as a rare variant for the transcript
@@ -1319,31 +916,52 @@ sub printformat {
         $outputArray[54] = $colI;
         #print STDERR "altDepth found again\n";
       } else {                  #alternative alleles
-        my @splitLine = split(/\|/,$colI);
-        $outputArray[3] = $splitLine[1];
+        #my @splitLine = split(/\|/,$colI);
+        $outputArray[3] = $colI;
       }
     } elsif ($colHeader eq $zyg) { #zygosity
       #$counter = 4;
       $outputArray[4] = $colI;
+      if ($colI!~/alt/) {
+        my @splitLine = split(/\|/,$outputArray[3]);
+        $outputArray[3]= $splitLine[1];
+      }
     } elsif ($colHeader eq $variantType) { #type of variant
       #$counter = 5;
       $outputArray[5] = $colI;
       #$varType = $colI;
     } elsif ($colHeader eq $effect) {
       #$counter = 9;
-      $outputArray[9] = $colI;
-    } elsif ($colHeader eq $snpEffAnnotation) {
-      if ((defined $colI) && ($colI ne "")) {
-        my @splitSnpEff = split(/\//,$colI);
-        if ($splitSnpEff[0]=~/^p/) {
-          $outputArray[7] = $splitSnpEff[1];
-          $outputArray[8] = $splitSnpEff[0];
-        } elsif ($splitSnpEff[0]=~/^c/) {
-          $outputArray[7] = $splitSnpEff[0];
+
+      if ($colI=~/\|/) { #alt-het check to see if the effect is the same if it is only use one
+        my @splitLine=split(/\|/,$colI);
+        my $same = 1;
+        for (my $i=1; $i < scalar(@splitLine); $i++) {
+          if ($splitLine[0] ne $splitLine[$i]) {
+            $same = 0;
+          }
+        }
+        if ($same == 1) {
+          $outputArray[9]= $splitLine[0];
         }
       } else {
-        $outputArray[7] = "NA";
+        $outputArray[9] = $colI;
+      }
+
+    } elsif ($colHeader eq $snpEffAnnAA) {
+      #print STDERR "snpEFF AA = $colI\n";
+      if ((defined $colI) && ($colI ne "")) {
+        $outputArray[8] = $colI;
+      } else {
         $outputArray[8] = "NA";
+      }
+    } elsif ($colHeader eq $snpEffAnnCC) {
+      if ((defined $colI) && ($colI ne "")) {
+        #print STDERR "snpEFF CC = $colI\n";
+        $outputArray[7] = $colI;
+      } else {
+        $outputArray[7] = "NA";
+
       }
     } elsif (($colHeader eq $transcriptID) || $colHeader eq $annovarExonInfo || ($colHeader eq $annovarIntronInfo) || ($colHeader eq $annovarEnsExon) || ($colHeader eq $annovarEnsNonCoding)) {
 
@@ -1361,7 +979,7 @@ sub printformat {
         $outputArray[1] = $colI;
         #my $noVar = "";
         if (defined $rareVar{$snpEffTx}) { # > 1 variant/gene
-          print STDERR $snpEffTx . ", " . $rareVar{$snpEffTx} . "\n";
+          #print STDERR $snpEffTx . ", " . $rareVar{$snpEffTx} . "\n";
           $outputArray[12] = $rareVar{$snpEffTx};
         } else {
           $outputArray[12] = 0;
@@ -1371,6 +989,9 @@ sub printformat {
         #need to take care of the cases where Intron cDNA or Exonic DNA
         if (($snpEffTx=~/ENS/) && ($colHeader=~/Ensembl/)) { #ensembl transcripts and ensembl exon or intron
           #print STDERR "ENSEMBL\n";
+          #print STDERR "snpEffTx=$snpEffTx\n";
+          #print STDERR "colI=$colI\n";
+          #print STDERR "colHeader=$colHeader\n";
           my ($cDNA, $aaChange) = findRightTx($snpEffTx, $colI, $colHeader);
 
           if (defined $outputArray[7] && $outputArray[7] ne "NA") { #cDNA HGVS
@@ -1392,6 +1013,9 @@ sub printformat {
           #$outputArray[11] = $aaChange;
         } elsif ($colHeader=~/Refseq/) {
           #print STDERR "RefSeq\n";
+          #print STDERR "snpEffTx=$snpEffTx\n";
+          #print STDERR "colI=$colI\n";
+          #print STDERR "colHeader=$colHeader\n";
           my ($cDNA, $aaChange) = findRightTx($snpEffTx, $colI, $colHeader);
           #print STDERR "DONE cDNA=$cDNA\n";
           #print STDERR "DONE aaChange=$aaChange\n";
@@ -1451,14 +1075,18 @@ sub printformat {
         }
 
         #if it's a low Exon
-        if ($cvgPer < $lowPerExon) {
-          #$outputArray[44] =  "Y";
-          #$outputArray[45] =  "Y";
-          $outputArray[53] =  "Y";
-        } elsif ($cvgPer > $lowPerExon) {
-          #$outputArray[44] =  "N";
-          #$outputArray[45] =  "N";
-          $outputArray[53] =  "N";
+        if ($cvgPer ne "") {
+          if ($cvgPer < $lowPerExon) {
+            #$outputArray[44] =  "Y";
+            #$outputArray[45] =  "Y";
+            $outputArray[53] =  "Y";
+          } elsif ($cvgPer > $lowPerExon) {
+            #$outputArray[44] =  "N";
+            #$outputArray[45] =  "N";
+            $outputArray[53] =  "N";
+          }
+        } else {
+          $outputArray[53] =  "NA";
         }
 
         #gets the GP allele frequency for snps and indel
@@ -1507,6 +1135,7 @@ sub printformat {
       }
       #print STDERR "1. hgmdSsig=$outputArray[17]\n";
     } elsif ($colHeader eq $hgmdSdescrip) { #HGMD DISEASE
+      $colI=~s/\"//gi;
       #$counter = 20; #concatenate with hgmd SNVs
       if ((defined $outputArray[18]) && ($outputArray[18] ne "")) {
         if ($colI ne "") {
@@ -1532,6 +1161,8 @@ sub printformat {
       #print STDERR "3. hgmdIsig=$outputArray[17]\n";
     } elsif ($colHeader eq $hgmdIdescrip) { #concatenate the snps and indel disease descrip
       #$counter = 24;
+
+
       if ((defined $outputArray[18]) && ($outputArray[18] ne "")) {
         if ($colI ne "") {
           $outputArray[18]= $outputArray[18] . "|" . $colI;
@@ -1730,15 +1361,22 @@ sub printformat {
 
     } elsif ($colHeader eq $segdup) { #Seg Dup
       #print STDERR "in colHeader= $colHeader, segdup=$segdup, colI=$colI|\n";
-      if ((defined $colI) && ($colI ne "")) {
-        #$outputArray[42] = "Y"; #segdup
-        #$outputArray[43] = "Y"; #segdup
-        $outputArray[51] = "Y"; #segdup
+
+      if ((!defined $colI) || ($colI eq "")) {
+        $outputArray[51] = "N";
       } else {
-        #$outputArray[42] = "N"; #seqdup
-        #$outputArray[43] = "N"; #seqdup
-        $outputArray[51] = "N"; #seqdup
+        my @splitSD = split(/\|/,$colI);
+        my $sgTmp = "N";
+        foreach my $sg (@splitSD) {
+          if ($sg eq ".") {
+            $sgTmp = "N";
+          } elsif ($sg > 0) {
+            $sgTmp = "Y";
+          }
+        }
+        $outputArray[51] = "$sgTmp";
       }
+
     } elsif ($colHeader eq $homolog) { #Homology
       if (defined $colI && $colI eq "Y") {
         #$outputArray[43] = "Y"; #fixed no.
@@ -1782,6 +1420,30 @@ sub printformat {
         $outputArray[13] = $colI;
       }
       ###forexcel only
+    } elsif ($colHeader eq $omimInher) { #OMIM disease
+      if (defined $colI && $colI ne "") {
+        $outputArray[57] = $colI;
+      } else {
+        $outputArray[57] = "";
+      }
+    } elsif ($colHeader eq $omimLink) { #OMIM disease
+      if (defined $colI && $colI ne "") {
+        $outputArray[58] = $colI;
+      } else {
+        $outputArray[58] = "";
+      }
+    } elsif ($colHeader eq $exacPLI) { #OMIM disease
+      if (defined $colI && $colI ne "") {
+        $outputArray[59] = $colI;
+      } else {
+        $outputArray[59] = "NA";
+      }
+    } elsif ($colHeader eq $exacmissenseZ) { #OMIM disease
+      if (defined $colI && $colI ne "") {
+        $outputArray[60] = $colI;
+      } else {
+        $outputArray[60] = "NA";
+      }
     } elsif ($colHeader eq $cgWell) { #cgWellerdly
       if (defined $colI && $colI ne "") {
         $outputArray[27] = $colI;
@@ -1849,14 +1511,17 @@ sub printformat {
     if ($l == 13) {
       my @splitOmim = split(/\t/,$outputArray[13]);
       #print STDERR "splitOmim=@splitOmim\n";
-      if ((defined $splitOmim[0]) && ($splitOmim[0] ne "")) {
+      if ((defined $splitOmim[1]) && ($splitOmim[1] ne "")) {
         # Modification made by Lily Jin 2015 Sep 09 1/2
-        if ($splitOmim[1]=~m/^\d+$/) {
-          print $splitOmim[0] . "\t"; #print the omim description for the text file
-        } else {
-          print $splitOmim[1] . "\t"; #print the omim description for the text file
-        }
+        #if ($splitOmim[1]=~m/^\d+$/) {
+        #  print $splitOmim[0] . "|:|" . $splitOmim[1] ."\t";
+        print $splitOmim[1] . "\t"; #print the omim description for the text file
+        #} else {
+        #  print $splitOmim[1] . "\t"; #print the omim description for the text file
+        #}
         # Modification end 1/2
+      } elsif ((defined $splitOmim[0]) && ($splitOmim[0] ne "")) {
+        print $splitOmim[0] . "\t"; #print the omim description for the text file
       } else {
         print "\t";
       }
@@ -1882,12 +1547,15 @@ sub printformat {
         if (defined $splitOmim[1] && $splitOmim[1] ne "") {
           #print the OMIM description
           # Modification made by Lily Jin 2015 Sep 09 2/2
-          if ($splitOmim[1]=~m/^\d+$/) { ##Updated July 16, 2015
-            $worksheet->write($rowNum, ($l+3), "$splitOmim[0]");
-          } else {
-            $worksheet->write($rowNum, ($l+3), "$splitOmim[1]");
-          }
+          #if ($splitOmim[1]=~m/^\d+$/) { ##Updated July 16, 2015
+          #  $worksheet->write($rowNum, ($l+3), "$splitOmim[0]");
+          #} else {
+          #  $worksheet->write($rowNum, ($l+3), "$splitOmim[1]");
+          #}
+          $worksheet->write($rowNum, ($l+3), "$splitOmim[1]");
           # Modification end 2/2
+        } elsif (defined $splitOmim[0] && $splitOmim[0] ne "") {
+          $worksheet->write($rowNum, ($l+3), "$splitOmim[0]");
         }
         ##excel will use the description of omim instead of the number
       } elsif (($l >= 21) && ($l <=43)) { # all the allele frequencies
@@ -1990,7 +1658,7 @@ sub findRightTx {
     my @splitC = split(/\,/,$annovarInfo);
 
     foreach my $isoforms (@splitC) {
-      #print STDERR "EXON ISOFORM $isoforms\n";
+      print STDERR "EXON ISOFORM $isoforms\n";
       my @splitD = split(/\:/,$isoforms);
       my $tTxID = "";           #$splitD[1];
       my $tcDNA = "";           #$splitD[3];
@@ -2048,3 +1716,32 @@ sub findRightTx {
 $workbook->close();
 
 #print STDERR "END filter_exomes.v1.beforeExcel.pl\n";
+
+sub alleleFreqComp {
+  my ($alleleFreq) = @_;
+  my $filter = 1;
+  if ((defined $alleleFreq) && ($alleleFreq ne "")) {
+    if ($alleleFreq=~/\;/) {    #if
+      my @splitL = split(/\;/,$alleleFreq);
+      foreach my $sFreq (@splitL) {
+        if ($sFreq eq ".") {
+          $filter = 1;
+          last;
+        } elsif ($sFreq >= $rareFreq) { #if any of the frequencies are greater than rare freq filter them out
+          $filter = 0;
+        } else {
+          $filter = 1;
+          last;
+        }
+      }
+    } else {
+      if ($alleleFreq eq ".") {
+        $filter = 1;
+      } elsif ($alleleFreq >= $rareFreq) {
+        $filter = 0;
+      }
+    }
+  }
+
+  return $filter;
+}

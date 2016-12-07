@@ -29,4 +29,4 @@ while (<GOO>) {
 }
 
 print 'lowCov_Exon#:',"\t$total\n";
-print "lt38_over_gt38_ratio:\t",sprintf('%5.2f', $lt38/$gt38),"\n";
+print "lt38_over_gt38_ratio:\t",sprintf('%0.2f', $lt38/$gt38),"\n";
