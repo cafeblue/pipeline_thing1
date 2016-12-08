@@ -282,7 +282,7 @@ sub interpretation_note {
   print "select=$select\n";
   my %interpretationHistory = %$interpretationHis;
   #my $noView = $inter_code->{'interpretation'}->{'Not yet viewed'}->{'code'};
-  my $variantQuery = "SELECT interID FROM variants_sub WHERE chrom = '" . $chr ."' && genomicStart = '" . $gStart . "' && genomicEnd = '" . $gEnd . "' && variantType = '" . $typeVer . "' && transcriptID = '" . $transcriptID . "' && altAllele = '" . $aAllele . "'";
+  my $variantQuery = "SELECT interID FROM variants_sub WHERE chrom = '" . $chr ."' && genomicStart = '" . $gStart . "' && genomicEnd = '" . $gEnd . "' && variantType = '" . $typeVer . "' && altAllele = '" . $aAllele . "'";
   my $sthVQ = $dbh->prepare($variantQuery) or die "Can't query database for variant : ". $dbh->errstr() . "\n";
   $sthVQ->execute() or die "Can't execute query for variant: " . $dbh->errstr() . "\n";
   if ($sthVQ->rows() != 0) {

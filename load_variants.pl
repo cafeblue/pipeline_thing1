@@ -299,7 +299,28 @@ sub loadVariants2DB {
     next unless (exists $filteredVariants{$key});
     $lines_ref_all->{'Gatk Filters'} = $variants_code->{'vcfFilter'}->{$lines_ref_all->{'Gatk Filters'}}->{'code'}; 
     $lines_ref_all->{'Genotype'} = $variants_code->{'zygosity'}->{$lines_ref_all->{'Genotype'}}->{'code'}; 
-    $lines_ref_all->{'Effect'} = $variants_code->{'effect'}->{$lines_ref_all->{'Effect'}}->{'code'}; 
+    
+    if ($lines_ref_all->{'Effect'}=~/&/ || $lines_ref_all->{'Effect'}=~/|/ ) {
+	print "AMP $lines_ref_all->{'Effect'}\n";
+	my @splitAm = split(/[\&|\|]/,$lines_ref_all->{'Effect'});
+	my $newEffectEncode = "";
+	foreach my $eff (@splitAm) {
+	    if ($newEffectEncode eq "") {
+		$newEffectEncode = $variants_code->{'effect'}->{$eff}->{'code'};
+	    } else {
+		$newEffectEncode = $newEffectEncode . "&" . $variants_code->{'effect'}->{$eff}->{'code'};
+	    }
+	}
+	print "newEffectEncode=$newEffectEncode\n";
+	$lines_ref_all->{'Effect'} = $newEffectEncode;
+    } else {
+	$lines_ref_all->{'Effect'} = $variants_code->{'effect'}->{$lines_ref_all->{'Effect'}}->{'code'};
+    }
+
+    #if (!defined $lines_ref_all->{'Effect'}) {
+#	$lines_ref_all->{'Effect'} = 0;
+#    }
+    
     $lines_ref_all->{'dbsnp'} =~ s/rs//gi;
     $lines_ref_all->{'ClinVar SIG'} = LoadVariants::clinvar_sig($lines_ref_all->{'ClinVar SIG'});
     $lines_ref_all->{'HGMD SIG SNVs'} =~ s/\|$//;
@@ -336,7 +357,17 @@ sub loadVariants2DB {
     $sth->execute(@splitFilter) or die "Can't execute insert: " . $dbh->errstr() . "\n";
     $interID = $sth->{'mysql_insertid'}; #LAST_INSERT_ID(); or try $dbh->{'mysql_insertid'}
 
-    print ALLFILE $sampleInfo->{'postprocID'} ."\t" . $lines_ref_all->{'Chrom'} . "\t" . $lines_ref_all->{'Position'} . "\t$gEnd\t$typeVer\t" . $lines_ref_all->{'Genotype'} . "\t" . $lines_ref_all->{'Reference'} . "\t$altAllele\t$cDNA\t$aaChange\t" . $lines_ref_all->{'Effect'} . "\t" . $lines_ref_all->{'Quality By Depth'} . "\t" . $lines_ref_all->{"Fisher's Exact Strand Bias Test"} . "\t" . $lines_ref_all->{'RMS Mapping Quality'} . "\t\t" . $lines_ref_all->{'Mapping Quality Rank Sum Test'} . "\t" . $lines_ref_all->{'Read Pos Rank Sum Test'} . "\t" . $lines_ref_all->{'Filtered Depth'} . "\t" . $lines_ref_all->{'dbsnp'} . "\t" . $lines_ref_all->{'ClinVar SIG'} . "\t" . $lines_ref_all->{'HGMD SIG SNVs'} . "\t" . $lines_ref_all->{'HGMD SIG microlesions'} . "\t$interID\t" . $lines_ref_all->{'Allelic Depths for Alternative Alleles'} . "\t" . $lines_ref_all->{'Allelic Depths for Reference'} . "\t" . $lines_ref_all->{'Gene Symbol'} . "\t" . $lines_ref_all->{'Transcript ID'} . "\t" . $lines_ref_all->{'Gatk Filters'} . "\t" . $lines_ref_all->{"Strand Odds Ratio"} . "\n";
+    my $chrEncode = "";
+    if ($lines_ref_all->{'Chrom'} eq "X") {
+	$chrEncode = 24;
+    } elsif ($lines_ref_all->{'Chrom'} eq "Y") {
+	$chrEncode = 25;
+    } elsif ($lines_ref_all->{'Chrom'} eq "M" || $lines_ref_all->{'Chrom'} eq "MT") {	    $chrEncode = 26;
+    } else {
+	$chrEncode = $lines_ref_all->{'Chrom'};
+    }
+    print "chrEncode=$chrEncode\n";
+    print ALLFILE $sampleInfo->{'postprocID'} ."\t" . $chrEncode . "\t" . $lines_ref_all->{'Position'} . "\t$gEnd\t$typeVer\t" . $lines_ref_all->{'Genotype'} . "\t" . $lines_ref_all->{'Reference'} . "\t$altAllele\t$cDNA\t$aaChange\t" . $lines_ref_all->{'Effect'} . "\t" . $lines_ref_all->{'Quality By Depth'} . "\t" . $lines_ref_all->{"Fisher's Exact Strand Bias Test"} . "\t" . $lines_ref_all->{'RMS Mapping Quality'} . "\t\t" . $lines_ref_all->{'Mapping Quality Rank Sum Test'} . "\t" . $lines_ref_all->{'Read Pos Rank Sum Test'} . "\t" . $lines_ref_all->{'Filtered Depth'} . "\t" . $lines_ref_all->{'dbsnp'} . "\t" . $lines_ref_all->{'ClinVar SIG'} . "\t" . $lines_ref_all->{'HGMD SIG SNVs'} . "\t" . $lines_ref_all->{'HGMD SIG microlesions'} . "\t$interID\t" . $lines_ref_all->{'Allelic Depths for Alternative Alleles'} . "\t" . $lines_ref_all->{'Allelic Depths for Reference'} . "\t" . $lines_ref_all->{'Gene Symbol'} . "\t" . $lines_ref_all->{'Transcript ID'} . "\t" . $lines_ref_all->{'Gatk Filters'} . "\t" . $lines_ref_all->{"Strand Odds Ratio"} . "\n";
   }
 
   close(VARIANTS);
