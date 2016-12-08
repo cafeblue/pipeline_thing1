@@ -165,9 +165,9 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
         if (defined $splitterA[3]) {
           $geneName = $splitterA[3];
         }
-        print STDERR "geneName=$geneName\n";
-        print STDERR "mo=$mo\n";
-        print STDERR "nepr=$nepr\n";
+        #print STDERR "geneName=$geneName\n";
+        #print STDERR "mo=$mo\n";
+        #print STDERR "nepr=$nepr\n";
         $motif{"$chr\t$pos\t$ref\t$alt"} = $mo;
         $nextprot{"$chr\t$pos\t$ref\t$alt\t$geneName"} = $nepr;
       }                         #foreach my $isoform (@splitComma)

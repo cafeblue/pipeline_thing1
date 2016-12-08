@@ -933,20 +933,20 @@ sub printformat {
     } elsif ($colHeader eq $effect) {
       #$counter = 9;
 
-      if ($colI=~/\|/) { #alt-het check to see if the effect is the same if it is only use one
-        my @splitLine=split(/\|/,$colI);
-        my $same = 1;
-        for (my $i=1; $i < scalar(@splitLine); $i++) {
-          if ($splitLine[0] ne $splitLine[$i]) {
-            $same = 0;
-          }
-        }
-        if ($same == 1) {
-          $outputArray[9]= $splitLine[0];
-        }
-      } else {
+#      if ($colI=~/\|/) { #alt-het check to see if the effect is the same if it is only use one
+#        my @splitLine=split(/\|/,$colI);
+#        my $same = 1;
+#        for (my $i=1; $i < scalar(@splitLine); $i++) {
+#          if ($splitLine[0] ne $splitLine[$i]) {
+#            $same = 0;
+#          }
+#        }
+#        if ($same == 1) {
+#          $outputArray[9]= $splitLine[0];
+#        }
+#      } else {
         $outputArray[9] = $colI;
-      }
+#      }
 
     } elsif ($colHeader eq $snpEffAnnAA) {
       #print STDERR "snpEFF AA = $colI\n";
