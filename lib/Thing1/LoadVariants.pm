@@ -179,18 +179,18 @@ sub code_type_of_mutation_gEnd {
 
 sub add_flag {
   my ($segdup, $homology, $lowCvgExon, $altDP, $refDP, $zygosity, $varType, $qd, $fs, $mq, $mqranksum, $readposranksum, $sor, $config, $dbh) = @_;
-  print "flag segdup=$segdup\n";
-  print "flag homology=$homology\n";
-  print "flag altDP = $altDP\n";
-  print "flag refDP = $refDP\n";
-  print "flag zygosity = $zygosity\n";
-  print "flag varType = $varType\n";
-  print "flag qd = $qd\n";
-  print "flag fs = $fs\n";
-  print "flag mq = $mq\n";
-  print "flag mqranksum = $mqranksum\n";
-  print "flag readposranksum=$readposranksum\n";
-  print "flag sor=$sor\n";
+  #print "flag segdup=$segdup\n";
+  #print "flag homology=$homology\n";
+  #print "flag altDP = $altDP\n";
+  #print "flag refDP = $refDP\n";
+  #print "flag zygosity = $zygosity\n";
+  #print "flag varType = $varType\n";
+  #print "flag qd = $qd\n";
+  #print "flag fs = $fs\n";
+  #print "flag mq = $mq\n";
+  #print "flag mqranksum = $mqranksum\n";
+  #print "flag readposranksum=$readposranksum\n";
+  #print "flag sor=$sor\n";
   my $flag = 0;
   # my @splitComma = split(/\,/,$strand);
   # my $fs = $splitComma[0];
@@ -254,7 +254,7 @@ sub qc_variant {
   my $flag = 0;
   my %sampleMx = %$sampleStat;
   my $query = "SELECT FieldName,Value FROM qcMetricsVariant WHERE machineType = '$machineType' AND captureKit = '$captureKit' AND level = '$level'\n";
-  print "query=$query\n";
+  #print "query=$query\n";
   my $sthT = $dbh->prepare($query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
   
   $sthT->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
@@ -277,9 +277,9 @@ sub qc_variant {
 
 sub interpretation_note {
   my ($dbh, $chr, $gStart, $gEnd, $typeVer, $transcriptID, $aAllele, $noView, $benignCode, $select, $interpretationHis) = @_;
-  print "noView=$noView\n";
-  print "benignCode=$benignCode\n";
-  print "select=$select\n";
+  #print "noView=$noView\n";
+  #print "benignCode=$benignCode\n";
+  #print "select=$select\n";
   my %interpretationHistory = %$interpretationHis;
   #my $noView = $inter_code->{'interpretation'}->{'Not yet viewed'}->{'code'};
   my $variantQuery = "SELECT interID FROM variants_sub WHERE chrom = '" . $chr ."' && genomicStart = '" . $gStart . "' && genomicEnd = '" . $gEnd . "' && variantType = '" . $typeVer . "' && altAllele = '" . $aAllele . "'";
@@ -304,8 +304,8 @@ sub interpretation_note {
       
       my $his = $interpretationHistory{$typeInt};
       my $nBen = $number_benign{$typeInt};
-      print "his=$his\n";
-      print "nBen=$nBen\n";
+      #print "his=$his\n";
+      #print "nBen=$nBen\n";
       push @interHist, $his . " " . $nBen;
     }
     #my $interHist = $#interHist >= 0 ? join(" | ", @interHist) : '.';

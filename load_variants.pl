@@ -107,15 +107,15 @@ sub updateDB {
 	      
 	      my $cmpMsg = "$sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'}) has finished analysis using gene panel $sampleInfo->{'genePanelVer'}. The sample can be viewed through the website: http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary \n\nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx. Please login to thing1 using your Samba account in order to view this file.\n";
 	      my $cmpSub = $sampleInfo->{'sampleID'} . " Completed Analysis";
-	      print " EMAIL OUT = $cmpSub = $cmpMsg \n";
+	      #print " EMAIL OUT = $cmpSub = $cmpMsg \n";
 	      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $cmpSub, $cmpMsg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_FINISHED'},$sampleInfo->{'genePanelVer'});
 
 #Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$cmpSub", "$cmpMsg", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNING'});
-	      print " EMAIL SENT!\n";
+	      #print " EMAIL SENT!\n";
 	  } else {
 	      	      my $cmpMsg = "Validation $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'}) has finished analysis using gene panel $sampleInfo->{'genePanelVer'}. The sample can be viewed through the website: http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary \n\nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx. Please login to thing1 using your Samba account in order to view this file.\n";
 	      my $cmpSub = "Validation " . $sampleInfo->{'sampleID'} . " Completed Analysis";
-	      print "EMAIL OUT = $cmpSub = $cmpMsg \n";
+	      #print "EMAIL OUT = $cmpSub = $cmpMsg \n";
 	      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $cmpSub, $cmpMsg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_QUALMETRICS'},$sampleInfo->{'genePanelVer'});
 	  }
       } else {
@@ -301,7 +301,7 @@ sub loadVariants2DB {
     $lines_ref_all->{'Genotype'} = $variants_code->{'zygosity'}->{$lines_ref_all->{'Genotype'}}->{'code'}; 
     
     if ($lines_ref_all->{'Effect'}=~/&/ || $lines_ref_all->{'Effect'}=~/|/ ) {
-	print "AMP $lines_ref_all->{'Effect'}\n";
+	#print "AMP $lines_ref_all->{'Effect'}\n";
 	my @splitAm = split(/[\&|\|]/,$lines_ref_all->{'Effect'});
 	my $newEffectEncode = "";
 	foreach my $eff (@splitAm) {
@@ -311,7 +311,7 @@ sub loadVariants2DB {
 		$newEffectEncode = $newEffectEncode . "&" . $variants_code->{'effect'}->{$eff}->{'code'};
 	    }
 	}
-	print "newEffectEncode=$newEffectEncode\n";
+	#print "newEffectEncode=$newEffectEncode\n";
 	$lines_ref_all->{'Effect'} = $newEffectEncode;
     } else {
 	$lines_ref_all->{'Effect'} = $variants_code->{'effect'}->{$lines_ref_all->{'Effect'}}->{'code'};
@@ -347,8 +347,8 @@ sub loadVariants2DB {
     ## UPDATE the interpretation according to the known unterpretation.
     ($splitFilter[2],$splitFilter[3],$splitFilter[4]) = LoadVariants::interpretation_note($dbh, $lines_ref_all->{'Chrom'}, $lines_ref_all->{'Position'}, $gEnd, $typeVer, $lines_ref_all->{'Transcript ID'}, $altAllele, $interpre_code->{'interpretation'}->{'Not yet viewed'}->{'code'},$interpre_code->{'interpretation'}->{'Benign'}->{'code'},$interpre_code->{'interpretation'}->{'Select'}->{'code'}, \%interpretationHistory);
 
-    print "segdup=" . $lines_ref_all->{"SegDup"} . "\n";
-    print "typeVer=" . $typeVer . "\n";
+    #print "segdup=" . $lines_ref_all->{"SegDup"} . "\n";
+    #print "typeVer=" . $typeVer . "\n";
     my $flag = LoadVariants::add_flag($lines_ref_all->{"SegDup"},$lines_ref_all->{"Region of Homology"},$lines_ref_all->{"On Low Coverage Exon"},$lines_ref_all->{'Allelic Depths for Alternative Alleles'},$lines_ref_all->{'Allelic Depths for Reference'},$lines_ref_all->{'Genotype'}, $typeVer, $lines_ref_all->{'Quality By Depth'}, $lines_ref_all->{"Fisher's Exact Strand Bias Test"}, $lines_ref_all->{'RMS Mapping Quality'}, $lines_ref_all->{'Mapping Quality Rank Sum Test'}, $lines_ref_all->{'Read Pos Rank Sum Test'},$lines_ref_all->{"Strand Odds Ratio"}, $config, $dbh);
     push (@splitFilter, $flag);
 
@@ -366,7 +366,7 @@ sub loadVariants2DB {
     } else {
 	$chrEncode = $lines_ref_all->{'Chrom'};
     }
-    print "chrEncode=$chrEncode\n";
+    #print "chrEncode=$chrEncode\n";
     print ALLFILE $sampleInfo->{'postprocID'} ."\t" . $chrEncode . "\t" . $lines_ref_all->{'Position'} . "\t$gEnd\t$typeVer\t" . $lines_ref_all->{'Genotype'} . "\t" . $lines_ref_all->{'Reference'} . "\t$altAllele\t$cDNA\t$aaChange\t" . $lines_ref_all->{'Effect'} . "\t" . $lines_ref_all->{'Quality By Depth'} . "\t" . $lines_ref_all->{"Fisher's Exact Strand Bias Test"} . "\t" . $lines_ref_all->{'RMS Mapping Quality'} . "\t\t" . $lines_ref_all->{'Mapping Quality Rank Sum Test'} . "\t" . $lines_ref_all->{'Read Pos Rank Sum Test'} . "\t" . $lines_ref_all->{'Filtered Depth'} . "\t" . $lines_ref_all->{'dbsnp'} . "\t" . $lines_ref_all->{'ClinVar SIG'} . "\t" . $lines_ref_all->{'HGMD SIG SNVs'} . "\t" . $lines_ref_all->{'HGMD SIG microlesions'} . "\t$interID\t" . $lines_ref_all->{'Allelic Depths for Alternative Alleles'} . "\t" . $lines_ref_all->{'Allelic Depths for Reference'} . "\t" . $lines_ref_all->{'Gene Symbol'} . "\t" . $lines_ref_all->{'Transcript ID'} . "\t" . $lines_ref_all->{'Gatk Filters'} . "\t" . $lines_ref_all->{"Strand Odds Ratio"} . "\n";
   }
 
