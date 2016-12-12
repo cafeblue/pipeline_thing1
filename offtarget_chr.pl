@@ -9,7 +9,7 @@ my $mgenepanel = $ARGV[3];
 my $targetFile = "";
 
 if ($mgenepanel eq "hiseq") {
-  $targetFile = "/hpf/largeprojects/pray/wei.wang/misc_files/target_chr1.bed";
+  $targetFile = "/hpf/largeprojects/pray/clinical/internal_databases/offtargetChr1/target_chr1.bed";
 } else {
   $targetFile = $mgenepanel;
   $targetFile =~s/exon_10bp_padding.bed/exon_10bp_padding.chr1.bed/;

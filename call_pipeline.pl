@@ -624,7 +624,7 @@ sub gatkQscoreRecalibration {
                   . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T PrintReads'
                     . " -nct $threads -I $runfolder/$Pfolder -o $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam -R $reference -l INFO -BQSR $runfolder/gatkQscoreRecalibration/recal_data.table && \\\n"
                       #. 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx11G ' . $PICARDTOOLS . ' BuildBamIndex' . " INPUT=$runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam \\\n"
-                      . "ln -f $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.bam $BACKUP_BASEDIR/bam/ ; \\\n"
+                      . "ln -f $runfolder/gatkQscoreRecalibration/$sampleID.$postprocID.realigned-recalibrated.ba* $BACKUP_BASEDIR/bam/ ; \\\n"
                         . "\'| jsub -j gatkQscoreRecalibration -b $runfolder  -nm 32000 -np 4 -nn 1 -nw 24:00:00 -ng localhd:100 $depend";
   print "\n\n************\ngatkQscoreRecalibration:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
