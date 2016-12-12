@@ -12,8 +12,8 @@ use Time::Piece;
 ###########       Global Parameters   ##########################
 our ($sampleID, $postprocID, $fastqDir, $genePanel, $pipeline, $runfolder, $startPoint, $normalPair) = ('','','','','','','NEW','');
 
-my $pipeline_config_file = "/hpf/largeprojects/pray/AUTOTESTING/config/v5.1_pipeline_config.txt"; #Future will be passed from the thing1 cmd
-my $genepanel_config_file = "/hpf/largeprojects/pray/AUTOTESTING/config/v5.1_gene_panels_config.txt"; #Future will be passed from the thing1 cmd
+my $pipeline_config_file = "/hpf/largeprojects/pray/clinical/config/v5.1_pipeline_config.txt"; #Future will be passed from the thing1 cmd
+my $genepanel_config_file = "/hpf/largeprojects/pray/clinical/config/v5.1_gene_panels_config.txt"; #Future will be passed from the thing1 cmd
 
 GetOptions ("sampleID|s=s" => \$sampleID,
             "postprocID|a=s"   => \$postprocID,
