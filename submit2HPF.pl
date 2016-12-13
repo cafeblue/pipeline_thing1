@@ -50,30 +50,24 @@ sub main {
 
 
     if ($sampleInfo_ref->{'genePanelVer'} =~ /cancer/) {
-	#return(1); ###3
-	return($currentStatus->{'currentStatus'}->{'Submission Failed'}->{'code'});
-        # if (( $sampleInfo_ref->{'sampleType'} eq 'tumour') && $sampleInfo_ref->{'pairID '}!~ /\d/) {
-        #     $allerr .= "Tumor sample $sampleInfo_ref->{'sampleID'} (postprocID $sampleInfo_ref->{'postprocID'}) do not have the paired sampleID, pipeline could not be run, please update the database.\naborted...\n\n"; 
-        #     return(1);
-        # }
-        # elsif ( $sampleInfo_ref->{'sampleType'} eq 'tumour') {
-        #     &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
+        if (( $sampleInfo_ref->{'sampleType'} eq 'tumour') && $sampleInfo_ref->{'pairID '}!~ /\d/) {
+            $allerr .= "Tumor sample $sampleInfo_ref->{'sampleID'} (postprocID $sampleInfo_ref->{'postprocID'}) do not have the paired sampleID, pipeline could not be run, please update the database.\naborted...\n\n"; 
+	        return($currentStatus->{'currentStatus'}->{'Submission Failed'}->{'code'});
+        }
+        elsif ( $sampleInfo_ref->{'sampleType'} eq 'tumour') {
+            &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
 
-        #     my $normal_bam = Common::get_normal_bam($dbh, $sampleInfo_ref->{'pairID'});
-        #     if ($normal_bam =~ /No normal/) {
-        #         $allerr .= $normal_bam; 
-        #         return(1);
-        #     }
-        #     else {
-        #         $normal_bam = "$config->{'HPF_BACKUP_BAM'}$normal_bam";
-        #     }
-	#     ###cancer samples
-        #     $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerT -n $normal_bam\"";
-        # }
-        # else { ###normal samples with matching tumor samples
-        #     &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
-        #     $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37 -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerN\"";
-        # }
+            my $normal_bam = Common::get_normal_bam($dbh, $sampleInfo_ref->{'pairID'});
+            if ($normal_bam =~ /No normal/) {
+                $allerr .= $normal_bam; 
+	            return($currentStatus->{'currentStatus'}->{'Submission Failed'}->{'code'});
+            }
+            else {
+                $normal_bam = "$config->{'HPF_BACKUP_BAM'}$normal_bam";
+            }
+	        ###cancer samples
+            $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerT -n $normal_bam\"";
+        }
     }
     else {### clinical samples
        &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});

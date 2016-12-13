@@ -137,6 +137,25 @@ sub updateDB {
 sub loadVariants2DB {
   my $sampleInfo = shift;
   my $msg = "";
+
+  #### load variants for tumor samples ######
+  if ( -e "$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.gp_$sampleInfo->{'genePanelVer'}.snv.csv") {
+      my $fileload = "LOAD DATA LOCAL INFILE \'$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.gp_$sampleInfo->{'genePanelVer'}.snv.csv\' INTO TABLE variants_cancer FIELDS TERMINATED BY \'\\t\' LINES TERMINATED BY \'\\n\'";
+      print $fileload,"\n";
+      $dbh->do( $fileload ) or $msg .= "Failed to run $fileload, Unable load in file: " . $dbh->errstr . "\n";
+
+      $fileload = "LOAD DATA LOCAL INFILE \'$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.gp_$sampleInfo->{'genePanelVer'}.indel.csv\' INTO TABLE indel_cancer FIELDS TERMINATED BY \'\\t\' LINES TERMINATED BY \'\\n\'";
+      print $fileload,"\n";
+      $dbh->do( $fileload ) or $msg .= "Failed to run $fileload, Unable load in file: " . $dbh->errstr . "\n";
+      if ($msg ne '') {
+          return 1;
+          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings Load Variant: UpdateDB", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, 'weiw.wang@sickkids.ca');
+      } 
+      else {
+          return 0;
+      }
+  }
+
   #my $segdupAll = "";
   open (FILTERED, "$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.gp_$sampleInfo->{'genePanelVer'}.annotated.filter.txt") or $msg .= "Failed to open file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.gp_$sampleInfo->{'genePanelVer'}.annotated.filter.txt\n";
   open (VARIANTS, "$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.annotated.tsv") or $msg .= "Failed to open file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.annotated.tsv\n";
