@@ -821,7 +821,7 @@ while ($data=<FILE>) {
     }
 
     ###addition of splice site variant reported if not on exon +/-10bp and within transcript start and stop
-    if (($qualFilter == 1) && ($snpEffLoc=~/splice/i) && (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"}) && (!defined $genePanelVar{"$annChr:$annPos:$vtType"}) && (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1))) {
+    if (($qualFilter == 1) && (($snpEffLoc=~/utr/i) || ($snpEffLoc=~/splice/i)) && (defined $diseaseGeneTranscript{"$annChr:$annPos:$vtType"}) && (!defined $genePanelVar{"$annChr:$annPos:$vtType"}) && (($espAFFilter == 1) && ($thouAFFilter == 1) && ($exacAFFilter == 1))) {
       $useVar = 1;
     }
 
