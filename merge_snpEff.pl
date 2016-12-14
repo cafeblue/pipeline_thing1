@@ -9,7 +9,7 @@
 
 use strict;
 
-my $cdstranslengthFile = $ARGV[0]; #/hpf/tcagstor/llau/peter_ray/pipeline/pipeline_scripts_thing1_v2/refseq.cds_transcript_length.Aug132014.txt
+my $cdstranslengthFile = $ARGV[0];
 
 my $isoformFile = $ARGV[1];
 
@@ -19,7 +19,7 @@ my $snpEffEns = $ARGV[3];
 
 my $data = "";
 
-my %cdsLength = ();
+#my %cdsLength = ();
 my %txLength = ();
 my %disease = ();
 my %motif = ();                #-> key is chr\tpos\tref\talt\tgeneName
@@ -38,7 +38,7 @@ while ($data=<FILE>) {
   my $cdsLeng = $splitTab[2];
   my $txLeng = $splitTab[3];
   #print STDERR "CDS refseqID=$refseqID\n";
-  $cdsLength{$refseqID} = $cdsLeng;
+  #$cdsLength{$refseqID} = $cdsLeng;
   $txLength{$refseqID} = $txLeng;
 }
 close(FILE);
@@ -50,16 +50,6 @@ while ($data=<FILE>) {
 
   my @splitTab = split(/\t/,$data);
 
-  # if ($isoformFile=~/EXOMES/) {
-  #   my $geneSym = $splitTab[0];
-  #   my $refseqIDwVer = $splitTab[1];
-  #   my @splitP = split(/\./,$refseqIDwVer);
-  #   my $refseqID = $splitP[0];
-
-  #   $disease{$refseqID} = "";
-  #   #print STDERR "ISOFORM refseqID=$refseqID\n";
-  #   if ($)
-  # } else {
   my $geneSym = $splitTab[0];
   my $disorder = $splitTab[2];
   my $refseqIDwVer = $splitTab[1];
@@ -74,7 +64,7 @@ while ($data=<FILE>) {
 }
 close(FILE);
 
-print STDERR "ensemblPresent=$ensemblPresent\n";
+#print STDERR "ensemblPresent=$ensemblPresent\n";
 
 if ($ensemblPresent == 1) {
   my $ensVcf = isoformPrint($snpEffEns, "ensembl");
@@ -93,6 +83,7 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
 
       my @splitTab = split(/\t/,$data);
       my $chr = $splitTab[0];
+      $chr=~s/MT/M/gi;
       my $pos = $splitTab[1];
       my $ref = $splitTab[3];
       my $alt = $splitTab[4];
@@ -101,7 +92,7 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
       my $snpEff = "";
       for (my $t=0; $t < scalar(@splitI); $t++) {
         my @splitVariable = split(/\=/,$splitI[$t]);
-        if ($splitVariable[0] eq "EFF") {
+        if ($splitVariable[0] eq "ANN") {
           $snpEff = $splitVariable[1];
         }
       }
@@ -110,19 +101,21 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
       my @splitComma = split(",",$snpEff);
       foreach my $isoform (@splitComma) {
         #print "\nisoform=$isoform\n";
-        my @splitterA = split(/\(/,$isoform);
-
-        my $locMut = $splitterA[0];
-        my $typeMutation = $splitterA[0];
-
-        if ($typeMutation=~/sequence_feature/) {
-          $typeMutation=~s/sequence_feature\[//gi;
-          $typeMutation=~s/\]//gi;
+        my @splitterA = split(/\|/,$isoform);
+        #print STDERR "splitterA=@splitterA\n";
+        my $locMut = $splitterA[1];
+        my $typeMutation = $splitterA[1];
+        #print STDERR "typeMutation=$typeMutation\n";
+        if ($typeMutation eq "sequence_feature") {
+          #$typeMutation=~s/sequence_feature\[//gi;
+          #$typeMutation=~s/\]//gi;
+          my $tmInfo = $splitterA[5] . ":" . $splitterA[3];
+          #print STDERR "tmInfo=$tmInfo\n";
           if ($nepr eq ".") {
-            $nepr = $typeMutation;
+            $nepr = $tmInfo;
           } else {
             #make sure there are no duplicates
-            $nepr = $nepr . "|" . $typeMutation;
+            $nepr = $nepr . "|" . $tmInfo;
             my @splitNP = split(/\|/,$nepr);
             my %nodupNP = ();
             foreach my $ne (@splitNP) {
@@ -139,14 +132,16 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
             $nepr = $tmpNepr;
           }
 
-        } elsif ($typeMutation=~/TF_binding_site_variant/) {
-          $typeMutation=~s/TF_binding_site_variant\[//gi;
-          $typeMutation=~s/\]//gi;
+        } elsif ($typeMutation eq "TF_binding_site_variant") { #
+          #$typeMutation=~s/TF_binding_site_variant\[//gi;
+          #$typeMutation=~s/\]//gi;
+          my $tmInfo =  $splitterA[5] . ":" . $splitterA[6];
+          #print STDERR "tmInfo=$tmInfo\n";
           if ($mo eq ".") {
-            $mo = $typeMutation;
+            $mo = $tmInfo;
           } else {
             #make sure there are no duplicates
-            $mo = $mo . "|" . $typeMutation;
+            $mo = $mo . "|" . $tmInfo;
             my @splitMo = split(/\|/,$mo);
             my %nodupMo = ();
             foreach my $mot (@splitMo) {
@@ -164,11 +159,11 @@ sub getNextProtMotiff { ###if we don't have to loop through ensembl file go thro
           }
         }
         my $geneName = "";
-        my @splitter = split(/\[/,$splitterA[1]);
-        $splitter[0]=~s/\)//gi;
-        my @splitLine = split(/\|/,$splitter[0]);
-        if (defined $splitLine[5]) {
-          $geneName = $splitLine[5];
+        #my @splitter = split(/\|/,$splitterA[1]);
+        #$splitter[0]=~s/\)//gi;
+        #my @splitLine = split(/\|/,$splitter[0]);
+        if (defined $splitterA[3]) {
+          $geneName = $splitterA[3];
         }
         #print STDERR "geneName=$geneName\n";
         #print STDERR "mo=$mo\n";
@@ -201,17 +196,20 @@ sub isoformPrint{
   open (FILE, "< $vcfFile") or die "Can't open $vcfFile for read: $!\n";
   while ($data=<FILE>) {
     chomp $data;
+    my $alt = "";
     if ($data!~/#/) {
 
       my @splitTab =split(/\t/,$data);
       my $chr = $splitTab[0];
+      $chr=~s/MT/M/gi;
       my $pos = $splitTab[1];
 
       #print STDERR "$chr:$pos\n";
       my $rsID = $splitTab[2];
       my $ref = $splitTab[3];
 
-      my $alt = $splitTab[4];
+      $alt = $splitTab[4];
+
       my $qual = $splitTab[5];
       my $filter = $splitTab[6];
       my $info = $splitTab[7];  #split this
@@ -224,6 +222,7 @@ sub isoformPrint{
       my $dp = "";
       my $fs = "";
       my $mq = "";
+      my $sor = "";
       my $haplotypeScore = "";
       my $mqranksum = "";
       my $readposranksum = "";
@@ -295,7 +294,15 @@ sub isoformPrint{
           } else {
             $infoVcf = $infoVcf . ";" . $splitI[$t];
           }
-        } elsif ($splitVariable[0] eq "EFF") {
+        } elsif ($splitVariable[0] eq "SOR") {
+          #print $splitI[$t] . ";";
+          $sor = $splitVariable[1];
+          if ($infoVcf eq "") {
+            $infoVcf = $splitI[$t];
+          } else {
+            $infoVcf = $infoVcf . ";" . $splitI[$t];
+          }
+        } elsif ($splitVariable[0] eq "ANN") {
           $snpEff = $splitVariable[1];
         }
       }
@@ -309,19 +316,21 @@ sub isoformPrint{
 
       foreach my $isoform (@splitComma) {
         #print "\nisoform=$isoform\n";
-        my @splitterA = split(/\(/,$isoform);
+        my @splitterA = split(/\|/,$isoform);
 
-        my $locMut = $splitterA[0];
-        my $typeMutation = $splitterA[0];
+        my $locMut = $splitterA[1];
+        my $typeMutation = $splitterA[1];
 
-        if ($typeMutation=~/sequence_feature/) {
-          $typeMutation=~s/sequence_feature\[//gi;
-          $typeMutation=~s/\]//gi;
+        if ($typeMutation eq "sequence_feature") {
+          #$typeMutation=~s/sequence_feature\[//gi;
+          #$typeMutation=~s/\]//gi;
+          my $tmInfo = $splitterA[5] . ":" . $splitterA[3];
+          #print STDERR "tmInfo=$tmInfo\n";
           if ($nepr eq ".") {
-            $nepr = $typeMutation;
+            $nepr = $tmInfo;
           } else {
             #make sure there are no duplicates
-            $nepr = $nepr . "|" . $typeMutation;
+            $nepr = $nepr . "|" . $tmInfo;
             my @splitNP = split(/\|/,$nepr);
             my %nodupNP = ();
             foreach my $ne (@splitNP) {
@@ -338,14 +347,16 @@ sub isoformPrint{
             $nepr = $tmpNepr;
           }
 
-        } elsif ($typeMutation=~/TF_binding_site_variant/) {
-          $typeMutation=~s/TF_binding_site_variant\[//gi;
-          $typeMutation=~s/\]//gi;
+        } elsif ($typeMutation eq "TF_binding_site_variant") {
+          #$typeMutation=~s/TF_binding_site_variant\[//gi;
+          #$typeMutation=~s/\]//gi;
+          my $tmInfo =  $splitterA[5] . ":" . $splitterA[6];
+          #print STDERR "tmInfo=$tmInfo\n";
           if ($mo eq ".") {
-            $mo = $typeMutation;
+            $mo = $tmInfo;
           } else {
             #make sure there are no duplicates
-            $mo = $mo . "|" . $typeMutation;
+            $mo = $mo . "|" . $tmInfo;
             my @splitMo = split(/\|/,$mo);
             my %nodupMo = ();
             foreach my $mot (@splitMo) {
@@ -362,10 +373,8 @@ sub isoformPrint{
             $mo = $tmpMot;
           }
         }
-        my @splitter = split(/\[/,$splitterA[1]);
-        $splitter[0]=~s/\)//gi;
-        my @splitLine = split(/\|/,$splitter[0]);
 
+        my $snpEffAllele = "";
         my $effectImpact = "";
         my $functionalClass = ""; #new!
         my $codonC = "";
@@ -374,29 +383,15 @@ sub isoformPrint{
         my $geneName= "";
         my $transcript = "";
         my $extraInfo = "";
-        # if (defined $splitLine[0]) {
-        #   $effectImpact = $splitLine[0];
-        #   if ($effectImpact eq "HIGH") {
-        #     $highTx++;
-        #   } elsif ($effectImpact eq "MODERATE") {
-        #     $moderateTx++;
-        #   } elsif ($effectImpact eq "LOW") {
-        #     $lowTx++;
-        #   } elsif ($effectImpact eq "MODIFIER") {
-        #     $modifierTx++;
-        #   } else {
-        #     print STDERR "ERROR effectImpact=$effectImpact has not been coded for\n";
-        #   }
-        # }
-        if (defined $splitLine[4]) {
-          $aaLength = $splitLine[4];
+        if (defined $splitterA[0]) {
+          $snpEffAllele = $splitterA[0];
         }
-        if (defined $splitLine[5]) {
-          $geneName = $splitLine[5];
+        if (defined $splitterA[3]) {
+          $geneName = $splitterA[3];
         }
-        if (defined $splitLine[8] && $splitLine[8] ne "") {
+        if (defined $splitterA[6] && $splitterA[6] ne "") {
           #print STDERR "splitLine[8]=$splitLine[8]\n";
-          my @splitD = split(/\./,$splitLine[8]);
+          my @splitD = split(/\./,$splitterA[6]);
           $transcript = $splitD[0];
           #print STDERR "transcript=$transcript\n";
         } else {
@@ -411,7 +406,20 @@ sub isoformPrint{
           #this is the transcript that must be used
           #insert into isoform hash
           #print STDERR "isoformHash geneName=$geneName, transcript=$transcript\n";
-          $isoformHash{"$chr\t$pos\t$ref\t$alt\t$geneName\t$transcript"} = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";EFF=" . $isoform . "\t" . $format . "\t" . $gt;
+          if ($alt=~/\,/) {
+            if (defined $isoformHash{"$chr\t$pos\t$ref\t$alt\t$geneName\t$transcript"}) {
+              my $annIHT = $isoformHash{"$chr\t$pos\t$ref\t$alt\t$geneName\t$transcript"};
+              my $newIHT = "ANN=" . $isoform . ",";
+              $annIHT=~s/ANN=/$newIHT/gi;
+              #print STDERR "alt-het $annIHT";
+              $isoformHash{"$chr\t$pos\t$ref\t$alt\t$geneName\t$transcript"} = $annIHT;
+            } else {
+              $isoformHash{"$chr\t$pos\t$ref\t$alt\t$geneName\t$transcript"} = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";ANN=" . $isoform . "\t" . $format . "\t" . $gt;
+            }
+            #ensure that the transcript is the same and that the allele is the same
+          } else {
+            $isoformHash{"$chr\t$pos\t$ref\t$alt\t$geneName\t$transcript"} = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";ANN=" . $isoform . "\t" . $format . "\t" . $gt;
+          }
           if ($type eq "ensembl") {
             $ensAnn{"$chr\t$pos\t$ref\t$alt"} = "1";
           } else {
@@ -422,19 +430,19 @@ sub isoformPrint{
 
           if ($lastIsoform eq "") { #first transcript
             if ((defined $transcript) && ($transcript ne "") && (defined $txLength{$transcript})) {
-              $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";EFF=" . $isoform . "\t" . $format . "\t" . $gt;
+              $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";ANN=" . $isoform . "\t" . $format . "\t" . $gt;
               $lastIsoformLeng = $txLength{$transcript};
               $lastIsoformNames = $geneName . "\t" . $transcript;
             } else {
               #this variant is overlapping no known transcript
-              $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";EFF=" . $isoform . "\t" . $format . "\t" . $gt;
+              $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";ANN=" . $isoform . "\t" . $format . "\t" . $gt;
               $lastIsoformLeng = 0;
               $lastIsoformNames = $geneName . "\t" . $transcript;
             }
           } else {              #check which one is longer
             if ((defined $transcript) && ($transcript ne "") && (defined $txLength{$transcript})) {
               if ($lastIsoformLeng < $txLength{$transcript}) {
-                $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";EFF=" . $isoform . "\t" . $format . "\t" . $gt;
+                $lastIsoform = $chr . "\t" . $pos . "\t" . $rsID . "\t" . $ref ."\t" . $alt . "\t" . $qual . "\t" . $filter . "\t" . $infoVcf . ";ANN=" . $isoform . "\t" . $format . "\t" . $gt;
                 $lastIsoformLeng = $txLength{$transcript};
                 $lastIsoformNames = $geneName . "\t" . $transcript;
               }
@@ -444,8 +452,8 @@ sub isoformPrint{
 
         #calculate txaffected for all geneSymbol
         if (($type eq "ensembl") && (defined $ensAnn{"$chr\t$pos\t$ref\t$alt"})) {
-          if ((defined $splitLine[0]) && (defined $geneName) && ($geneName ne "")) {
-            $effectImpact = $splitLine[0];
+          if ((defined $splitterA[0]) && (defined $geneName) && ($geneName ne "")) {
+            $effectImpact = $splitterA[2];
             if ($effectImpact eq "HIGH") {
               #$highTx++;
               if (defined $affected{"$chr\t$pos\t$ref\t$alt\t$geneName"}) {
@@ -491,8 +499,8 @@ sub isoformPrint{
             }
           }
         } elsif (($type eq "refseq") && (!defined $ensAnn{"$chr\t$pos\t$ref\t$alt"})) {
-          if ((defined $splitLine[0]) && (defined $geneName) && ($geneName ne "")) {
-            $effectImpact = $splitLine[0];
+          if ((defined $splitterA[0]) && (defined $geneName) && ($geneName ne "")) {
+            $effectImpact = $splitterA[2];
             if ($effectImpact eq "HIGH") {
               #$highTx++;
               #print STDERR "count HIGH\n";
@@ -547,7 +555,21 @@ sub isoformPrint{
       if ((!defined $refAnn{"$chr\t$pos\t$ref\t$alt"}) && ($type eq "refseq")) {
         print STDERR "lastIsoformNames=$lastIsoformNames\n";
         print STDERR "lastIsoform=$lastIsoform\n";
-        $isoformHash{"$chr\t$pos\t$ref\t$alt\t$lastIsoformNames"} = $lastIsoform;
+        ###if the alt is a het-alt
+        if ($alt=~/\,/) {
+          if (defined $isoformHash{"$chr\t$pos\t$ref\t$alt\t$lastIsoformNames"}) {
+
+            my $annIHT = $isoformHash{"$chr\t$pos\t$ref\t$alt\t$lastIsoformNames"};
+            my $newIHT = "ANN=" . $lastIsoform . ",";
+            $annIHT=~s/ANN=/$newIHT/gi;
+            #print STDERR "alt-het $annIHT\n";
+            $isoformHash{"$chr\t$pos\t$ref\t$alt\t$lastIsoformNames"} = $annIHT;
+          } else {
+            $isoformHash{"$chr\t$pos\t$ref\t$alt\t$lastIsoformNames"} = $lastIsoform;
+          }
+        } else {
+          $isoformHash{"$chr\t$pos\t$ref\t$alt\t$lastIsoformNames"} = $lastIsoform;
+        }
         $refAnn{"$chr\t$pos\t$ref\t$alt"} = "1";
       }
     } else {                    #vcf headers
@@ -563,7 +585,7 @@ sub isoformPrint{
   #print out the hash isoform -> add PERTXAFFECTED
 
   foreach my $iso (sort keys %isoformHash) {
-    print STDERR "iso=$iso\n";
+    #print STDERR "iso=$iso\n";
     my @splitKey = split(/\t/,$iso);
 
     my $chr = $splitKey[0];
@@ -573,12 +595,12 @@ sub isoformPrint{
     my $geneN = $splitKey[4];
     my $txN = $splitKey[5];
 
-    print STDERR "isoformHash{$iso}=$isoformHash{$iso}\n";
+    #print STDERR "isoformHash{$iso}=$isoformHash{$iso}\n";
     my @splitIso = split(/\t/,$isoformHash{$iso});
 
     my $disass = ".";
-    my $cdsleng = ".";
-    my $txleng = ".";
+    #my $cdsleng = ".";
+    #my $txleng = ".";
     my $mot = ".";
     my $nxprot = ".";
     my $pertxaffected = ".";
@@ -586,12 +608,6 @@ sub isoformPrint{
     if ((defined $txN) && ($txN ne "")) {
       if (defined $disease{$txN}) {
         $disass = $disease{$txN};
-      }
-      if (defined $cdsLength{$txN}) {
-        $cdsleng = $cdsLength{$txN};
-      }
-      if (defined $txLength{$txN}) {
-        $txleng = $txLength{$txN};
       }
       if (defined $motif{"$chr\t$pos\t$ref\t$alt"}) {
         $mot = $motif{"$chr\t$pos\t$ref\t$alt"}
@@ -602,35 +618,36 @@ sub isoformPrint{
       if (defined $affected{"$chr\t$pos\t$ref\t$alt\t$geneN"} ) {
         my @aff = @{$affected{"$chr\t$pos\t$ref\t$alt\t$geneN"}};
         if ($splitIso[7]=~/HIGH/) {
-          print STDERR "final HIGH\n";
-          print STDERR "aff=@aff\n";
+          #print STDERR "final HIGH\n";
+          #print STDERR "aff=@aff\n";
           $pertxaffected = $aff[0] / ($aff[0]+$aff[1]+$aff[2]+$aff[3]) * 100;
         } elsif ($splitIso[7]=~/MODERATE/) {
-          print STDERR "final MODERATE\n";
-          print STDERR "aff=@aff\n";
+          #print STDERR "final MODERATE\n";
+          #print STDERR "aff=@aff\n";
 
           $pertxaffected = $aff[1] / ($aff[0]+$aff[1]+$aff[2]+$aff[3]) * 100;
         } elsif ($splitIso[7]=~/LOW/) {
-          print STDERR "final LOW\n";
-          print STDERR "aff=@aff\n";
+          #print STDERR "final LOW\n";
+          #print STDERR "aff=@aff\n";
 
           $pertxaffected = $aff[2] / ($aff[0]+$aff[1]+$aff[2]+$aff[3]) * 100;
         } elsif ($splitIso[7]=~/MODIFIER/) {
-          print STDERR "final MODIFIER\n";
-          print STDERR "aff=@aff\n";
+          #print STDERR "final MODIFIER\n";
+          #print STDERR "aff=@aff\n";
 
           $pertxaffected = $aff[3] / ($aff[0]+$aff[1]+$aff[2]+$aff[3]) * 100;
         }
         $pertxaffected = sprintf "%.2f", $pertxaffected;
-        print STDERR "pertxaffected=$pertxaffected\n";
+        #print STDERR "pertxaffected=$pertxaffected\n";
       }
     }
-    
+
     for (my $i=0; $i <= 6; $i++) {
       print $splitIso[$i];
       print "\t";
     }
 
-    print $splitIso[7] . ";DISASS=" . $disass . ";CDSLENG=" . $cdsleng . ";TXLENG=" . $txleng . ";MOTIF=" . $mot . ";NEXTPROT=" . $nxprot . ";PERTXAFFECTED=" . $pertxaffected . "\t" . $splitIso[8] . "\t" . $splitIso[9] ."\n";
+    print $splitIso[7] . ";DISASS=" . $disass . ";MOTIF=" . $mot . ";NEXTPROT=" . $nxprot . ";PERTXAFFECTED=" . $pertxaffected . "\t" . $splitIso[8] . "\t" . $splitIso[9] ."\n";
   }
+  close(FILE);
 }
