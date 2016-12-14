@@ -180,12 +180,11 @@ sub exome_newGP {
 }
 
 sub cancerN {
+  $depthct   = ' -ct 1 -ct 50 -ct 200 -ct 500 --start 1 --stop 2500' ;
+
   my @jobID_and_Pfolder;
   my @jobID_and_Pfolder1;
   my @jobID_and_Pfolder2;
-  #my @jobID_and_Pfolder3;
-  #$bed4chr   = '/hpf/largeprojects/pray/llau/gene_panels/CANCER_20151016/CANCER_20151016.gene_100bp_padding.bed';
-  $depthct   = ' -ct 1 -ct 200 -ct 400 -ct 600 -ct 1000 --start 1 --stop 2500 ';
   if ($startPoint ne 'NEW') {
     $jobID_and_Pfolder[0] = '';
     if (ref($startPoint_lst{$startPoint})) {
@@ -195,48 +194,31 @@ sub cancerN {
     }
     goto $startPoint;
   }
- NEW:                       @jobID_and_Pfolder    =  &chk_sum;
+ NEW:                       @jobID_and_Pfolder   =  &chk_sum;
   sleep 1;
-  #faidx:                                              &faidx(@jobID_and_Pfolder);
-  #calAF:                    @jobID_and_Pfolder3   =  &calAF(@jobID_and_Pfolder);
-  #calAF:                                              &calAF(@jobID_and_Pfolder);
- bwaAlign:                  @jobID_and_Pfolder    =  &bwa_mem(@jobID_and_Pfolder);
+ bwaAlign:                  @jobID_and_Pfolder   =  &bwa_mem(@jobID_and_Pfolder);
   sleep 1;
- picardMarkDup:             @jobID_and_Pfolder    =  &picardMarkDup(@jobID_and_Pfolder);
-  #  sleep 1;
-  # picardMarkDupIdx:          @jobID_and_Pfolder    =  &picardMarkDupIdx(@jobID_and_Pfolder);
-  #picardMeanQualityByCycle:                           &picardMeanQualityByCycle(@jobID_and_Pfolder);
-  #CollectAlignmentSummaryMetrics:                     &CollectAlignmentSummaryMetrics(@jobID_and_Pfolder);
-  #picardCollectGcBiasMetrics:                         &picardCollectGcBiasMetrics(@jobID_and_Pfolder);
-  #picardQualityScoreDistribution:                     &picardQualityScoreDistribution(@jobID_and_Pfolder);
- picardCalculateHsMetrics:                           &picardCalculateHsMetrics(@jobID_and_Pfolder);
-  #picardCollectInsertSizeMetrics:                     &picardCollectInsertSizeMetrics(@jobID_and_Pfolder);
-  #gatkLocalRealign:          @jobID_and_Pfolder    =  &gatkLocalRealign(@jobID_and_Pfolder);
+ picardMarkDup:             @jobID_and_Pfolder   =  &picardMarkDup(@jobID_and_Pfolder);
+ picardCalculateHsMetrics:                          &picardCalculateHsMetrics(@jobID_and_Pfolder);
+ gatkQscoreRecalibration:   @jobID_and_Pfolder   =  &gatkQscoreRecalibration(@jobID_and_Pfolder);
   sleep 1;
- gatkQscoreRecalibration:   @jobID_and_Pfolder    =  &gatkQscoreRecalibration(@jobID_and_Pfolder);
+ offtargetChr1Counting:                             &offtargetChr1Counting(@jobID_and_Pfolder);
   sleep 1;
- gatkCovCalGP:                                       &gatkCovCalGP(@jobID_and_Pfolder);
+ gatkCovCalExomeTargets:                            &gatkCovCalExomeTargets(@jobID_and_Pfolder);
   sleep 1;
- gatkRawVariantsCall:       @jobID_and_Pfolder    =  &gatkRawVariantsCall(@jobID_and_Pfolder);
+ gatkCovCalGP:                                      &gatkCovCalGP(@jobID_and_Pfolder);
   sleep 1;
- gatkRawVariants:                                  &gatkRawVariants(@jobID_and_Pfolder);
+ gatkRawVariantsCall:       @jobID_and_Pfolder    = &gatkRawVariantsCallHC(@jobID_and_Pfolder);
   sleep 1;
- gatkJointGenotyping:           @jobID_and_Pfolder    =  &gatkJointGenotyping(@jobID_and_Pfolder);
+ gatkRawVariants:                                   &gatkRawVariants(@jobID_and_Pfolder);
   sleep 1;
-  # gatkFilteredRecalSNP:      @jobID_and_Pfolder1   =  &gatkFilteredRecalSNP(@jobID_and_Pfolder);
-  #  sleep 1;
-  # gatkFilteredRecalINDEL:    @jobID_and_Pfolder2   =  &gatkFilteredRecalINDEL(@jobID_and_Pfolder);
-  #  sleep 1;
-  #  $jobID_and_Pfolder[0] =  $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
-  #  $jobID_and_Pfolder[1] =  $jobID_and_Pfolder1[1] ;
-  #  $jobID_and_Pfolder[2] =  $jobID_and_Pfolder2[1] ;
-  # gatkFilteredRecalVariant:  @jobID_and_Pfolder1   =  &gatkFilteredRecalVariant(@jobID_and_Pfolder);
+ gatkJointGenotyping:           @jobID_and_Pfolder1    = &gatkJointGenotyping(@jobID_and_Pfolder);
   sleep 1;
- windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder);
- annovar:                   @jobID_and_Pfolder1    = &annovar(@jobID_and_Pfolder);
+ windowBed:                 @jobID_and_Pfolder2   = &windowBed(@jobID_and_Pfolder1);
+
+ annovar:                   @jobID_and_Pfolder    = &annovar(@jobID_and_Pfolder1);
   sleep 1;
   $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder1[0] . "," . $jobID_and_Pfolder2[0];
-  #  $jobID_and_Pfolder[0] .= "," . $jobID_and_Pfolder2[0];
   push @jobID_and_Pfolder, $jobID_and_Pfolder1[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[1];
   push @jobID_and_Pfolder, $jobID_and_Pfolder2[2];
@@ -246,8 +228,7 @@ sub cancerN {
 sub cancerT {
   my @jobID_and_Pfolder;
   my @jobID_and_Pfolder2;
-  #$bed4chr   = '/hpf/largeprojects/pray/llau/gene_panels/CANCER_20151016/CANCER_20151016.gene_100bp_padding.bed';
-  $depthct   = ' -ct 1 -ct 200 -ct 400 -ct 600 -ct 1000 --start 1 --stop 2500';
+  $depthct   = ' -ct 1 -ct 50 -ct 200 -ct 500 --start 1 --stop 2500 ';
   if ($startPoint ne 'NEW') {
     $jobID_and_Pfolder[0] = '';
     if (ref($startPoint_lst{$startPoint})) {
@@ -258,29 +239,19 @@ sub cancerT {
     goto $startPoint;
   }
  NEW:                       @jobID_and_Pfolder   = &chk_sum;
-  #faidx:                                            &faidx(@jobID_and_Pfolder);
-  #calAF:                                            &calAF(@jobID_and_Pfolder);
  bwaAlign:                  @jobID_and_Pfolder   = &bwa_mem(@jobID_and_Pfolder);
  picardMarkDup:             @jobID_and_Pfolder   = &picardMarkDup(@jobID_and_Pfolder);
- picardMarkDupIdx:          @jobID_and_Pfolder   = &picardMarkDupIdx(@jobID_and_Pfolder);
- picardMeanQualityByCycle:                         &picardMeanQualityByCycle(@jobID_and_Pfolder);
- CollectAlignmentSummaryMetrics:                   &CollectAlignmentSummaryMetrics(@jobID_and_Pfolder);
- picardCollectGcBiasMetrics:                       &picardCollectGcBiasMetrics(@jobID_and_Pfolder);
- picardQualityScoreDistribution:                   &picardQualityScoreDistribution(@jobID_and_Pfolder);
  picardCalculateHsMetrics:                         &picardCalculateHsMetrics(@jobID_and_Pfolder);
- picardCollectInsertSizeMetrics:                   &picardCollectInsertSizeMetrics(@jobID_and_Pfolder);
- gatkLocalRealign:          @jobID_and_Pfolder   = &gatkLocalRealign(@jobID_and_Pfolder);
  gatkQscoreRecalibration:   @jobID_and_Pfolder   = &gatkQscoreRecalibration(@jobID_and_Pfolder);
  gatkCovCalGP:                                     &gatkCovCalGP(@jobID_and_Pfolder);
  muTect2:                   @jobID_and_Pfolder2  = &muTect2(@jobID_and_Pfolder, $normalPair); 
  muTect2Combine:            @jobID_and_Pfolder2  = &muTect2Combine(@jobID_and_Pfolder2); 
  muTect:                    @jobID_and_Pfolder   = &muTect(@jobID_and_Pfolder, $normalPair);
- mutectCombine:             @jobID_and_Pfolder   = &mutectCombine(@jobID_and_Pfolder);
+ muTectCombine:             @jobID_and_Pfolder   = &muTectCombine(@jobID_and_Pfolder);
    $jobID_and_Pfolder[0] = $jobID_and_Pfolder2[0] . ',' . @jobID_and_Pfolder[0]; 
    $jobID_and_Pfolder[1] = $jobID_and_Pfolder[1];
    $jobID_and_Pfolder[2] = $jobID_and_Pfolder2[1];
  finished:                  @jobID_and_Pfolder   = &finished(@jobID_and_Pfolder);
- #annovarMutect:             @jobID_and_Pfolder   = &annovarMutect(@jobID_and_Pfolder);
 }
 
 
@@ -760,6 +731,44 @@ sub gatkRawVariantsCall {
                                     . " -o $runfolder/gatkRawVariantsCall/$sampleID.$postprocID" . '.raw_variants.chr${chr}.g.vcf' . " --dbsnp $dbSNP &&" . " \\\n"
                                       . "\\\n"
                                         . "\'| jsub -j gatkRawVariantsCall -b $runfolder  -nm 32000 -np 1 -nn 1 --te 25 -nw 04:00:00 -ng localhd:10 $depend";
+  print "\n\n************\ngatkRawVariantsCall:\n$cmd\n************\n\n";
+  my $cmdOut = `$cmd`;
+  print "============\n$cmdOut============\n\n";
+  if ($cmdOut =~ /^(\d+\[\])\n/) {
+    $jobID = $1;
+    return($jobID, "gatkRawVariantsCall/$sampleID.$postprocID.raw_variants");
+  } else {
+    die "gatkRawVariantsCall for $runfolder failed to be submitted!\n";
+  }
+}
+
+sub gatkRawVariantsCallHC {
+  my ($jobID, $Pfolder) = @_;
+  my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
+  if ( -d "$runfolder/gatkRawVariantsCall") {
+    print "Jsub folder already exists, removing...\nrm -rf $runfolder/gatkRawVariantsCall\n";
+    `rm -rf $runfolder/gatkRawVariantsCall`;
+  }
+  my $cmd = 'echo \''
+    . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
+      . "\\\n"
+        . 'module load ' . $GATK . ' && ' . " \\\n"
+          . 'module load ' . $JAVA . ' && ' . " \\\n"
+            . "\\\n"
+              . 'chr=${PBS_ARRAYID};' . " \\\n"
+                . 'if [ ${chr} = "23" ]; then'
+                  . '    chr=X; fi;'. " \\\n"
+                    . 'if [ ${chr} = "24" ]; then'
+                      . '    chr=Y; fi;' . " \\\n"
+                        . 'if [ ${chr} = "25" ]; then'
+                          . '    chr=MT; fi;'
+                            . " \\\n"
+                              . 'java -jar -Djava.io.tmpdir=$TMPDIR -Xmx24G $GATK -T HaplotypeCaller' . " -R $reference -I $runfolder/$Pfolder --genotyping_mode DISCOVERY -dfrac 0.99 -stand_emit_conf 10 -stand_call_conf 30 -rf BadCigar \\\n"
+                                . " --min_base_quality_score 20 --emitRefConfidence GVCF -nct 4 ". " \\\n"
+                                  . ' -L ${chr}' . " \\\n"
+                                    . " -o $runfolder/gatkRawVariantsCall/$sampleID.$postprocID" . '.raw_variants.chr${chr}.g.vcf' . " --dbsnp $dbSNP &&" . " \\\n"
+                                      . "\\\n"
+                                        . "\'| jsub -j gatkRawVariantsCall -b $runfolder  -nm 32000 -np 4 -nn 1 --te 25 -nw 4:00:00 -ng localhd:10 $depend";
   print "\n\n************\ngatkRawVariantsCall:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
@@ -1277,7 +1286,7 @@ sub muTect2 {
     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
     . "\\\n"
     . 'module load gatk/3.6.0 &&' . " \\\n"
-    . 'module load shlienlab/0.1 annovar/2013.08.23 perl/5.20.1 &&' . " \\\n"
+    . 'module load annovar/2013.08.23 perl/5.20.1 &&' . " \\\n"
     . "\\\n"
     . 'chr=${PBS_ARRAYID};' . "\\\n"
     . 'if [ ${chr} = "23" ]; then' . "\\\n"
@@ -1285,18 +1294,18 @@ sub muTect2 {
     . 'if [ ${chr} = "24" ]; then' . "\\\n"
     . '  chr=Y; fi;' . "\\\n"
     . 'if [ ${chr} = "25" ]; then' . "\\\n"
-    . '  chr=M; fi;' . "\\\n"
+    . '  chr=MT; fi;' . "\\\n"
     . "\\\n"
-    . '/hpf/tools/centos6/java/1.8.0_91/bin/java -Xmx24g -Djava.io.tmpdir=/tmp -jar $GATK -T MuTect2 -R /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hs37d5/fasta/hs37d5.fa' . " \\\n"
+    . '/hpf/tools/centos6/java/1.8.0_91/bin/java -Xmx24g -Djava.io.tmpdir=/tmp -jar $GATK -T MuTect2 -R ' . "$reference \\\n"
     . " -I:tumor $runfolder/$Pfolder1\\\n"
     . " -I:normal $Pfolder2\\\n"
-    . " --dbsnp /hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/dbsnp_138.b37.vcf \\\n"
-    . ' --cosmic /hpf/largeprojects/adam/local/genomes/homosapiens/grch37/cosmic/0.75/CosmicCodingMuts.vcf.gz -L ${chr} ' . " \\\n" 
+    . " --dbsnp $dbSNP \\\n"
+    . ' --cosmic /hpf/largeprojects/pray/wei.wang/mutect_cancer_cosmic//CosmicCodingMuts.vcf.gz -L ${chr} ' . " \\\n" 
     . " -o $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.vcf &&' . " \\\n"
     . "\\\n"
-    . "/hpf/largeprojects/adam/local/bin/mutect2annovar.pl --vcf $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.vcf' . " --filter false --header false --output $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar &&' . " \\\n"
+    . "$SCRIPTDIR/mutect2annovar.pl --vcf $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.vcf' . " --filter false --header false --output $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar &&' . " \\\n"
     . "\\\n"
-    . "table_annovar.pl $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hg19/annovar/humandb --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile ' 
+    . "table_annovar.pl $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar' . " $annovarHDB " . ' --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile ' 
     . "$runfolder/mutect2/$sampleID.$postprocID." 
     . '${chr}' . " \\\n"
     . "\\\n"
@@ -1313,8 +1322,10 @@ sub muTect2 {
 
 }
 
-sub mutectCombine {
-  my ($jobID, $Pfolder, $normal_sampleID, $normal_postprocID) = @_;
+sub muTectCombine {
+  my ($jobID, $Pfolder, $Pfolder2) = @_;
+  my $normal_bam_file = (split(/\//, $Pfolder2))[-1];
+  my ($normal_sampleID, $normal_postprocID) = split(/\./, $normal_bam_file);
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/mutectCombine") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/mutectCombine\n";
@@ -1323,17 +1334,23 @@ sub mutectCombine {
   my $cmd = 'echo \''
     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
     . "\\\n"
-    . 'module load shlienlab/0.1 annovar/2013.08.23 perl/5.20.1 R/3.2.2 &&' . " \\\n"
+    . 'module load annovar/2013.08.23 perl/5.20.1 R/3.1.1shlib &&' . " \\\n"
     . "\\\n"
     . "cat $runfolder/$Pfolder/*.callstats.txt " . '| grep -v "^#\|^contig" |' . " awk -f $SCRIPTDIR/mutect_print.awk > $runfolder/mutectCombine/$sampleID.$postprocID.mutect.combine.annovar && \\\n"
     . "\\\n"
-    . "table_annovar.pl $runfolder/mutectCombine/$sampleID.$postprocID.mutect.combine.annovar /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hg19/annovar/humandb --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile $runfolder/mutectCombine/$sampleID.$postprocID && \\\n"
+    . "table_annovar.pl $runfolder/mutectCombine/$sampleID.$postprocID.mutect.combine.annovar $annovarHDB --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile $runfolder/mutectCombine/$sampleID.$postprocID && \\\n"
     . "\\\n"
-    . "Rscript /hpf/largeprojects/adam/local/bin/run_annotation_pipeline.R --directory $runfolder/mutectCombine/ --sample $sampleID.$postprocID && \\\n"
+    . "Rscript $SCRIPTDIR/run_annotation_pipeline.R --directory $runfolder/mutectCombine/ --sample $sampleID.$postprocID && \\\n"
     . "\\\n"
-    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n "
+    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/mutectCombine/$sampleID.$postprocID\_annotated.rda $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv $postprocID $normal_postprocID && \\\n "
     . "\\\n"
-    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\([^\t]*\t\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv"
+    . 'sed -i "s/^\([^\t]*\t\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tTRUE\t/\t1\t/g;s/\tFALSE\t/\t0\t/g" ' . " $runfolder/mutectCombine/$sampleID.$postprocID.snv.csv && \\\n"
+    . "\\\n"
+    . "cd $runfolder/mutectCombine/ && mv $sampleID.$postprocID.snv.csv sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.csv && \\\n"
+    . "mv $sampleID.$postprocID\_annotated.rda sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.rda && \\\n"
+    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.csv > sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.csv.sha256sum && \\\n"
+    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.rda > sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.rda.sha256sum && \\\n"
+    . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
     . "\\\n"
     . "\'| jsub -j mutectCombine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 08:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutectCombine:\n$cmd\n************\n\n";
@@ -1341,14 +1358,16 @@ sub mutectCombine {
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+)\n/) {
     $jobID = $1;
-    return($jobID,"mutectCombine/$sampleID.$postprocID.snv.csv");
+    return($jobID,"mutectCombine/sid_$sampleID.aid_$postprocID.gp_$genePanel.snv.csv");
   } else {
     die "mutectCombine for $runfolder failed to be submitted!\n";
   }
 }
 
 sub muTect2Combine {
-  my ($jobID, $Pfolder, $normal_sampleID, $normal_postprocID) = @_;
+  my ($jobID, $Pfolder, $Pfolder2) = @_;
+  my $normal_bam_file = (split(/\//, $Pfolder2))[-1];
+  my ($normal_sampleID, $normal_postprocID) = split(/\./, $normal_bam_file);
   my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
   if ( -d "$runfolder/mutect2Combine") {
     print "Jsub folder already exists, removing...\nrm -rf $runfolder/mutect2Combine\n";
@@ -1357,54 +1376,29 @@ sub muTect2Combine {
   my $cmd = 'echo \''
     . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
     . "\\\n"
-    . 'module load  shlienlab/0.1 R/3.1.1 &&'
+    . 'module load R/3.1.1shlib &&'
     . " \\\n"
-    . "Rscript /hpf/largeprojects/adam/local/bin/annotated_indels.R --path $runfolder/$Pfolder/ --sample $runfolder/mutect2Combine/$sampleID.$postprocID && \\\n"
+    . "Rscript $SCRIPTDIR/annotated_indels.R --path $runfolder/$Pfolder/ --sample $runfolder/mutect2Combine/$sampleID.$postprocID && \\\n"
     . "\\\n"
-    . "Rscript $SCRIPTDIR/mut2rda2txt.R $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
+    . "Rscript $SCRIPTDIR/mut2rda2txt.R $runfolder/mutect2Combine/$sampleID.$postprocID\_annotated.rda $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv $postprocID $normal_postprocID  && \\\n"
     . "\\\n"
-    . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\t' . $sampleID .'\t/\t' . $postprocID  . '\t/;s/\t' . $normal_sampleID .'\t/\t' . $normal_postprocID  . '\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/^\(\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tFALSE/\t0/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv"
+    . 'sed -i "s/^\(\([^\t]*\)\t\([^\t]*\)\t\([^\t]*\)\t.*\)/\1\t\2_\3_\4/;s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tTRUE\t/\t1\t/g;s/\tFALSE\t/\t0\t/g" ' . " $runfolder/mutect2Combine/$sampleID.$postprocID.indel.csv && \\\n"
+    . "\\\n"
+    . "cd $runfolder/mutect2Combine/ && mv $sampleID.$postprocID.indel.csv sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.csv && \\\n"
+    . "mv $sampleID.$postprocID\_annotated.rda sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.rda && \\\n"
+    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.csv > sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.csv.sha256sum && \\\n"
+    . "sha256sum sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.rda > sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.rda.sha256sum && \\\n"
+    . "ln -f sid_* $BACKUP_BASEDIR/variants/ \\\n"
+    . "\\\n"
     . "\'| jsub -j mutect2Combine -b $runfolder -nm 8000 -np 1 -nn 1 -nw 00:30:00 -ng localhd:1 $depend";
   print "\n\n************\nmutect2Combine:\n$cmd\n************\n\n";
   my $cmdOut = `$cmd`;
   print "============\n$cmdOut============\n\n";
   if ($cmdOut =~ /^(\d+)\n/) {
     $jobID = $1;
-    return($jobID,"mutect2Combine/$sampleID.$postprocID.indel.csv");
+    return($jobID,"mutect2Combine/sid_$sampleID.aid_$postprocID.gp_$genePanel.indel.csv");
   } else {
     die "mutect2Combine for $runfolder failed to be submitted!\n";
-  }
-}
-
-sub annovarMutect {
-  my ($jobID, $Pfolder) = @_;
-  my $depend = $jobID eq '' ? "" : "-aft afterok -o $jobID";
-  if ( -d "$runfolder/annovarMutect") {
-    print "Jsub folder already exists, removing...\nrm -rf $runfolder/annovarMutect\n";
-    `rm -rf $runfolder/annovarMutect`;
-  }
-  my $cmd = 'echo \''
-    . 'export TMPDIR=/localhd/`echo $PBS_JOBID | cut -d. -f1 ` &&' . " \\\n"
-      . "\\\n"
-        . 'module load shlienlab/0.1 annovar/2013.08.23 perl/5.20.1 R/3.2.2 &&' . " \\\n"
-          . "\\\n"
-            . "table_annovar.pl $runfolder/$Pfolder /hpf/largeprojects/adam/local/reference/homosapiens/ucsc/hg19/annovar/humandb --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile $runfolder/annovarMutect/$sampleID.$postprocID; \\\n"
-              . "\\\n"
-                . "Rscript /hpf/largeprojects/adam/local/bin/run_annotation_pipeline.R --directory $runfolder/annovarMutect/ --sample $sampleID.$postprocID && \\\n"
-                  . "\\\n"
-                    . "Rscript $SCRIPTDIR/mutrda2txt.R $runfolder/annovarMutect/$sampleID.$postprocID\_annotated.rda $runfolder/annovarMutect/$sampleID.$postprocID.csv && "
-                      . "\\\n"
-                        . 'sed -i "s/\tREJECT\t/\t0\t/;s/\tKEEP\t/\t1\t/;s/\tNA/\t/g;s/\tTRUE/\t1/g;s/\tFALSE/\t0/g" ' . " $runfolder/annovarMutect/$sampleID.$postprocID.snv.csv"
-                          . "\\\n"
-                            . "\'| jsub -j annovarMutect -b $runfolder  -nm 8000 -np 1 -nn 1 -nw 08:00:00 -ng localhd:1 $depend";
-  print "\n\n************\nannovarMutect:\n$cmd\n************\n\n";
-  my $cmdOut = `$cmd`;
-  print "============\n$cmdOut============\n\n";
-  if ($cmdOut =~ /^(\d+)\n/) {
-    $jobID = $1;
-    return($jobID,"annovarMutect/$sampleID.$postprocID.csv");
-  } else {
-    die "annovarMutect for $runfolder failed to be submitted!\n";
   }
 }
 
