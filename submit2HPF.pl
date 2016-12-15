@@ -58,9 +58,9 @@ sub main {
             &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
 
             my $normal_bam = Common::get_normal_bam($dbh, $sampleInfo_ref->{'pairID'});
-            if ($normal_bam =~ /No normal/) {
+            if ($normal_bam !~ /realigned-recalibrated/) {
                 $allerr .= $normal_bam; 
-	            return($currentStatus->{'currentStatus'}->{'Submission Failed'}->{'code'});
+	            return($currentStatus->{'currentStatus'}->{'Waiting to be re-submitted'}->{'code'});
             }
             else {
                 $normal_bam = "$config->{'HPF_BACKUP_BAM'}$normal_bam";

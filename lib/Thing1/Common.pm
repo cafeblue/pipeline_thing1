@@ -454,11 +454,12 @@ sub get_sampleInfo {
 ###for cancer pipeline gets the normal ids
 sub get_normal_bam {
     my ($dbh, $pairID) = @_;
-    my $search_pairID = "SELECT sampleID,postprocID FROM sampleInfo WHERE pairID = '$pairID' AND genePanelVer = 'cancer.gp19' AND sampleType = 'normal' order by postprocID desc limit 1";
+    my $search_pairID = "SELECT sampleID,postprocID,currentStatus FROM sampleInfo WHERE pairID = '$pairID' AND genePanelVer = 'cancer.gp19' AND sampleType = 'normal' ORDER BY postprocID DESC LIMIT 1";
     my $sth = $dbh->prepare($search_pairID) or die "Can't query database for $pairID: " . $dbh->errstr() . "\n";
     $sth->execute() or die "Can't execute database for $pairID: " . $dbh->errstr() . "\n";
     return "No normal postprocID found for pairID $pairID .\n" if $sth->rows() == 0 ;  
     my @data_ref = $sth->fetchrow_array;
+    return "Normal pair sampleID $data_ref[0] postprocID $data_ref[1] found for pairID $pairID has not finished yet!\n" if $data_ref[2] < 6 ;  
     return $data_ref[0] . "." . $data_ref[1] . ".realigned-recalibrated.bam";
 }
 
