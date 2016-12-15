@@ -50,7 +50,7 @@ sub main {
 
 
     if ($sampleInfo_ref->{'genePanelVer'} =~ /cancer/) {
-        if (( $sampleInfo_ref->{'sampleType'} eq 'tumour') && $sampleInfo_ref->{'pairID '}!~ /\d/) {
+        if (( $sampleInfo_ref->{'sampleType'} eq 'tumour') && $sampleInfo_ref->{'pairID'} !~ /\d/) {
             $allerr .= "Tumor sample $sampleInfo_ref->{'sampleID'} (postprocID $sampleInfo_ref->{'postprocID'}) do not have the paired sampleID, pipeline could not be run, please update the database.\naborted...\n\n"; 
 	        return($currentStatus->{'currentStatus'}->{'Submission Failed'}->{'code'});
         }
@@ -68,7 +68,7 @@ sub main {
 	        ###cancer samples
             $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37  -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerT -n $normal_bam\"";
         }
-        elsif ( $sampleInfo_ref->{'sampleType'} eq 'tumour' ) {
+        elsif ( $sampleInfo_ref->{'sampleType'} eq 'normal' ) {
             &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
             $command = "$SSH_HPF \"$CALL_SCREEN -r $config->{'HPF_RUNNING_FOLDER'}$sampleInfo_ref->{'sampleID'}-$sampleInfo_ref->{'postprocID'}-$currentTime-$sampleInfo_ref->{'genePanelVer'}-b37 -s $sampleInfo_ref->{'sampleID'} -a $sampleInfo_ref->{'postprocID'} -f $config->{'FASTQ_HPF'}$sampleInfo_ref->{'flowcellID'}/Sample_$sampleInfo_ref->{'sampleID'} -g $sampleInfo_ref->{'genePanelVer'} -p cancerN \"";
         }
