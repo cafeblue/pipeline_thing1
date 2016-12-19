@@ -1254,7 +1254,7 @@ sub muTect {
     . "/hpf/tools/centos6/java/1.6.0/bin/java -Xmx4g -Djava.io.tmpdir=/tmp -jar /hpf/tools/centos6/mutect/1.1.4/muTect-1.1.4.jar --analysis_type MuTect \\\n"
     . "--reference_sequence $reference \\\n"
     . "--cosmic /hpf/largeprojects/adam/local/genomes/homosapiens/mutect/1.1.4/resources/b37_cosmic_v54_120711.vcf \\\n"
-    . "--dbsnp $dbSNP \\\n"
+    . "--dbsnp /hpf/largeprojects/pray/llau/internal_databases/gatk_bundle/2.8_b37/dbsnp_138.b37.vcf \\\n"
     . "--input_file:tumor $runfolder/$Pfolder1 \\\n"
     . "--out $runfolder/mutect/$sampleID.$postprocID." . 'chr${chr}' . ".mutect_1.1.4.callstats.txt \\\n"
     . "--coverage_file $runfolder/mutect/$sampleID.$postprocID.chr" . '${chr}' . ".mutect_1.1.4.coverage.wig \\\n"
@@ -1305,7 +1305,7 @@ sub muTect2 {
     . "\\\n"
     . "$SCRIPTDIR/mutect2annovar.pl --vcf $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.vcf' . " --filter false --header false --output $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar &&' . " \\\n"
     . "\\\n"
-    . "table_annovar.pl $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar' . " $annovarHDB " . ' --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile ' 
+    . "table_annovar.pl $runfolder/mutect2/$sampleID.$postprocID." . '${chr}.annovar' . " /hpf/largeprojects/pray/wei.wang/mutect_cancer_db/annovar/humandb " . ' --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile ' 
     . "$runfolder/mutect2/$sampleID.$postprocID." 
     . '${chr}' . " \\\n"
     . "\\\n"
@@ -1338,7 +1338,7 @@ sub muTectCombine {
     . "\\\n"
     . "cat $runfolder/$Pfolder/*.callstats.txt " . '| grep -v "^#\|^contig" |' . " awk -f $SCRIPTDIR/mutect_print.awk > $runfolder/mutectCombine/$sampleID.$postprocID.mutect.combine.annovar && \\\n"
     . "\\\n"
-    . "table_annovar.pl $runfolder/mutectCombine/$sampleID.$postprocID.mutect.combine.annovar $annovarHDB --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile $runfolder/mutectCombine/$sampleID.$postprocID && \\\n"
+    . "table_annovar.pl $runfolder/mutectCombine/$sampleID.$postprocID.mutect.combine.annovar /hpf/largeprojects/pray/wei.wang/mutect_cancer_db/annovar/humandb --protocol refGene,ensGene,snp132,1000g2012feb_all,esp6500si_all,cg69,cosmic70,clinvar_20150330,exac03,bed --operation g,g,f,f,f,f,f,f,f,r --buildver hg19 --remove --otherinfo --bedfile SureSelect_All_Exon_50mb_with_annotation_HG19_BED.removeChrUn.bed --outfile $runfolder/mutectCombine/$sampleID.$postprocID && \\\n"
     . "\\\n"
     . "Rscript $SCRIPTDIR/run_annotation_pipeline.R --directory $runfolder/mutectCombine/ --sample $sampleID.$postprocID && \\\n"
     . "\\\n"
