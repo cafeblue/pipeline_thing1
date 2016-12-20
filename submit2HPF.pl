@@ -23,7 +23,7 @@ my $allerr = "";
 
 my $SSH_DATA = "ssh -i $config->{'SSH_DATA_FILE'}  $config->{'HPF_USERNAME'}\@$config->{'HPF_DATA_NODE'}";
 my $SSH_HPF = "ssh -i $config->{'SSH_DATA_FILE'}  $config->{'HPF_USERNAME'}\@$config->{'HPF_HEAD_NODE'}";
-my $CALL_SCREEN = "$config->{'CALL_SCREEN'} $config->{'PIPELINE_HPF_ROOT'}call_pipeline.pl";
+my $CALL_SCREEN = "$config->{'PIPELINE_HPF_ROOT'}call_pipeline.pl";
 
 my $sample_ref = Common::get_sampleInfo($dbh, 0);
 Common::print_time_stamp;
@@ -50,11 +50,11 @@ sub main {
 
 
     if ($sampleInfo_ref->{'genePanelVer'} =~ /cancer/) {
-        if (( $sampleInfo_ref->{'sampleType'} eq 'tumour') && $sampleInfo_ref->{'pairID'} !~ /\d/) {
+        if (( $sampleInfo_ref->{'sampleType'} eq 'tumor') && $sampleInfo_ref->{'pairID'} !~ /\d/) {
             $allerr .= "Tumor sample $sampleInfo_ref->{'sampleID'} (postprocID $sampleInfo_ref->{'postprocID'}) do not have the paired sampleID, pipeline could not be run, please update the database.\naborted...\n\n"; 
 	        return($currentStatus->{'currentStatus'}->{'Submission Failed'}->{'code'});
         }
-        elsif ( $sampleInfo_ref->{'sampleType'} eq 'tumour') {
+        elsif ( $sampleInfo_ref->{'sampleType'} eq 'tumor') {
             &insert_jobstatus($sampleInfo_ref->{'sampleID'}, $sampleInfo_ref->{'postprocID'}, $sampleInfo_ref->{'pipeID'}, $sampleInfo_ref->{'genePanelVer'});
 
             my $normal_bam = Common::get_normal_bam($dbh, $sampleInfo_ref->{'pairID'});

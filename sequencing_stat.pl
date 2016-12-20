@@ -56,7 +56,7 @@ sub update_table {
       my ($pipething1ver, $pipehpfver, $webver) = Common::get_pipelinever($config);
       my $key = $gp . "\t" . $ck;
       my $pipeID = $gpConfig->{$key}{'pipeID'};
-      if ($sampletype eq 'tumour') {
+      if ($sampletype eq 'tumor') {
           $pipeID .= '-t';
       }
       my $start = $encoding->{'currentStatus'}->{'Ready to submit'}->{'code'}; 
