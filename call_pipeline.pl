@@ -247,7 +247,7 @@ sub cancerT {
  muTect2:                   @jobID_and_Pfolder2  = &muTect2(@jobID_and_Pfolder, $normalPair); 
  muTect2Combine:            @jobID_and_Pfolder2  = &muTect2Combine(@jobID_and_Pfolder2); 
  muTect:                    @jobID_and_Pfolder   = &muTect(@jobID_and_Pfolder, $normalPair);
- muTectCombine:             @jobID_and_Pfolder   = &muTectCombine(@jobID_and_Pfolder);
+ muTectCombine:             @jobID_and_Pfolder   = &muTectCombine(@jobID_and_Pfolder, $normalPair);
    $jobID_and_Pfolder[0] = $jobID_and_Pfolder2[0] . ',' . @jobID_and_Pfolder[0]; 
    $jobID_and_Pfolder[1] = $jobID_and_Pfolder[1];
    $jobID_and_Pfolder[2] = $jobID_and_Pfolder2[1];
