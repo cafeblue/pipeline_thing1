@@ -245,7 +245,7 @@ sub cancerT {
  gatkQscoreRecalibration:   @jobID_and_Pfolder   = &gatkQscoreRecalibration(@jobID_and_Pfolder);
  gatkCovCalGP:                                     &gatkCovCalGP(@jobID_and_Pfolder);
  muTect2:                   @jobID_and_Pfolder2  = &muTect2(@jobID_and_Pfolder, $normalPair); 
- muTect2Combine:            @jobID_and_Pfolder2  = &muTect2Combine(@jobID_and_Pfolder2); 
+ muTect2Combine:            @jobID_and_Pfolder2  = &muTect2Combine(@jobID_and_Pfolder2, $normalPair); 
  muTect:                    @jobID_and_Pfolder   = &muTect(@jobID_and_Pfolder, $normalPair);
  muTectCombine:             @jobID_and_Pfolder   = &muTectCombine(@jobID_and_Pfolder, $normalPair);
    $jobID_and_Pfolder[0] = $jobID_and_Pfolder2[0] . ',' . @jobID_and_Pfolder[0]; 
