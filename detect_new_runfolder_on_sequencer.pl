@@ -1,4 +1,8 @@
 #! /bin/env perl
+# Function: This script detects any new flowcell folder running on the sequencer, reads in the 
+#     RunInfo.xml file to input the run information into thing1JobStatus
+# Date: Nov 18, 2016
+# For any issues please contact lynette.lau@sickkids.ca or weiw.wang@sickkids.ca
 
 use strict;
 use warnings;
@@ -13,11 +17,13 @@ my $config = Common::get_all_config($dbh);
 
 my $folders_tobe_detected = Common::get_active_runfolders($dbh);
 my @newdetected = `find $folders_tobe_detected -maxdepth 1 -name "??????_[DNM]*_????_*" -mtime -1 `;
+
 my $folder_lst = Common::cronControlPanel($dbh, "sequencer_RF", ""); 
 
 my $print_parsed = "";
 my @worklist = ();
 
+### main ###
 foreach (@newdetected) {
     next if (/\/\n$/);
     if (exists $folder_lst->{$_}) {
@@ -42,7 +48,7 @@ foreach (@worklist) {
     }
     my $cyclenum = 0;
     if ( not exists $runinfo->{'NumCycles'}) {
-        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Error: $flowcellID ", $config->{'ERROR_MSG_3'}, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
+        Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$flowcellID Error", $config->{'ERROR_MSG_3'}, $machine, "NA", $flowcellID, $config->{'EMAIL_WARNINGS'});
         next;
     }
     foreach (@{$runinfo->{'NumCycles'}}) {
@@ -54,6 +60,7 @@ foreach (@worklist) {
 }
 Common::cronControlPanel($dbh, "sequencer_RF", $print_parsed);
 
+### subfunctions ###
 sub update_database {
     my ($sourceFolder, $flowcellID, $cycleNum, $runinfo) = @_;
     $flowcellID = uc($flowcellID);
@@ -62,7 +69,7 @@ sub update_database {
     my $msg = "";
     my $test_exists = "SELECT * from thing1JobStatus where flowcellID = '" . $flowcellID . "'";
 
-    #check clinicalA
+    #check thing1JobStatus to see if the flowcell is already in the thing1JobStatus table to ensure we don't duplicate 
     my $sthstats = $dbh->prepare($test_exists) or $msg .=  "Can't query database for postprocID info: ". $dbh->errstr() . "\n";
     $sthstats->execute() or $msg .= "Can't execute query for postprocID info: " . $dbh->errstr() . "\n";
     if ($sthstats->rows() != 0) { 
@@ -71,7 +78,7 @@ sub update_database {
         return($msg);
     } 
 
-    #insert into clinicalA
+    #insert the flowcell into thing1JobStatus
     my $insert = "INSERT INTO thing1JobStatus ( flowcellID, machine, rundir, destinationDir, sequencing, cycleNum, LaneCount, SurfaceCount, SwathCount, TileCount, SectionPerLane, LanePerSection ) VALUES (\'$flowcellID\', \'$machine\', \'$sourceFolder\', \'$destDir\', \'2\', \'$cycleNum\', $runinfo->{'LaneCount'}, $runinfo->{'SurfaceCount'}, $runinfo->{'SwathCount'}, $runinfo->{'TileCount'}, $runinfo->{'SectionPerLane'}, $runinfo->{'LanePerSection'})";
     print "insert=$insert\n";
     my $sth = $dbh->prepare($insert) or $msg .=  "Can't prepare insert: ". $dbh->errstr() . "\n";
