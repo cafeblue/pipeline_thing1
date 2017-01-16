@@ -1,515 +1,200 @@
 #! /bin/env perl
 
 use strict;
+use warnings;
+use lib './lib';
 use DBI;
 use File::stat;
 use Time::localtime;
 use Time::ParseDate;
 use Time::Piece;
-use Mail::Sender;
+use Thing1::Common qw(:All);
+use Carp qw(croak);
 
-#### constent 
-my $SEQUENCERDIR = '/localhd/data/thing1/runs';
-my $SEQUENCERDIR = '/localhd/data/sequencers';
-my $FASTQ_FOLDER = '/localhd/data/thing1/fastq';
-my $SAMPLE_SHEET = '/localhd/data/sample_sheets_pl';
-my $JSUB_LOG_FOLDER = "/localhd/data/thing1/jsub_log/"; #were all the jsub and the run information is kept
-my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
-
-# open the accessDB file to retrieve the database name, host name, user name and password
-open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
-my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
-close(ACCESS_INFO);
-chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
-                       $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
-
-#### Read the barcodes #####################
-my %ilmnBarcodes = &read_barcode("/localhd/data/db_config_files/pipeline_thing1_config/barcodes.txt");
+my $dbConfigFile = $ARGV[0];
+my $dbh = Common::connect_db($dbConfigFile);
+my $config = Common::get_all_config($dbh);
+my $ilmnBarcodes = Common::get_barcode($dbh);
 
 my $machine_flowcellID_cycles_ref = &get_sequencing_list;
-my ($today, $currentTime, $currentDate) = &print_time_stamp;
+my ($today, $dummy, $currentTime, $currentDate) = Common::print_time_stamp;
 
 foreach my $ref (@$machine_flowcellID_cycles_ref) {
-    my ($flowcellID, $machine, $folder, $cycles) = @$ref;
-    print join("\t",@$ref),"\n";
+  my ($flowcellID, $machine, $folder, $cycles) = @$ref;
+  print join("\t",@$ref),"\n";
 
-    my ($cycle1, $cycleI, $cycle2) = &get_cycle_num($folder);
-    my $finalcycles = $cycle1 + $cycleI + $cycle2;
-    if ($cycles != $finalcycles) {
-        my $update = "UPDATE thing1JobStatus SET sequencing = '0' where destinationDir = '" . $folder . "'";;
-        print "sequencing failed: $update\n"; 
-        my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
-        $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
-        email_error("$folder failed. the final cycle number  $finalcycles does not equal to the initialed cycle number $cycles \n", $flowcellID, $machine);
-    }
-    else {
-        my $update = "UPDATE thing1JobStatus SET sequencing = '1' where destinationDir = '" . $folder . "'"; 
-        print "sequencing finished: $update\n";
-        &email_error("Sequencing finished successfully, demultiplexing is starting...\n", $flowcellID, $machine);
-        my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
-        $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
-        &demultiplex($folder, $machine, $flowcellID, $cycle1, $cycle2);
-    }
+  my $runinfo = Common::get_RunInfo("$folder/$config->{'SEQ_RUN_INFO_FILE'}");
+  my $finalcycles = $runinfo->{'NumCycles'}->[0] + $runinfo->{'NumCycles'}->[1] + $runinfo->{'NumCycles'}->[2];
+  if ($cycles != $finalcycles) {
+    my $update = "UPDATE thing1JobStatus SET sequencing = '0' where destinationDir = '" . $folder . "'";;
+    print "sequencing failed: $update\n";
+    my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
+    $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID run status","$folder failed. The final cycle number, $finalcycles does not equal to the initialed cycle number $cycles \n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+  } else {
+    my $update = "UPDATE thing1JobStatus SET sequencing = '1' where destinationDir = '" . $folder . "'";
+    print "sequencing finished: $update\n";
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID run status","Sequencing finished successfully, demultiplexing is starting...\n", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
+    $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
+    &demultiplexInterOp($folder, $machine, $flowcellID, $runinfo->{'NumCycles'}->[0], $runinfo->{'NumCycles'}->[2]);
+  }
 }
 
-sub demultiplex {
-    my ($folder, $machine, $flowcellID, $cycle1, $cycle2) = @_;
-    my $samplesheet = &create_sample_sheet($machine, $flowcellID, $cycle1, $cycle2);
-    my $outputfastqDir = $FASTQ_FOLDER . '/' . $machine . "_" . $flowcellID;
-    my $demultiplexCmd = "bcl2fastq -R $folder -o $outputfastqDir --sample-sheet $samplesheet";
-    my $jobDir = "demultiplex_" . $machine . '_' . $flowcellID . "_" . $currentTime;
-    # check jsub log
-    my $jsubChkCmd = "ls -d $JSUB_LOG_FOLDER/demultiplex_$machine\_$flowcellID\_* 2>/dev/null";
-    my @jsub_exists_folders = `$jsubChkCmd`;
-    if ($#jsub_exists_folders >= 0) {
-        my $msg = "folder:\n" . join("", @jsub_exists_folders) . "already exist. These folders will be deleted.\n\n";
-        foreach my $extfolder (@jsub_exists_folders) {
-            $msg .= "rm -rf $extfolder\n";
-            `rm -rf $extfolder`;
-        }
-        email_error($msg, $flowcellID, $machine);
+sub demultiplexInterOp {
+  my ($folder, $machine, $flowcellID, $cycle1, $cycle2) = @_;
+  my $machineType = $machine;
+  $machineType =~ s/_.+//;
+  my $samplesheet = &create_sample_sheet($machine, $flowcellID, $cycle1, $cycle2);
+  my $outputfastqDir = "$config->{'FASTQ_FOLDER'}" . $machine . "_" . $flowcellID;
+  my $demultiplexCmd = "bcl2fastq -R $folder -o $outputfastqDir --sample-sheet $samplesheet";
+  my $jobDir = "demultiplex_" . $machine . '_' . $flowcellID . "_" . $currentTime;
+  # check jsub log
+  my $jsubChkCmd = "ls -d $config->{'JSUB_LOG_FOLDER'}demultiplex_$machine\_$flowcellID\_* 2>/dev/null";
+  my @jsub_exists_folders = `$jsubChkCmd`;
+  if ($#jsub_exists_folders >= 0) {
+    my $msg = "folder:\n" . join("", @jsub_exists_folders) . "already exist. These folders will be deleted.\n\n";
+    foreach my $extfolder (@jsub_exists_folders) {
+      $msg .= "rm -rf $extfolder\n";
+      `rm -rf $extfolder`;
     }
-    my $demultiplexJobID = `echo "$demultiplexCmd" | /localhd/tools/jsub/jsub-5/jsub -b  $JSUB_LOG_FOLDER -j $jobDir -nn 1 -nm 72000`;
-    print "echo $demultiplexCmd | /localhd/tools/jsub/jsub-5/jsub -b  $JSUB_LOG_FOLDER -j $jobDir -nn 1 -nm 72000\n";
-    if ($demultiplexJobID =~ /(\d+).thing1.sickkids.ca/) {
-        my $jlogFolder = $JSUB_LOG_FOLDER . '/' . $jobDir;
-        my $update = "UPDATE thing1JobStatus SET demultiplexJobID = '" . $1 . "' , demultiplex = '2' , seqFolderChksum = '2', demultiplexJfolder = '" . $jlogFolder . "' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'"; 
-        print "Demultiplex is starting: $update\n";
-        my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
-        $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
-    }
-    else {
-        email_error("demultiplex job failed to be submitted.", $flowcellID, $machine);
-    }
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status", $msg, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+  }
+  my $demultiplexJobID = `echo "$demultiplexCmd" | "$config->{'JSUB'}" -b  $config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000`;
+  print "echo $demultiplexCmd | " . $config->{'JSUB'} . " -b $config->{'JSUB_LOG_FOLDER'} -j $jobDir -nn 1 -nm 72000\n";
+  if ($demultiplexJobID =~ /(\d+).$config->{'THING1_NODE'}/) {
+    my $jlogFolder = "$config->{'JSUB_LOG_FOLDER'}$jobDir";
+    my $update = "UPDATE thing1JobStatus SET demultiplexJobID = '" . $1 . "' , demultiplex = '2' , seqFolderChksum = '2', demultiplexJfolder = '" . $jlogFolder . "' where flowcellID = '" . $flowcellID . "' and machine = '" .  $machine . "'";
+    print "Demultiplex is starting: $update\n";
+    my $sth = $dbh->prepare($update) or die "Can't prepare update: ". $dbh->errstr() . "\n";
+    $sth->execute() or die "Can't execute update: " . $dbh->errstr() . "\n";
+  } else {
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status", "Demultiplexing job failed to be submitted.", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+  }
+
+  my $interOpJobDir = $jobDir;
+  $interOpJobDir=~s/demultiplex_/interOp_/gi;
+  my $outputInterOpFile = "$config->{'INTEROP_FOLDER'}" . $machine . "_" . $flowcellID . ".txt";
+  my $interOpCmd = "./interOp.pl $dbConfigFile  $folder  $flowcellID  $outputInterOpFile $machineType";
+  print $interOpCmd,"\n";
+  `$interOpCmd`;
+  if ($? != 0) {
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID interOp status", "interOp Job failed with exitcode $?", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+  } 
 }
 
 sub create_sample_sheet {
-    my ($machine, $flowcellID, $cycle1, $cycle2) = @_;
-    my $machineType = "";
-    my $errlog = "";
-    my @old_samplesheet = ();
-    if ($machine =~ /hiseq/) {
-        $machineType = "HiSeq";
-    }
-    elsif ($machine =~ /nextseq/) {
-        $machineType = 'NextSeq';
-    }
-    elsif ($machine =~ /miseq/) {
-        $machineType = 'MiSeq';
+  my ($machine, $flowcellID, $cycle1, $cycle2) = @_;
+  my $machineType = $machine;
+  $machineType =~ s/_.+//;
+  my $errlog = "";
+  my @old_samplesheet = ();
+
+  my $filename = "$config->{'SAMPLE_SHEET'}$machine\_$flowcellID.csv";
+  if ( -e "$filename" ) {
+    $errlog .= "samplesheet already exists: $filename\n";
+    @old_samplesheet = `tail -n +2  $filename`;
+  }
+
+  my $csvlines = "";
+  my $db_query = "SELECT sampleID,barcode,lane,barcode2 from sampleSheet where flowcell_ID = \'$flowcellID\'" ;
+  my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+  $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+  if ($sthQNS->rows() != 0) { #no samples are being currently sequenced
+    $csvlines .= eval($config->{"SAMPLESHEET_HEADER_$machineType"}); 
+    if ($config->{"SAMPLESHEET_HEADER_$machineType"} =~ /Lane/) {
+      while (my @data_line = $sthQNS->fetchrow_array()) {
+        foreach my $lane (split(/,/, $data_line[2])) {
+          $csvlines .= eval($config->{"SAMPLESHEET_LINE_$machineType"}); 
+        }
+      }
     }
     else {
-        die "machine can't be recognized: $machine\n";
+      while (my @data_line = $sthQNS->fetchrow_array()) {
+        $csvlines .= eval($config->{"SAMPLESHEET_LINE_$machineType"}); 
+      }
     }
+  } else {
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status","No sampleID could be found for $flowcellID in the database, table sampleSheet", $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    croak "no sample could be found for $flowcellID \n";
+  }
 
-    my $filename = "$SAMPLE_SHEET/$machine\_$flowcellID.csv";
-    if ( -e "$filename" ) {
-        $errlog .= "samplesheet already exists: $filename\n";
-        @old_samplesheet = `tail -n +2  $filename`;
+  my $check_ident = 0;
+  if ($#old_samplesheet > -1) {
+    my %test;
+    foreach (@old_samplesheet) {
+      chomp;
+      $test{$_} = 0;
     }
+    foreach (split(/\n/,$csvlines)) {
+      if (not exists $test{$_}) {
+        $errlog .= "line\n$_\ncan't be found in the old samplesheet!\n";
+        $check_ident = 1;
+      }
+    }
+  }
 
-    my $csvlines = "";
-    my $db_query = "SELECT sampleID,barcode,lane,barcode2 from sampleSheet where flowcell_ID = \'$flowcellID\'" ;
-    my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-    $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() != 0) {  #no samples are being currently sequenced
-        if ($machineType eq 'MiSeq') {
-            $csvlines .= "Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,I5_Index_ID,index2,Manifest,GenomeFolder,Sample_Project,Description\n";
-            while (my @data_line = $sthQNS->fetchrow_array()) {
-                #foreach my $lane (split(/,/, $data_line[2])) {
-                    $csvlines .= $data_line[0] . ",,,," . $data_line[1] . "," .  $ilmnBarcodes{$data_line[1]} . "," . $data_line[3] . "," .  $ilmnBarcodes{$data_line[3]} . ",,,,\n";
-                #}
-            }
-        }
-        elsif ($machineType eq 'HiSeq') {
-            $csvlines .= "Lane,Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description\n";
-            while (my @data_line = $sthQNS->fetchrow_array()) {
-                foreach my $lane (split(/,/, $data_line[2])) {
-                    $csvlines .= $lane . "," .$data_line[0] . ",,,,," . $ilmnBarcodes{$data_line[1]} . ",,\n";
-                }
-            }
-        }
-        elsif ($machineType eq 'NextSeq') {
-            $csvlines .= "Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description\n";
-            while (my @data_line = $sthQNS->fetchrow_array()) {
-                $csvlines .= $data_line[0] . ",,,," . $data_line[1] . "," . $ilmnBarcodes{$data_line[1]} . ",,\n";
-            }
-        }
-    }
-    else {
-        email_error("no sample could be found.", $flowcellID, $machine);
-        die "no sample could be found for $flowcellID \n";
-    }
-
-    my $check_ident = 0;
-    if ($#old_samplesheet > -1) {
-        my %test;
-        foreach (@old_samplesheet) {
-            chomp;
-            $test{$_} = 0;
-        }
-        foreach (split(/\n/,$csvlines)) {
-            if (not exists $test{$_}) {
-                $errlog .= "line\n$_\ncan't be found in the old samplesheet!\n";
-                $check_ident = 1;
-            }
-        }
-    }
-
-    if ($check_ident == 1) {
-        email_error($errlog, $flowcellID, $machine);
-        die $errlog;
-    }
-    elsif ($check_ident == 0 && $errlog ne '') {
-        email_error($errlog, $flowcellID, $machine);
-        return $filename;
-    }
-
-    open (CSV, ">$filename") or die "failed to open file $filename";
-    print CSV "[Header]\nIEMFileVersion,4\nDate,$currentDate\nWorkflow,GenerateFASTQ\nApplication,$machineType FASTQ Only\nAssay,TruSeq HT\nDescription,\nChemistry,Default\n\n[Reads]\n$cycle1\n$cycle2\n\n[Settings]\nAdapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA\nAdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT\n\n[Data]\n";
-    print CSV $csvlines;
-
-    ########    HiSeq2500 samplesheet  #######
-    #Lane,Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description
-    #1,266818,,,,,AGATCGCA,,
-    #2,266818,,,,,AGATCGCA,,
-    #1,262997,,,,,TGAAGAGA,,
-    #2,262997,,,,,TGAAGAGA,,
-    #
-    #
-    ########    NextSeq500  samplesheet #####
-    #Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description
-    #245705,,,,E03,ACCTCCAA,,
-    #202214,,,,G03,ACTATGCA,,
-    #201192,,,,H03,CGGATTGC,,
-    #
-    #
+  if ($check_ident == 1) {
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status",$errlog, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
+    croak $errlog;
+  } elsif ($check_ident == 0 && $errlog ne '') {
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$machine $flowcellID demultiplex status",$errlog, $machine, $today, $flowcellID, $config->{'EMAIL_WARNINGS'});
     return $filename;
+  }
+
+  open (CSV, ">$filename") or die "failed to open file $filename";
+  print CSV eval($config->{'SEQ_SAMPLESHEET_INFO'}),"\n"; 
+  print CSV $csvlines;
+  return $filename;
 }
 
 
 sub check_status {
-    my ($folder, $cycles) = @_;
+  my ($folder, $cycles, $machine, $LaneCount, $SurfaceCount, $SwathCount, $TileCount) = @_;
+  $machine =~ s/_.+//;
+  $TileCount = sprintf('%02d', $TileCount);
+  my $checkPoint_file = $folder . eval(eval('$config->{"LAST_BCL_$machine"}'));
+  my $complete_file  = $folder . $config->{"COMPLETE_FILE_$machine"};
 
-    if ($folder =~ /nextseq500_/) {
-        if (-e "$folder/Data/Intensities/BaseCalls/L004/0158.bcl.bgzf") {
-            my $retval = time();
-            my $localTime = gmtime( $retval );
-            my $filetimestamp;
-            if ( -e "$folder/RunCompletionStatus.xml") {
-                $filetimestamp = ctime(stat("$folder/RunCompletionStatus.xml")->mtime);
-            }
-            else {
-                return 2;
-            }
-    
-            my $parseLocalTime = parsedate($localTime);
-            my $parseFileTime = parsedate($filetimestamp);
-            my $diff = $parseLocalTime - $parseFileTime;
-    
-            if ($diff > 600) {
-                return 1;
-            }
-            else {
-                return 2;
-            }
-        }
-        else {
-            return 2;
-        }
-    }
-    elsif ($folder =~ /hiseq/) {
-        if (-e "$folder/Data/Intensities/BaseCalls/L002/C$cycles.1/s_2_2216.bcl.gz") {
-            my $retval = time();
-            my $localTime = gmtime( $retval );
-            my $filetimestamp;
-            if ( -e "$folder/RTAComplete.txt") {
-                $filetimestamp = ctime(stat("$folder/RTAComplete.txt")->mtime);
-            }
-            else {
-                return 2;
-            }
-    
-            my $parseLocalTime = parsedate($localTime);
-            my $parseFileTime = parsedate($filetimestamp);
-            my $diff = $parseLocalTime - $parseFileTime;
-    
-            if ($diff > 600) {
-                return 1;
-            }
-            else {
-                return 2;
-            }
-        }
-        else {
-            return 2;
-        }
-    }
-    elsif ($folder =~ /miseq/) {
-        if (-e "$folder/Data/Intensities/BaseCalls/L001/C$cycles.1/s_1_2104.bcl") {
-            my $retval = time();
-            my $localTime = gmtime( $retval );
-            my $filetimestamp;
-            if ( -e "$folder/RTAComplete.txt") {
-                $filetimestamp = ctime(stat("$folder/RTAComplete.txt")->mtime);
-            }
-            else {
-                return 2;
-            }
-    
-            my $parseLocalTime = parsedate($localTime);
-            my $parseFileTime = parsedate($filetimestamp);
-            my $diff = $parseLocalTime - $parseFileTime;
-    
-            if ($diff > 600) {
-                return 1;
-            }
-            else {
-                return 2;
-            }
-        }
-        else {
-            return 2;
-        }
-    }
-}
+  if (-e $checkPoint_file) {
+      my $retval = time();
+      my $localTime = gmtime( $retval );
+      my $filetimestamp;
+      if ( -e $complete_file) {
+        $filetimestamp = ctime(stat($complete_file)->mtime);
+      } else {
+        return 2;
+      }
 
-sub get_cycle_num {
-    my $folder = shift;
-    my @cycles = ();
-    if (-e "$folder/RunInfo.xml") {
-        my @lines = ` grep "NumCycles=" $folder/RunInfo.xml`;
-        foreach (@lines) {
-            if (/NumCycles="(\d+)"/) {
-                push @cycles, $1;
-            }
-        }
-        return(@cycles);
-    }
-    else {
-        return(0,0,0);
-    }
+      my $parseLocalTime = parsedate($localTime);
+      my $parseFileTime = parsedate($filetimestamp);
+      my $diff = $parseLocalTime - $parseFileTime;
+
+      if ($diff > 600) {
+        return 1;
+      }
+  } 
+  return 2;
 }
 
 sub get_sequencing_list {
-    my $db_query = 'SELECT flowcellID,machine,destinationDir,cycleNum from thing1JobStatus where sequencing ="2"';
-    my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
-    my $return_ref;
-    $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() != 0) { # sequencing... 
-        my $flag = 0;
-        while (my $data_ref = $sthQNS->fetchrow_arrayref()) {
-            my $job_status = &check_status($data_ref->[2], $data_ref->[3]);
-            if ($job_status == 1) {
-                my @this = @$data_ref;
-                push @$return_ref,\@this;
-                $flag++;
-            }
-        }
-        if ($flag > 0) {
-            return($return_ref);
-        }
-        else {
-            exit(0);
-        }
+  my $db_query = 'SELECT flowcellID,machine,destinationDir,cycleNum,LaneCount,SurfaceCount,SwathCount,TileCount,SectionPerLane,LanePerSection from thing1JobStatus where sequencing ="2"';
+  my $sthQNS = $dbh->prepare($db_query) or die "Can't query database for new samples: ". $dbh->errstr() . "\n";
+  my $return_ref;
+  $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+  if ($sthQNS->rows() != 0) {   # sequencing...
+    my $flag = 0;
+    while (my $data_ref = $sthQNS->fetchrow_arrayref()) {
+      my $job_status = &check_status($data_ref->[2], $data_ref->[3], $data_ref->[1], $data_ref->[4], $data_ref->[5], $data_ref->[6], $data_ref->[7]); ###check back to code
+      if ($job_status == 1) {
+        my @this = @$data_ref;
+        push @$return_ref,\@this;
+        $flag++;
+      }
     }
-    else {
-        exit(0);
+    if ($flag > 0) {
+      return($return_ref);
     }
+  }
+  exit(0);
 }
-
-sub read_barcode {
-    my $file = shift;
-    my %bc;
-    open (BARCODE, "$file") or die $!;
-    while (<BARCODE>) {
-        chomp;
-        my ($id, $bc) = split(/\t/);
-        $bc{$id} = $bc;
-    }
-    return(%bc);
-}
-
-sub email_list {
-    my $infile = shift;
-    my %email;
-    open (INF, "$infile") or die $!;
-    while (<INF>) {
-        chomp;
-        my ($type, $lst) = split(/\t/);
-        $email{$type} = $lst;
-    }
-    return(\%email);
-}
-
-sub email_error {
-    my ($errorMsg, $flowcellID, $machine) = @_;
-    print STDERR $errorMsg ;
-    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
-    my $sender = Mail::Sender->new();
-    my $mail   = {
-        smtp                 => 'localhost',
-        from                 => 'notice@thing1.sickkids.ca',
-        to                   => $email_lst_ref->{'SAMPLESHEET'},  
-        subject              => "Status of flowcell $flowcellID on Sequencer $machine",
-        ctype                => 'text/plain; charset=utf-8',
-        skip_bad_recipients  => 1,
-        msg                  => $errorMsg 
-    };
-    my $ret =  $sender->MailMsg($mail);
-}
-
-sub print_time_stamp {
-    my $retval = time();
-    my $yetval = $retval - 86400;
-    $yetval = localtime($yetval);
-    my $localTime = localtime( $retval );
-    my $time = Time::Piece->strptime($localTime, '%a %b %d %H:%M:%S %Y');
-    my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
-    print "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-    print STDERR "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-    return ($localTime->strftime('%Y%m%d'), $localTime->strftime('%Y%m%d%H%M%S'), $localTime->strftime('%m/%d/%Y'));
-}
-
-
-__DATA__
-A01	ATGCCTAA
-A04	AACTCACC
-A07	ACGTATCA
-A10	AATGTTGC
-B01	GAATCTGA
-B04	GCTAACGA
-B07	GTCTGTCA
-B10	TGAAGAGA
-C01	AACGTGAT
-C04	CAGATCTG
-C07	CTAAGGTC
-C10	AGATCGCA
-D01	CACTTCGA
-D04	ATCCTGTA
-D07	CGACACAC
-D10	AAGAGATC
-E01	GCCAAGAC
-E04	CTGTAGCC
-E07	CCGTGAGA
-E10	CAACCACA
-F01	GACTAGTA
-F04	GCTCGGTA
-F07	GTGTTCTA
-F10	TGGAACAA
-G01	ATTGGCTC
-G04	ACACGACC
-G07	CAATGGAA
-G10	CCTCTATC
-H01	GATGAATC
-H04	AGTCACTA
-H07	AGCACCTC
-H10	ACAGATTC
-A02	AGCAGGAA
-A05	AACGCTTA
-A08	CAGCGTTA
-A11	CCAGTTCA
-B02	GAGCTGAA
-B05	GGAGAACA
-B08	TAGGATGA
-B11	TGGCTTCA
-C02	AAACATCG
-C05	CATCAAGT
-C08	AGTGGTCA
-C11	CGACTGGA
-D02	GAGTTAGC
-D05	AAGGTACA
-D08	ACAGCAGA
-D11	CAAGACTA
-E02	CGAACTTA
-E05	CGCTGATC
-E08	CATACCAA
-E11	CCTCCTGA
-F02	GATAGACA
-F05	GGTGCGAA
-F08	TATCAGCA
-F11	TGGTGGTA
-G02	AAGGACAC
-G05	CCTAATCC
-G08	ATAGCGAC
-G11	AACAACCA
-H02	GACAGTGC
-H05	CTGAGCCA
-H08	ACGCTCGA
-H11	AATCCGTC
-A03	ATCATTCC
-A06	AGCCATGC
-A09	CTCAATGA
-A12	CAAGGAGC
-B03	GCCACATA
-B06	GTACGCAA
-B09	TCCGTCTA
-B12	TTCACGCA
-C03	ACCACTGT
-C06	AGTACAAG
-C09	AGGCTAAC
-C12	CACCTTAC
-D03	CTGGCATA
-D06	ACATTGGC
-D09	CCATCCTC
-D12	AAGACGGA
-E03	ACCTCCAA
-E06	ATTGAGGA
-E09	AGATGTAC
-E12	ACACAGAA
-F03	GCGAGTAA
-F06	GTCGTAGA
-F09	TCTTCACA
-F12	GAACAGGC
-G03	ACTATGCA
-G06	AGAGTCAA
-G09	CCGAAGTA
-G12	AACCGAGA
-H03	CGGATTGC
-H06	CCGACAAC
-H09	CGCATACA
-H12	ACAAGCTA
-1	ATCACG
-2	CGATGT
-3	TTAGGC
-4	TGACCA
-5	ACAGTG
-6	GCCAAT
-7	CAGATC
-8	ACTTGA
-9	GATCAG
-10	TAGCTT
-11	GGCTAC
-12	CTTGTA
-13	AGTCAA
-14	AGTTCC
-15	ATGTCA
-16	CCGTCC
-18	GTCCGC
-19	GTGAAA
-20	GTGGCC
-21	GTTTCG
-22	CGTACG
-23	GAGTGG
-25	ACTGAT
-27	ATTCCT
-A501	TGAACCTT
-A502	TGCTAAGT
-A503	TGTTCTCT
-A504	TAAGACAC
-A505	CTAATCGA
-A506	CTAGAACA
-A507	TAAGTTCC
-A508	TAGACCTA
-A701	ATCACGAC
-A702	ACAGTGGT
-A703	CAGATCCA
-A704	ACAAACGG
-A705	ACCCAGCA
-A706	AACCCCTC
-A707	CCCAACCT
-A708	CACCACAC
-A709	GAAACCCA
-A710	TGTGACCA
-A711	AGGGTCAA
-A712	AGGAGTGG

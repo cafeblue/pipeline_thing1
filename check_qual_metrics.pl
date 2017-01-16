@@ -1,187 +1,132 @@
 #! /bin/env perl
+# Function: This script checks the sample quality metrics and sends out a fail or pass email.
+# Date: Nov, 17, 2016
+# Fur any issues please contact lynette.lau@sickkids.ca or weiw.wang@sickkids.ca
 
 use strict;
+use warnings;
+use lib './lib';
 use DBI;
-use Time::localtime;
-use Time::ParseDate;
-use Time::Piece;
-use Mail::Sender;
+use Thing1::Common qw(:All);
+use Carp qw(croak);
 
-#### constant variables for HPF ############
-my $HPF_RUNNING_FOLDER = '/hpf/largeprojects/pray/clinical/samples/illumina';
-my $PIPELINE_THING1_ROOT = '/home/pipeline/pipeline_thing1_v5';
-my $PIPELINE_HPF_ROOT = '/home/wei.wang/pipeline_hpf_v5';
-my $SSHDATA    = 'ssh -i /home/pipeline/.ssh/id_sra_thing1 wei.wang@data1.ccm.sickkids.ca "' . $PIPELINE_HPF_ROOT . '/cat_sql.sh ';
-my $SQL_JOBLST = "'annovar', 'gatkCovCalExomeTargets', 'gatkCovCalGP', 'gatkFilteredRecalVariant', 'offtargetChr1Counting', 'picardMarkDup'";
-#my %FILTERS_MAP = ( "meanCvgExome"          => " >= 80", "lowCovExonNum"         => " <= 6000", 
-#"meanCvgGP"             => " >= 80" );
-my %FILTERS = ( 
-    "yieldMB"               => { "hiseq2500" => [" >= 6000"],            "nextseq500" => [" >= 6000"],            "miseqdx" => [" >= 20"]},
-    "perQ30Bases"           => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 75"],              "miseqdx" => [" >= 80"]},
-    "numReads"              => { "hiseq2500" => [" >= 30000000"],        "nextseq500" => [" >= 25000000"],        "miseqdx" => [" >= 70000 "]},
-    "lowCovATRatio"         => { "hiseq2500" => [" <= 1"],               "nextseq500" => [" <= 1"],               "miseqdx" => [" >= 0"]},
-    "perbasesAbove10XGP"    => { "hiseq2500" => [" >= 95"],              "nextseq500" => [" >= 95"],              "miseqdx" => [" >= 98"]}, 
-    "perbasesAbove20XGP"    => { "hiseq2500" => [" >= 90"],              "nextseq500" => [" >= 90"],              "miseqdx" => [" >= 96"]}, 
-    "perbasesAbove10XExome" => { "hiseq2500" => [" >= 95"],              "nextseq500" => [" >= 95"],              "miseqdx" => [" >= 0"]}, 
-    "perbasesAbove20XExome" => { "hiseq2500" => [" >= 90"],              "nextseq500" => [" >= 90"],              "miseqdx" => [" >= 0"]}, 
-    "meanCvgExome"          => { "hiseq2500" => [" >= 80", " <= 200"],   "nextseq500" => [" >= 80", " <= 300"],   "miseqdx" => [" >= 120"]}, 
-    "lowCovExonNum"         => { "hiseq2500" => [" <= 6000"],            "nextseq500" => [" <= 6000"],            "miseqdx" => [" >= 0"]}, 
-    "meanCvgGP"             => { "hiseq2500" => [" >= 80"],              "nextseq500" => [" >= 80"],              "miseqdx" => [" >= 120"]}); 
-
-my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
-
-open(ACCESS_INFO, "</home/pipeline/.clinicalA.cnf") || die "Can't access login credentials";
-# assign the values in the accessDB file to the variables
-my $host = <ACCESS_INFO>;
-my $port = <ACCESS_INFO>;
-my $user = <ACCESS_INFO>;
-my $pass = <ACCESS_INFO>;
-my $db = <ACCESS_INFO>;
-close(ACCESS_INFO);
-chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port",
-                       $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
-
-my $idpair_ref = &check_finished_samples;
-my ($today, $yesterday) = &print_time_stamp();
-foreach my $idpair (@$idpair_ref) {
-    &update_qualMetrics(@$idpair);
+my $dbh = Common::connect_db($ARGV[0]);
+my $config = Common::get_all_config($dbh);
+my $pipelineHPF = Common::get_pipelineHPF($dbh);
+my $encoding = Common::get_encoding($dbh, "sampleInfo");
+my $hpfDoneStatus = $encoding->{'currentStatus'}->{'Pipeline Completed Successfully'}->{'code'};
+#print "hpfDoneStatus=$hpfDoneStatus\n";
+### main ###
+my $sampleInfo_ref = Common::get_sampleInfo($dbh, $hpfDoneStatus);
+Common::print_time_stamp();
+foreach my $postprocID (keys %$sampleInfo_ref) {
+  &update_qualMetrics($sampleInfo_ref->{$postprocID});
+  &check_gender($postprocID, $dbh);
 }
 
 ###########################################
 ######          Subroutines          ######
 ###########################################
-sub check_finished_samples {
-    my $query_running_sample = "SELECT sampleID,postprocID FROM sampleInfo WHERE currentStatus = '4';";
-    my $sthQNS = $dbh->prepare($query_running_sample) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
-    $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
-    if ($sthQNS->rows() == 0) {  
-        exit(0);
-    }
-    else {
-        my $data_ref = $sthQNS->fetchall_arrayref;
-        return($data_ref);
-    }
-}
-
+#updates the quality metrics check and currentStatus and ensures all the jobs ran have finished successfully
 sub update_qualMetrics {
-    my ($sampleID,$postprocID) = @_;
-    my $query = "SELECT jobName FROM hpfJobStatus WHERE jobName IN ($SQL_JOBLST) AND exitcode = '0' AND sampleID = '$sampleID' AND postprocID = '$postprocID' ";
-    my $sthQUF = $dbh->prepare($query);
-    $sthQUF->execute();
-    if ($sthQUF->rows() != 0) {
-        my @joblst = ();
-        my $data_ref = $sthQUF->fetchall_arrayref;
-        foreach my $tmp (@$data_ref) {
-            push @joblst, @$tmp;
-        }
-        my $joblst = join(" ", @joblst);
-        my $cmd = "$SSHDATA $HPF_RUNNING_FOLDER $sampleID-$postprocID $joblst\"";
-        my @updates = `$cmd`;
-        if ($? != 0) {
-            my $msg = "There is an error running the following command:\n\n$cmd\n";
-            print STDERR $msg;
-            email_error($msg);
-            return 2;
-        }
+  my $sampleInfo = shift;
+  my $query = "SELECT jobName FROM hpfJobStatus WHERE jobName IN ($pipelineHPF->{$sampleInfo->{'pipeID'}}->{'sql_programs'}) AND exitcode = '0' AND sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}' ";
+  my $sthQUF = $dbh->prepare($query);
+  $sthQUF->execute() or die "Can't execute select for hpfJobStatus: " . $dbh->errstr() . "\n";
+  if ($sthQUF->rows() != 0) {
+    my @joblst = ();
+    my $data_ref = $sthQUF->fetchall_arrayref;
+    foreach my $tmp (@$data_ref) {
+      push @joblst, @$tmp;
+    }
+    my $joblst = join(" ", @joblst);
+    my $cmd = "ssh -i $config->{'RSYNCCMD_FILE'} $config->{'HPF_USERNAME'}" . '@' . "$config->{'HPF_DATA_NODE'} \"$config->{'PIPELINE_HPF_ROOT'}/cat_sql.sh $config->{'HPF_RUNNING_FOLDER'} $sampleInfo->{'sampleID'}-$sampleInfo->{'postprocID'} $joblst\"";
+    my @updates = `$cmd`;
+    my $updateErrors = $?;
+    if ($updateErrors != 0) {
+      my $msg = "There is an error running the following command:\n\n$cmd\n";
+      print STDERR $msg;
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      return 2;
+    }
 
-        &run_update(@updates);
-        $query = "UPDATE sampleInfo SET currentStatus = '" . &check_qual($sampleID, $postprocID) . "' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
-        print $query,"\n";
-        $sthQUF = $dbh->prepare($query);
-        $sthQUF->execute();
+    foreach my $update_sql (@updates) {
+      my $sthQUQ = $dbh->prepare($update_sql);
+      $sthQUQ->execute() or die "Can't execute update for qualMetrics: " . $dbh->errstr() . "\n";
     }
-    else {
-        my $msg = "No successful job generate sql file for sampleID $sampleID postprocID $postprocID ? it is impossible!!!!\n";
-        print STDERR $msg;
-        email_error($msg);
-        return 2;
-    }
+    $query = "UPDATE sampleInfo SET currentStatus = '" . &check_qual($sampleInfo->{'postprocID'}, $dbh) . "' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'";
+    print $query,"\n";
+    $sthQUF = $dbh->prepare($query);
+    $sthQUF->execute() or die "Can't execute update for sampleInfo: " . $dbh->errstr() . "\n";
+  } else {
+    my $msg = "No successful jobs generated sql files for sampleID $sampleInfo->{'sampleID'} (ppID =  $sampleInfo->{'postprocID'}) ? It is impossible!!!!\n";
+    print STDERR $msg;
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+    return 2;
+  }
 }
 
-sub run_update {
-    foreach my $update_sql (@_) {
-        my $sthQUQ = $dbh->prepare($update_sql);
-        $sthQUQ->execute();
-    }
-}
-
+##checks to see if the sample has passed qc metrics based on machine and capture kit
 sub check_qual {
-    my ($sampleID, $postprocID) = @_;
-    my $msg = "";
+  my ($postprocID, $dbh) = @_;
+  my $sthQNS = $dbh->prepare("SELECT * from sampleInfo where postprocID = '$postprocID'");
+  $sthQNS->execute() or die "Can't execute query for new samples: " . $dbh->errstr() . "\n";
+  my $sampleInfo = $sthQNS->fetchrow_hashref;
+  my $machineType = $sampleInfo->{"machine"};
+  $machineType =~ s/_.+//;
 
-    my $query = "SELECT ss.machine,si.genePanelVer,si.meanCvgExome,lowCovExonNum,si.perbasesAbove10XExome,si.perbasesAbove20XExome,si.yieldMB,si.perQ30Bases,si.numReads,si.perbasesAbove10XGP,si.perbasesAbove20XGP,si.meanCvgGP,si.offTargetRatioChr1,si.lowCovATRatio,si.perPCRdup FROM sampleInfo AS si INNER JOIN sampleSheet AS ss ON (ss.flowcell_ID = si.flowcellID AND si.sampleID = ss.sampleID) WHERE si.sampleID = '$sampleID' AND si.postprocID = '$postprocID';";
-    my $sth_qual = $dbh->prepare($query) or die "Failed to prepare the query: $query\n";
-    $sth_qual->execute();
-    my $qual_ref = $sth_qual->fetchrow_hashref;
-    my $machine = $qual_ref->{"machine"};
-    $qual_ref->{"machine"} =~ s/_.+//;
-
-    ######  ignore all the cancer samples   #######
-    if ($qual_ref->{"genePanelVer"} =~ /cancer/) {
-        return 6;
-    }
-    #foreach my $keys (keys %FILTERS_MAP) {
-    #    if (not eval ($qual_ref->{$keys} . $FILTERS_MAP{$keys})) {
-    #        $msg .= "Failed to pass the filter: " . $keys . $FILTERS_MAP{$keys} . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
-    #    }
-    #}
-    foreach my $keys (keys %FILTERS) {
-        #my @equations = map { s/^/$qual_ref->{$keys}/ ; $_} @{$FILTERS{$keys}{$qual_ref->{"machine"}}};
-        my @equations = @{$FILTERS{$keys}{$qual_ref->{"machine"}}};
-        map { s/^/$qual_ref->{$keys}/ ; $_} @equations;
-        if (not eval (join (" && ", @equations))) {
-            $msg .= "Failed to pass the filter: " . $keys . join(" && ", @{$FILTERS{$keys}{$qual_ref->{"machine"}}}) . "(" . $keys . " = " . $qual_ref->{$keys} . ")\n";
-        }
-    }
-    
-    if ($msg ne '') {
-        $msg = "sampleID $sampleID postprocID $postprocID on machine $machine flowcellID $qual_ref->{flowcellID} has finished analysis using gene panel, $qual_ref->{genePanelVer}. Unfortunately, it has failed the quality thresholds for exome coverage - if the sample doesn't fail the percent targets it will be up to the lab directors to push the sample through. Please check the following linkage\nhttp://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary\n\n" . $msg;
-        email_error($msg, "quality");
-        return 7;
-    }
-    return 6;
+  my $msg = Common::qc_sample($sampleInfo->{'sampleID'}, $machineType, $sampleInfo->{'captureKit'}, $sampleInfo, '2', $dbh);
+  if ($msg ne '') {
+    $msg = "$sampleInfo->{'sampleID'} with (ppID = $sampleInfo->{'postprocID'}) has finished analysis using gene panel, $sampleInfo->{'genePanelVer'}. Unfortunately, it has failed the following sample quality control thresholds:\n" . $msg .  "\nPlease contact a lab director to review sample for interpretation.\n";
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleInfo->{'sampleID'} QC Warning", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_QUALMETRICS'}, $sampleInfo->{'genePanelVer'});
+    return $encoding->{'currentStatus'}->{'QC Failed'}->{'code'};
+  }
+  return $encoding->{'currentStatus'}->{'QC Passed'}->{'code'};
 }
 
-sub email_list {
-    my $infile = shift;
-    my %email;
-    open (INF, "$infile") or die $!;
-    while (<INF>) {
-        chomp;
-        my ($type, $lst) = split(/\t/);
-        $email{$type} = $lst;
+###checks to see if input gender matches inferred gender
+sub check_gender {
+  my ($postprocID, $dbh) = @_;
+  my $queryG = "SELECT flowcellID,sampleID,gender FROM sampleInfo WHERE postprocID = '" . $postprocID . "';";
+  print "queryG=$queryG\n";
+  my $sthG = $dbh->prepare($queryG);
+  $sthG->execute() or die "Can't execute query for gender on sampleInfo: " . $dbh->errstr() . "\n";
+  if ($sthG->rows() != 0) {
+    my $data_ref = $sthG->fetchrow_hashref;
+    my $flowcellID = $data_ref->{"flowcellID"};
+    my $sampleID = $data_ref->{"sampleID"};
+    my $pred_gender = $data_ref->{"gender"};
+    my $queryInput = "SELECT sample_gender, machine FROM sampleSheet WHERE sampleID = '" . $sampleID ."'AND flowcell_ID = '" . $flowcellID ."';";
+    print "queryInput=$queryInput\n";
+    my $sthI = $dbh->prepare($queryInput);
+
+    $sthI->execute() or die "Can't execute query for gender on sampleSheet: " . $dbh->errstr() . "\n";
+    if ($sthI->rows() != 0) {
+      my $data_refI = $sthI->fetchrow_hashref;
+      my $input_gender = $data_refI->{"sample_gender"};
+      my $machine = $data_refI->{"machine"};
+      my $input_sex = "";
+      if ($input_gender eq "F") {
+        $input_sex = "XX";
+      } elsif ($input_gender eq "M") {
+        $input_sex = "XY";
+      } else {
+        ####input gender is NA or blank do not compare
+      }
+      if ($input_sex eq "" || $input_sex eq "NA" || $pred_gender eq "NA" || $pred_gender eq "") {
+	  #do nothing
+      } elsif ($input_sex ne $pred_gender) {
+          my $genderMsg = "$sampleID (ppID = $postprocID) inferred sex is $pred_gender and doesn't match the inputted gender: $input_sex.\n";
+	  print "GENDER MISMATCH msg=$genderMsg\n";
+          Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$sampleID Gender Warning", $genderMsg, $machine, "NA", $flowcellID, $config->{'EMAIL_SAMPLESHEET'});
+	  
+###Add comment to this sample
+	  my $update = "UPDATE sampleInfo SET diagnosis = 'Pipeline, ".Common::print_time_stamp() . " : Gender Mismatch. Please check with lab director before proceeding.' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
+	  print $update,"\n";
+	  my $sthU = $dbh->prepare($update);
+	  $sthU->execute() or die "Can't execute update for gender mismatch: " . $dbh->errstr() . "\n";	 
+      }
+      
     }
-    return(\%email);
-}
-
-sub email_error {
-    my ($errorMsg, $quality) = @_;
-    print STDERR $errorMsg;
-    $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
-    my $email_lst = $quality eq 'quality' ? $email_lst_ref->{'QUALMETRICS'} : $email_lst_ref->{'WARNINGS'}; 
-    my $title = $quality eq 'quality' ? 'Sample failed to pass the QC' : 'JobStatus on HPF';
-    my $sender = Mail::Sender->new();
-    my $mail   = {
-        smtp                 => 'localhost',
-        from                 => 'notice@thing1.sickkids.ca',
-        to                   => $email_lst, 
-        subject              => $title,
-        ctype                => 'text/plain; charset=utf-8',
-        skip_bad_recipients  => 1,
-        msg                  => $errorMsg 
-    };
-    my $ret =  $sender->MailMsg($mail);
-}
-
-sub print_time_stamp {
-    my $retval = time();
-    my $yetval = $retval - 86400;
-    $yetval = localtime($yetval);
-    my $localTime = localtime( $retval );
-    my $time = Time::Piece->strptime($localTime, '%a %b %d %H:%M:%S %Y');
-    my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
-    print "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-    print STDERR "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-    return ($localTime->strftime('%Y%m%d'), $yetval->strftime('%Y%m%d'));
+  }
 }

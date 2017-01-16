@@ -1,131 +1,154 @@
 #! /bin/env perl
+# Function: This scripts loads the variants into the tables variants_sub and interpretation and sends
+# out the email completed analysis if the variants were loaded successfully
+# Date: Nov 22, 2016
+# For any issues pleaes contact lynette.lau@sickkids.ca or weiw.wang@.sickkids.ca
 
 use strict;
+use warnings;
+use lib './lib';
 use DBI;
-use Time::localtime;
-use Time::ParseDate;
-use Time::Piece;
-use Mail::Sender;
+use Thing1::Common qw(:All);
+use Thing1::LoadVariants qw(:All);
+use Carp qw(croak);
 
-##########################################
-#######    CONSTANT VARIABLES     ########
-##########################################
+my $dbh = Common::connect_db($ARGV[0]);
+my $config = Common::get_all_config($dbh);
+my $pipelineHPF = Common::get_pipelineHPF($dbh);
+my $variants_code = Common::get_encoding($dbh, "variants_sub");
+my $variants_value = Common::get_encoding_code($dbh, "variants_sub");
+my $interpre_code = Common::get_encoding($dbh, "interpretation");
+my $interpre_value = Common::get_encoding_code($dbh, "interpretation");
+my $currentStatus_code = Common::get_encoding($dbh, "sampleInfo");
+my %interpretationHistory = map {$interpre_code->{'interpretation'}->{$_}->{'code'} => $_ } keys %{$interpre_code->{'interpretation'}};
 
-#read in from a config file
-my $configFile = "/localhd/data/db_config_files/pipeline_thing1_config/config_file_v5.txt";
-
-my ($RSYNCFILE, $HPF_BACKUP_FOLDER, $THING1_BACKUP_DIR,$VARIANTS_EXCEL_DIR,$host,$port,$user,$pass,$db, $msg,$cvgHomCutoff,$cvgHetCutoff, $hetRatioHigh, $hetRatioLow, $homRatioLow) = &read_in_config($configFile);
-
-my $RSYNCCMD = "rsync -Lav -e 'ssh -i " . $RSYNCFILE ."' ";
-# my $HPF_BACKUP_FOLDER = '/hpf/largeprojects/pray/clinical/backup_files_v5/variants';
-# my $THING1_BACKUP_DIR = '/localhd/data/thing1/variants';
-# my $VARIANTS_EXCEL_DIR = '/localhd/sample_variants/filter_variants_excel_v5/';
-my %interpretationHistory = ( '0' => 'Not yet viewed: ', '1' => 'Select: ', '2' => 'Pathogenic: ', '3' => 'Likely Pathogenic: ', '4' => 'VUS: ', '5' => 'Likely Benign: ', '6' => 'Benign: ', '7' => 'Unknown: ');
-my $email_lst_ref = &email_list("/home/pipeline/pipeline_thing1_config/email_list.txt");
-
-
-# open the accessDB file to retrieve the database name, host name, user name and password
-# open(ACCESS_INFO, "</home/llau/.thing1test.cnf") || die "Can't access login credentials";
-# my $host = <ACCESS_INFO>; my $port = <ACCESS_INFO>; my $user = <ACCESS_INFO>; my $pass = <ACCESS_INFO>; my $db = <ACCESS_INFO>;
-# close(ACCESS_INFO);
-# chomp($port, $host, $user, $pass, $db);
-my $dbh = DBI->connect("DBI:mysql:$db;mysql_local_infile=1;host=$host;port=$port", $user, $pass, { RaiseError => 1 } ) or die ( "Couldn't connect to database: " . DBI->errstr );
+my $RSYNCCMD = "rsync -Lav -e 'ssh -i $config->{'RSYNCCMD_FILE'}' ";
 
 ###########################################
 #######         Main                 ######
 ###########################################
-my $idpair_ref = &check_goodQuality_samples;
-&loadvariants_status('START');
-my ($today, $todayDate, $yesterdayDate) = &print_time_stamp;
-foreach my $idpair (@$idpair_ref) {
-  if (&rsync_files(@$idpair) != 0) {
-    &updateDB(1,@$idpair);
-    next;
-  }
-  &updateDB(&loadVariants2DB(@$idpair),@$idpair);
-}
-&loadvariants_status('STOP');
+
+#foreach my $try (keys %interpretationHistory) {
+#    print "try=$try\n";
+#    print "value=$interpretationHistory{$try}\n";
+#}
+
+# my ($test1 ,$test2 ,$test3) = LoadVariants::interpretation_note($dbh, "1", "100", "100", "1", "NM_000", "A", $interpre_code->{'interpretation'}->{'Not yet viewed'}->{'code'},$interpre_code->{'interpretation'}->{'Benign'}->{'code'},$interpre_code->{'interpretation'}->{'Select'}->{'code'} );
+
+# print "test1=$test1\n";
+# print "test2=$test2\n";
+# print "test3=$test3\n";
+
+# my $test4 = LoadVariants::code_polyphen_prediction("Probably Damaging", $interpre_code->{'polyphen'});
+# print "test4=$test4\n";
+
+# my $test5 = LoadVariants::code_sift_prediction("Damaging", $interpre_code->{'sift'});
+# print "test5=$test5\n";
+
+# my $test6 = LoadVariants::code_mutation_taster_prediction("Polymorphism Automatic", $interpre_code->{'mutTaster'});
+# print "test6=$test6\n";
+
+#my $value = $interpre_value->{'lowCvgExon'}->{'1'}->{'value'};
+#print "value=$value\n";
+
+  my $sampleInfo_ref = Common::get_sampleInfo($dbh, $currentStatus_code->{'currentStatus'}->{'QC Passed'}->{'code'}); 
+  Common::cronControlPanel($dbh, "load_variants", "START");
+  my ($dummy, $yesterdayDate, $todayDate, $yesterdayDate1, $today) = Common::print_time_stamp();
+   foreach my $postprocID (keys %$sampleInfo_ref) {
+     if (&rsync_files($sampleInfo_ref->{$postprocID}) != 0) {
+       &updateDB(1,$sampleInfo_ref->{$postprocID});
+       next;
+     }
+     &updateDB(&loadVariants2DB($sampleInfo_ref->{$postprocID}),$sampleInfo_ref->{$postprocID});
+   }
+ Common::cronControlPanel($dbh, "load_variants", "STOP");
 
 
 ###########################################
 ######          Subroutines          ######
 ###########################################
-sub check_goodQuality_samples {
-  my $query_running_sample = "SELECT i.sampleID,i.postprocID, i.genePanelVer,i.flowcellID,s.machine,i.testType FROM sampleInfo AS i INNER JOIN sampleSheet AS s ON i.flowcellID = s.flowcell_ID AND i.sampleID = s.sampleID WHERE i.currentStatus = '6';";
-  my $sthQNS = $dbh->prepare($query_running_sample) or die "Can't query database for running samples: ". $dbh->errstr() . "\n";
-  $sthQNS->execute() or die "Can't execute query for running samples: " . $dbh->errstr() . "\n";
-  if ($sthQNS->rows() == 0) {
-    exit(0);
-  } else {
-    my $data_ref = $sthQNS->fetchall_arrayref;
-    return($data_ref);
-  }
-}
-
 sub rsync_files {
-  my ($sampleID, $postprocID, $genePanelVer) = @_;
-  my $rsyncCMD = $RSYNCCMD . "wei.wang\@data1.ccm.sickkids.ca:" . $HPF_BACKUP_FOLDER . "/sid_$sampleID.aid_$postprocID* $THING1_BACKUP_DIR/";
+  my $sampleInfo = shift;
+  my $rsyncCMD = $RSYNCCMD . "wei.wang\@data1.ccm.sickkids.ca:" . $config->{'HPF_BACKUP_VARIANT'} . "/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}* $config->{'THING1_BACKUP_DIR'}/";
   `$rsyncCMD`;
   if ($? != 0) {
-    my $msg = "Copy the variants to thing1 for sampleID $sampleID, postprocID $postprocID failed with exitcode $?\n";
-    email_error($msg);
+    my $msg = "Copying the variants to thing1 for sampleID $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'} ) failed with exitcode: $?\n";
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF RSYNC ERROR", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
-  my $chksumCMD = "cd $THING1_BACKUP_DIR; sha256sum -c sid_$sampleID.aid_$postprocID*.sha256sum";
+  my $chksumCMD = "cd $config->{'THING1_BACKUP_DIR'}; sha256sum -c sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}*.sha256sum";
   my @chksum_output = `$chksumCMD`;
   foreach (@chksum_output) {
     if (/computed checksum did NOT match/) {
-      my $msg = "chksum of variants files from sampleID $sampleID, postprocID $postprocID failed, please check the following files:\n\n$THING1_BACKUP_DIR\n\n" . join("", @chksum_output);
-      email_error($msg);
+      my $msg = "chksum of variant files from sampleID $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'} ) failed, please check the following files:\n\n$config->{'THING1_BACKUP_DIR'}\n\n" . join("", @chksum_output);
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "HPF chksum Error: Variant Files", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
       return 1;
     }
   }
-  `ln $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID*.xlsx $VARIANTS_EXCEL_DIR/$genePanelVer.$todayDate.sid_$sampleID.annotated.filter.pID_$postprocID.xlsx`;
+  `ln $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}*.xlsx $config->{'VARIANTS_EXCEL_DIR'}/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx`;
   return 0;
 }
 
 sub updateDB {
-  my ($exitcode, $sampleID, $postprocID, $genePanelVer, $flowcellID, $machine, $testType) = @_;
-  $testType = lc($testType);
+  my ($exitcode, $sampleInfo) = @_;
   my $msg = "";
   if ($exitcode == 0) {
-    my $update_sql = $testType ne "validation" ? "UPDATE sampleInfo SET currentStatus = '8' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'" : "UPDATE sampleInfo SET currentStatus = '12' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'" ;
-    print $update_sql,"\n";
+      my $update_sql = "";
+      if ($sampleInfo->{'testType'} ne "validation") {
+	  $update_sql = "UPDATE sampleInfo SET currentStatus = '" . $currentStatus_code->{'currentStatus'}->{'Ready for Interpretation'}->{'code'} . "' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'";
+      } else {
+	  $update_sql = "UPDATE sampleInfo SET currentStatus = '". $currentStatus_code->{'currentStatus'}->{'Validation Sample'}->{'code'} . "' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'";
+      }
+    #my $update_sql = $sampleInfo->{'testType'} ne "validation" ? "UPDATE sampleInfo SET currentStatus = '8' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'" : "UPDATE sampleInfo SET currentStatus = '12' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'" ;
     my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
     $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
-    if ($msg eq '') {
-      &email_finished($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine);
-    } else {
-      email_error("Failed to update the currentStatus set to 8 for sampleID: $sampleID posrprocID: $postprocID\n\nError Message:\n$msg\n");
-    }
+      if ($msg eq '') {
+	  if ($sampleInfo->{'testType'} ne "validation") {
+	      
+	      my $cmpMsg = "$sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'}) has finished analysis using gene panel $sampleInfo->{'genePanelVer'}. The sample can be viewed through the website: http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary \n\nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx. Please login to thing1 using your Samba account in order to view this file.\n";
+	      my $cmpSub = $sampleInfo->{'sampleID'} . " Completed Analysis";
+	      #print " EMAIL OUT = $cmpSub = $cmpMsg \n";
+	      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $cmpSub, $cmpMsg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_FINISHED'},$sampleInfo->{'genePanelVer'});
+
+#Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "$cmpSub", "$cmpMsg", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNING'});
+	      #print " EMAIL SENT!\n";
+	  } else {
+	      	      my $cmpMsg = "Validation $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'}) has finished analysis using gene panel $sampleInfo->{'genePanelVer'}. The sample can be viewed through the website: http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleInfo->{'sampleID'}/$sampleInfo->{'postprocID'}/summary \n\nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$sampleInfo->{'genePanelVer'}.$todayDate.sid_$sampleInfo->{'sampleID'}.annotated.filter.pID_$sampleInfo->{'postprocID'}.xlsx. Please login to thing1 using your Samba account in order to view this file.\n";
+	      my $cmpSub = "Validation " . $sampleInfo->{'sampleID'} . " Completed Analysis";
+	      #print "EMAIL OUT = $cmpSub = $cmpMsg \n";
+	      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $cmpSub, $cmpMsg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_QUALMETRICS'},$sampleInfo->{'genePanelVer'});
+	  }
+      } else {
+	  Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variant: UpdateDB", "Failed to update the currentStatus to $currentStatus_code->{'currentStatus'}->{'Ready for Interpretation'}->{'code'} for sampleID: $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'} )\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
+      }
+    #$msg eq '' ? Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, $sampleInfo->{'sampleID'} ." Completed Analysis", $sampleInfo->{'sampleID'} . " has finished analysis using gene panel " . $sampleInfo->{'genePanelVer'} . ". The sample can be viewed through the website. http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/" . $sampleInfo->{'sampleID'} ."/" . $sampleInfo->{'postprocID'} . "/summary \nThe filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/" . $sampleInfo->{'genePanelVer'} . "." .$todayDate .".sid_" . $sampleInfo->{'sampleID'} . ".annotated.filter.pID_" . $sampleInfo->{'postprocID'} . ".xlsx.\n\nPlease login to thing1 using your Samba account in order to view this file.\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNING'}) : Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings for updateDB during loading variants", "Failed to update the currentStatus set to 8 for sampleID: $sampleInfo->{'sampleID'} posrprocID: $sampleInfo->{'postprocID'}\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
   } elsif ($exitcode == 1) {
-    my $update_sql = "UPDATE sampleInfo SET currentStatus = '9' WHERE sampleID = '$sampleID' AND postprocID = '$postprocID'";
-    print $update_sql,"\n";
-    my $sthUPS = $dbh->prepare($update_sql) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
-    $sthUPS->execute() or $msg .= "Can't execute query:\n\n$update_sql\n\n for running samples: " . $dbh->errstr() . "\n";
+    my $loadErr = "UPDATE sampleInfo SET currentStatus = '" . $currentStatus_code->{'currentStatus'}->{'Failed to Load Variants into db'}->{'code'} . "' WHERE sampleID = '$sampleInfo->{'sampleID'}' AND postprocID = '$sampleInfo->{'postprocID'}'";
+    my $sthUPS = $dbh->prepare($loadErr) or $msg .= "Can't update table sampleInfo with currentstatus: " . $dbh->errstr();
+    $sthUPS->execute() or $msg .= "Can't execute query:\n\n$sthUPS\n\n for running samples: " . $dbh->errstr() . "\n";
     if ($msg ne '') {
-      email_error("Failed to update the currentStatus set to 9 for sampleID: $sampleID posrprocID: $postprocID\n\nError Message:\n$msg\n");
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variant: UpdateDB", "Failed to update the currentStatus to $currentStatus_code->{'currentStatus'}->{'Failed to Load Variants into db'}->{'code'} for sampleID: $sampleInfo->{'sampleID'} (ppID = $sampleInfo->{'postprocID'} ).\n\nError Message:\n$msg\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     }
   } else {
-    $msg = "Impossible happened! what does the exitcode = $exitcode mean?\n";
-    email_error($msg);
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings Load Variant: UpdateDB", "The impossible happened! Exitcode = $exitcode ???\n", $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
   }
 }
 
 sub loadVariants2DB {
-  my ($sampleID, $postprocID, $genePanelVer) = @_;
+  my $sampleInfo = shift;
   my $msg = "";
-  open (FILTERED, "$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.annotated.filter.txt") or $msg .= "Failed to open file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.annotated.filter.txt\n";
-  open (VARIANTS, "$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.annotated.tsv") or $msg .= "Failed to open file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.annotated.tsv\n";
-  open (ALLFILE,  ">$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt") or $msg .= "Failed to open file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt\n";
+  #my $segdupAll = "";
+  open (FILTERED, "$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.gp_$sampleInfo->{'genePanelVer'}.annotated.filter.txt") or $msg .= "Failed to open file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.gp_$sampleInfo->{'genePanelVer'}.annotated.filter.txt\n";
+  open (VARIANTS, "$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.annotated.tsv") or $msg .= "Failed to open file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.annotated.tsv\n";
+  open (ALLFILE,  ">$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.loadvar2db.txt") or $msg .= "Failed to open file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.loadvar2db.txt\n";
   if ($msg ne '') {
-    email_error($msg);
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variant Files", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   my $lines = <FILTERED>; $lines = <FILTERED>; $lines = <FILTERED>; $lines = <FILTERED>;
   if ($lines !~ /^Coordinator/) {
-    $msg .= "Line 4 of file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.gp_$genePanelVer.annotated.filter.txt is not the HEAD line. aborting the variants load...\n";
-    email_error($msg);
+    $msg .= "Line 4 of file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.gp_$sampleInfo->{'genePanelVer'}.annotated.filter.txt is not in HEAD line. Aborting the variants load...\n";
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warnings Load Variant: Files", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   chomp($lines);
@@ -140,67 +163,119 @@ sub loadVariants2DB {
       $lines_ref->{$header[$_]} = $splitTab[$_];
     }
 
-    $lines_ref->{"ClinVar CLNDBN"} = ($lines_ref->{"ClinVar CLNDBN"} ne "" && $lines_ref->{"ClinVar CLNDBN"})  ? (split(/\"/, $lines_ref->{"ClinVar CLNDBN"}))[3] : ".";
-    $lines_ref->{"ClinVar Indels within 20bp window"} = ($lines_ref->{"ClinVar Indels within 20bp window"} && $lines_ref->{"ClinVar Indels within 20bp window"} ne "NA") ? $lines_ref->{"ClinVar Indels within 20bp window"} : ".";
-    $lines_ref->{"HGMD Indels within 20bp window"} = ($lines_ref->{"HGMD Indels within 20bp window"} && $lines_ref->{"HGMD Indels within 20bp window"} ne "NA") ? $lines_ref->{"HGMD Indels within 20bp window"} : ".";
-    ($lines_ref->{"HGMD Disease"} && $lines_ref->{"HGMD Disease"} ne "NA") ? ($lines_ref->{"HGMD Disease"} =~ s/\"//g) : ($lines_ref->{"HGMD Disease"} = ".");
-    $lines_ref->{"PolyPhen Prediction"} =  &code_polyphen_prediction($lines_ref->{"PolyPhen Prediction"});
-    $lines_ref->{"Sift Prediction"} =  &code_sift_prediction($lines_ref->{"Sift Prediction"});
-    $lines_ref->{"Mutation Taster Prediction"} =  &code_mutation_taster_prediction($lines_ref->{"Mutation Taster Prediction"});
-    $lines_ref->{"CG 46 Unrelated Allele Frequency"} = ($lines_ref->{"CG 46 Unrelated Allele Frequency"} && $lines_ref->{"CG 46 Unrelated Allele Frequency"} ne "") ? $lines_ref->{"CG 46 Unrelated Allele Frequency"} : "0.00";
-    $lines_ref->{"ESP ALL Allele Frequency"} = ($lines_ref->{"ESP ALL Allele Frequency"} && $lines_ref->{"ESP ALL Allele Frequency"} ne "") ? $lines_ref->{"ESP ALL Allele Frequency"} : "0.00";
-    $lines_ref->{"ESP African Americans Allele Frequency"} = ($lines_ref->{"ESP African Americans Allele Frequency"} && $lines_ref->{"ESP African Americans Allele Frequency"} ne "") ? $lines_ref->{"ESP African Americans Allele Frequency"} : "0.00";
-    $lines_ref->{"ESP European American Allele Frequency"} = ($lines_ref->{"ESP European American Allele Frequency"} && $lines_ref->{"ESP European American Allele Frequency"} ne "") ? $lines_ref->{"ESP European American Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G All Allele Frequency"} = ($lines_ref->{"1000G All Allele Frequency"} && $lines_ref->{"1000G All Allele Frequency"} ne "") ? $lines_ref->{"1000G All Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G African Allele Frequency"} = ($lines_ref->{"1000G African Allele Frequency"} && $lines_ref->{"1000G African Allele Frequency"} ne "") ? $lines_ref->{"1000G African Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G American Allele Frequency"} = ($lines_ref->{"1000G American Allele Frequency"} && $lines_ref->{"1000G American Allele Frequency"} ne "") ? $lines_ref->{"1000G American Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G East Asian Allele Frequency"} = ($lines_ref->{"1000G East Asian Allele Frequency"} && $lines_ref->{"1000G East Asian Allele Frequency"} ne "") ? $lines_ref->{"1000G East Asian Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G South Asian Allele Frequency"} = ($lines_ref->{"1000G South Asian Allele Frequency"} && $lines_ref->{"1000G South Asian Allele Frequency"} ne "") ? $lines_ref->{"1000G South Asian Allele Frequency"} : "0.00";
-    $lines_ref->{"1000G European Allele Frequency"} = ($lines_ref->{"1000G European Allele Frequency"} && $lines_ref->{"1000G European Allele Frequency"} ne "") ? $lines_ref->{"1000G European Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC All Allele Frequency"} = ($lines_ref->{"ExAC All Allele Frequency"} && $lines_ref->{"ExAC All Allele Frequency"} ne "") ? $lines_ref->{"ExAC All Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC AFR Allele Frequency"} = ($lines_ref->{"ExAC AFR Allele Frequency"} && $lines_ref->{"ExAC AFR Allele Frequency"} ne "") ? $lines_ref->{"ExAC AFR Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC AMR Allele Frequency"} = ($lines_ref->{"ExAC AMR Allele Frequency"} && $lines_ref->{"ExAC AMR Allele Frequency"} ne "") ? $lines_ref->{"ExAC AMR Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC EAS Allele Frequency"} = ($lines_ref->{"ExAC EAS Allele Frequency"} && $lines_ref->{"ExAC EAS Allele Frequency"} ne "") ? $lines_ref->{"ExAC EAS Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC FIN Allele Frequency"} = ($lines_ref->{"ExAC FIN Allele Frequency"} && $lines_ref->{"ExAC FIN Allele Frequency"} ne "") ? $lines_ref->{"ExAC FIN Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC NFE Allele Frequency"} = ($lines_ref->{"ExAC NFE Allele Frequency"} && $lines_ref->{"ExAC NFE Allele Frequency"} ne "") ? $lines_ref->{"ExAC NFE Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC OTH Allele Frequency"} = ($lines_ref->{"ExAC OTH Allele Frequency"} && $lines_ref->{"ExAC OTH Allele Frequency"} ne "") ? $lines_ref->{"ExAC OTH Allele Frequency"} : "0.00";
-    $lines_ref->{"ExAC SAS Allele Frequency"} = ($lines_ref->{"ExAC SAS Allele Frequency"} && $lines_ref->{"ExAC SAS Allele Frequency"} ne "") ? $lines_ref->{"ExAC SAS Allele Frequency"} : "0.00";
-    $lines_ref->{"Internal All Allele Frequency SNVs"} = ($lines_ref->{"Internal All Allele Frequency SNVs"} && $lines_ref->{"Internal All Allele Frequency SNVs"} ne "") ? $lines_ref->{"Internal All Allele Frequency SNVs"} : "0.00";
-    $lines_ref->{"Internal All Allele Frequency Indels"} = ($lines_ref->{"Internal All Allele Frequency Indels"} && $lines_ref->{"Internal All Allele Frequency Indels"} ne "") ? $lines_ref->{"Internal All Allele Frequency Indels"} : "0.00";
-    $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} = ($lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} && $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} ne "") ? $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"} : "0.00";
-    $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} = ($lines_ref->{"Internal Gene Panel Allele Frequency Indels"} && $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} ne "") ? $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} : "0.00";
-    $lines_ref->{"On Low Coverage Exon"} = ($lines_ref->{"On Low Coverage Exon"} && $lines_ref->{"On Low Coverage Exon"} ne "") ? $lines_ref->{"On Low Coverage Exon"} eq 'Y' ? 1 : 0 : 2;
-    $lines_ref->{"Segmental Duplication"} = ($lines_ref->{"Segmental Duplication"} && $lines_ref->{"Segmental Duplication"} ne "") ? $lines_ref->{"Segmental Duplication"} eq 'Y' ? 1 : 0 : 2;
-    $lines_ref->{"Region of Homology"} = ($lines_ref->{"Region of Homology"} && $lines_ref->{"Region of Homology"} ne "") ? $lines_ref->{"Region of Homology"} eq 'Y' ? 1 : 0 : 2;
-    ($lines_ref->{"Genomic Location"} && $lines_ref->{"Genomic Location"} ne "") ? ($lines_ref->{"Genomic Location"} =~ s/chr//) :  ($lines_ref->{"Genomic Location"} = '');
-    $lines_ref->{"CGD Inheritance"} = ($lines_ref->{"CGD Inheritance"} && $lines_ref->{"CGD Inheritance"} ne "") ? $lines_ref->{"CGD Inheritance"} : ".";
-    $lines_ref->{"OMIM Disease"} = ($lines_ref->{"OMIM Disease"} && $lines_ref->{"OMIM Disease"} ne "") ? $lines_ref->{"OMIM Disease"} : ".";
-    $lines_ref->{"Wellderly All 597 Allele Frequency"} = ($lines_ref->{"Wellderly All 597 Allele Frequency"} && $lines_ref->{"Wellderly All 597 Allele Frequency"} ne "") ? $lines_ref->{"Wellderly All 597 Allele Frequency"} : "0.00";
-    $lines_ref->{"Mutation Assessor Prediction"} =  &code_mutation_assessor_prediction($lines_ref->{"Mutation Assessor Prediction"});
-    $lines_ref->{"CAAD prediction"} =  &code_cadd_prediction($lines_ref->{"CAAD prediction"});
-    $lines_ref->{'% CDS Affected'} = ($lines_ref->{'% CDS Affected'} && $lines_ref->{'% CDS Affected'} ne "") ? $lines_ref->{'% CDS Affected'} : ".";
-    $lines_ref->{'% Transcripts Affected'} = ($lines_ref->{'% Transcripts Affected'} && $lines_ref->{'% Transcripts Affected'} ne '') ? $lines_ref->{'% Transcripts Affected'} : '.';
-    $lines_ref->{"ACMG Incidental Gene"} = ($lines_ref->{"ACMG Incidental Gene"} && $lines_ref->{"ACMG Incidental Gene"} ne "") ? $lines_ref->{"ACMG Incidental Gene"} : "";
+    foreach my $item (split(/;/, $config->{'NO_ALLELE_FREQ'})) {
+	if ($lines_ref->{$item} && $lines_ref->{$item} ne "") {
+	} else {
+	    $lines_ref->{$item} = "0.00";
+	}
+      #$lines_ref->{$item} = ($lines_ref->{$item} && $lines_ref->{$item} ne "") ? $lines_ref->{$item} : "0.00";
+    }
+    foreach my $item (split(/;/, $config->{'NO_DESCRIPTION'})) {
+	if ($lines_ref->{$item} && $lines_ref->{$item} ne "") {
+	} else {
+	    $lines_ref->{$item} = ".";
+	}
+      #$lines_ref->{$item} = ($lines_ref->{$item} && $lines_ref->{$item} ne "") ? $lines_ref->{$item} : ".";
+    }
+
+    #$lines_ref->{"ClinVar CLNDBN"} = ($lines_ref->{"ClinVar CLNDBN"} ne "" && $lines_ref->{"ClinVar CLNDBN"})  ? (split(/\"/, $lines_ref->{"ClinVar CLNDBN"}))[3] : ".";
+    if ($lines_ref->{"ClinVar CLNDBN"} ne "" && $lines_ref->{"ClinVar CLNDBN"}) {
+	$lines_ref->{"ClinVar CLNDBN"} = (split(/\"/, $lines_ref->{"ClinVar CLNDBN"}))[3];
+    } else {
+	$lines_ref->{"ClinVar CLNDBN"} = ".";
+    }
+
+    #($lines_ref->{"HGMD Disease"} && $lines_ref->{"HGMD Disease"} ne "NA") ? ($lines_ref->{"HGMD Disease"} =~ s/\"//g) : ($lines_ref->{"HGMD Disease"} = ".");
+    if ($lines_ref->{"HGMD Disease"} && $lines_ref->{"HGMD Disease"} ne "NA") {
+	$lines_ref->{"HGMD Disease"} =~ s/\"//g;
+    } else {
+	$lines_ref->{"HGMD Disease"} = ".";
+    }
+    
+    #($lines_ref->{"Genomic Location"} && $lines_ref->{"Genomic Location"} ne "") ? ($lines_ref->{"Genomic Location"} =~ s/chr//) :  ($lines_ref->{"Genomic Location"} = '');
+    if ($lines_ref->{"Genomic Location"} && $lines_ref->{"Genomic Location"} ne "") {
+	$lines_ref->{"Genomic Location"} =~ s/chr//;
+    } else {
+	$lines_ref->{"Genomic Location"} = '';
+    }
+
+    ###encode the variants
+    $lines_ref->{"PolyPhen Prediction"} = LoadVariants::code_polyphen_prediction($lines_ref->{"PolyPhen Prediction"}, $interpre_code->{'polyphen'}, $interpre_value->{'polyphen'});
+    $lines_ref->{"Sift Prediction"} =  LoadVariants::code_sift_prediction($lines_ref->{"Sift Prediction"}, $interpre_code->{'sift'},$interpre_value->{'sift'});
+    $lines_ref->{"Mutation Taster Prediction"} =  LoadVariants::code_mutation_taster_prediction($lines_ref->{"Mutation Taster Prediction"}, $interpre_code->{'mutTaster'}, $interpre_value->{'mutTaster'} );
+    $lines_ref->{"Mutation Assessor Prediction"} =  LoadVariants::code_mutation_assessor_prediction($lines_ref->{"Mutation Assessor Prediction"}, $interpre_code->{'mutass'},$interpre_value->{'mutass'});
+    $lines_ref->{"CAAD prediction"} =  LoadVariants::code_cadd_prediction($lines_ref->{"CAAD prediction"},$interpre_code->{'cadd'}, $interpre_value->{'cadd'});
+    
+    #$lines_ref->{"On Low Coverage Exon"} = ($lines_ref->{"On Low Coverage Exon"} && $lines_ref->{"On Low Coverage Exon"} ne "") ? $lines_ref->{"On Low Coverage Exon"} eq 'Y' ? 1 : 0 : 2;
+
+    my $lowCov = $lines_ref->{"On Low Coverage Exon"};    
+    if ($lowCov && $lowCov ne "") {
+	# if ($lines_ref->{"On Low Coverage Exon"} eq $interpre_value->{'lowCvgExon'}->{'Y'}->{'value'}) {
+	#     $lines_ref->{"On Low Coverage Exon"} = 1;
+	# } else {
+	#     $lines_ref->{"On Low Coverage Exon"} = 0;
+	# }
+	$lines_ref->{"On Low Coverage Exon"} = $interpre_code->{'lowCvgExon'}->{$lowCov}->{'code'};
+    } else {
+	$lines_ref->{"On Low Coverage Exon"} = $interpre_code->{'lowCvgExon'}->{"NA"}->{'code'};
+    }
+
+    #$lines_ref->{"Segmental Duplication"} = ($lines_ref->{"Segmental Duplication"} && $lines_ref->{"Segmental Duplication"} ne "") ? $lines_ref->{"Segmental Duplication"} eq 'Y' ? 1 : 0 : 2;
+    
+    my $segDup = $lines_ref->{"Segmental Duplication"};
+    if ($segDup && $segDup ne "") {
+	$lines_ref->{"Segmental Duplication"} = $interpre_code->{'segdup'}->{$segDup}->{'code'};
+	#$segdupAll = $interpre_code->{'segdup'}->{$segDup}->{'code'};
+        # if ($segDup eq "Y") {
+	#     $lines_ref->{"Segmental Duplication"} = 1;
+	# } else {
+	#     $lines_ref->{"Segmental Duplication"} = 0;
+	# }
+    } else {
+	$lines_ref->{"Segmental Duplication"} = $interpre_code->{'segdup'}->{"NA"}->{'code'};
+	#$segdupAll = $interpre_code->{'segdup'}->{"NA"}->{'code'};
+    }
+    
+    #$lines_ref->{"Region of Homology"} = ($lines_ref->{"Region of Homology"} && $lines_ref->{"Region of Homology"} ne "") ? $lines_ref->{"Region of Homology"} eq 'Y' ? 1 : 0 : 2;
+    my $homology = $lines_ref->{"Region of Homology"};
+    if ($homology && $homology ne "") {
+	$lines_ref->{"Region of Homology"} = $interpre_code->{'homology'}->{$homology}->{'code'};
+	# if ($lines_ref->{"Region of Homology"} eq 'Y') {
+	#     $lines_ref->{"Region of Homology"} = $interpre_code->{'homology'}->{$lines_ref->{"Region of Homology"}}->{'code'};
+	# } else {
+	#     $lines_ref->{"Region of Homology"} = $interpre_code->{'homology'}->{$lines_ref->{"Region of Homology"}}->{'code'};
+	# }
+    } else {
+	$lines_ref->{"Region of Homology"} = $interpre_code->{'homology'}->{"NA"}->{'code'};
+    }
+
+    #$lines_ref->{"ACMG Incidental Gene"} = ($lines_ref->{"ACMG Incidental Gene"} && $lines_ref->{"ACMG Incidental Gene"} ne "") ? $lines_ref->{"ACMG Incidental Gene"} : "";
+    if ($lines_ref->{"ACMG Incidental Gene"} && $lines_ref->{"ACMG Incidental Gene"} ne "") {
+	
+    } else {
+	$lines_ref->{"ACMG Incidental Gene"} = $interpre_code->{'acmgGene'}->{"NA"}->{'code'};
+    }
 
     my $loc_id = $lines_ref->{"Genomic Location"} . ":" . $lines_ref->{"Type of Variant"} . ":" . $lines_ref->{"Transcript ID"};
+    
     $filteredVariants{$loc_id} = $today . "\t.\t0\t.\t.\t" . $lines_ref->{"ClinVar CLNDBN"} . "\t" . $lines_ref->{"HGMD Disease"}  . "\t" . $lines_ref->{"PolyPhen Prediction"} . "\t" . $lines_ref->{"Sift Prediction"}
       . "\t" . $lines_ref->{"Mutation Taster Prediction"} . "\t" . $lines_ref->{"CG 46 Unrelated Allele Frequency"} . "\t" . $lines_ref->{"ESP ALL Allele Frequency"} . "\t" . $lines_ref->{"1000G All Allele Frequency"}
-        . "\t" . $lines_ref->{"Internal All Allele Frequency SNVs"} . "\t" . $lines_ref->{"Internal All Allele Frequency Indels"} . "\t" . $lines_ref->{"Segmental Duplication"} . "\t" . $lines_ref->{"Region of Homology"}
-          . "\t" . $lines_ref->{"On Low Coverage Exon"} . "\t" . $lines_ref->{"ESP African Americans Allele Frequency"} ."\t" . $lines_ref->{"ESP European American Allele Frequency"} . "\t" . $lines_ref->{"1000G African Allele Frequency"}
-            . "\t" . $lines_ref->{"1000G American Allele Frequency"} . "\t" . $lines_ref->{"1000G East Asian Allele Frequency"} . "\t" . $lines_ref->{"1000G South Asian Allele Frequency"} . "\t" . $lines_ref->{"1000G European Allele Frequency"}
-              . "\t" . $lines_ref->{"ClinVar Indels within 20bp window"} . "\t" . $lines_ref->{"HGMD Indels within 20bp window"} . "\t" . $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"}
-                . "\t" . $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} . "\t" . $lines_ref->{"CGD Inheritance"} . "\t" . $lines_ref->{"1 > variant/gene"} . "\t" . $lines_ref->{"OMIM Disease"}
-                  . "\t" . $lines_ref->{"Wellderly All 597 Allele Frequency"} . "\t" . $lines_ref->{"Mutation Assessor Prediction"} . "\t" . $lines_ref->{"CAAD prediction"} . "\t" . $lines_ref->{'% CDS Affected'}
-                    . "\t" . $lines_ref->{'% Transcripts Affected'} ."\t" . $lines_ref->{"ACMG Incidental Gene"} . "\t" . $lines_ref->{"ExAC All Allele Frequency"} . "\t" . $lines_ref->{"ExAC AFR Allele Frequency"}
-                      . "\t" . $lines_ref->{"ExAC AMR Allele Frequency"} . "\t" . $lines_ref->{"ExAC EAS Allele Frequency"} . "\t" . $lines_ref->{"ExAC FIN Allele Frequency"} . "\t" . $lines_ref->{"ExAC NFE Allele Frequency"}
-                        . "\t" . $lines_ref->{"ExAC OTH Allele Frequency"} . "\t" . $lines_ref->{"ExAC SAS Allele Frequency"};
+      . "\t" . $lines_ref->{"Internal All Allele Frequency SNVs"} . "\t" . $lines_ref->{"Internal All Allele Frequency Indels"} . "\t" . $lines_ref->{"Segmental Duplication"} . "\t" . $lines_ref->{"Region of Homology"}
+      . "\t" . $lines_ref->{"On Low Coverage Exon"} . "\t" . $lines_ref->{"ESP African Americans Allele Frequency"} ."\t" . $lines_ref->{"ESP European American Allele Frequency"} . "\t" . $lines_ref->{"1000G African Allele Frequency"}
+      . "\t" . $lines_ref->{"1000G American Allele Frequency"} . "\t" . $lines_ref->{"1000G East Asian Allele Frequency"} . "\t" . $lines_ref->{"1000G South Asian Allele Frequency"} . "\t" . $lines_ref->{"1000G European Allele Frequency"}
+      . "\t" . $lines_ref->{"ClinVar Indels within 20bp window"} . "\t" . $lines_ref->{"HGMD Indels within 20bp window"} . "\t" . $lines_ref->{"Internal Gene Panel Allele Frequency SNVs"}
+      . "\t" . $lines_ref->{"Internal Gene Panel Allele Frequency Indels"} . "\t" . $lines_ref->{"CGD Inheritance"} . "\t" . $lines_ref->{"1 > variant/gene"} . "\t" . $lines_ref->{"OMIM Disease"}
+      . "\t" . $lines_ref->{"Wellderly All 597 Allele Frequency"} . "\t" . $lines_ref->{"Mutation Assessor Prediction"} . "\t" . $lines_ref->{"CAAD prediction"} . "\t" . $lines_ref->{'% CDS Affected'}
+      . "\t" . $lines_ref->{'% Transcripts Affected'} ."\t" . $lines_ref->{"ACMG Incidental Gene"} . "\t" . $lines_ref->{"ExAC All Allele Frequency"} . "\t" . $lines_ref->{"ExAC AFR Allele Frequency"}
+      . "\t" . $lines_ref->{"ExAC AMR Allele Frequency"} . "\t" . $lines_ref->{"ExAC EAS Allele Frequency"} . "\t" . $lines_ref->{"ExAC FIN Allele Frequency"} . "\t" . $lines_ref->{"ExAC NFE Allele Frequency"}
+      . "\t" . $lines_ref->{"ExAC OTH Allele Frequency"} . "\t" . $lines_ref->{"ExAC SAS Allele Frequency"} . "\t" . $lines_ref->{"OMIM Inheritance"} . "\t" . $lines_ref->{"OMIM Link"} . "\t" . $lines_ref->{"ExAC PLI"} . "\t" . $lines_ref->{"ExAC missense Z-score"};
   }
   close(FILTERED);
 
   $lines = <VARIANTS>; $lines = <VARIANTS>; $lines = <VARIANTS>; $lines = <VARIANTS>;
   if ($lines !~ /^##Chrom/) {
-    $msg .= "Line 4 of file $THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.annotated.tsv is not the HEAD line. aborting the variants load...\n";
-    email_error($msg);
+    $msg .= "Line 4 of file $config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.annotated.tsv is not the HEAD line. aborting the variants load...\n";
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variant: File", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   }
   chomp($lines);
@@ -211,552 +286,101 @@ sub loadVariants2DB {
     my $interID = -1;
     chomp($lines);
     my @splitTab = split(/\t/,$lines);
-    my $lines_ref = {};
+    my $lines_ref_all = {};
     foreach (0..$#header) {
       if ($header[$_] =~ /dbsnp /) {
         $header[$_] = 'dbsnp';
       }
-      $lines_ref->{$header[$_]} = $splitTab[$_];
+      $lines_ref_all->{$header[$_]} = $splitTab[$_];
     }
 
-    $lines_ref->{'Chrom'} =~ s/chr//;
-    my $key = $lines_ref->{'Chrom'} . ":" . $lines_ref->{'Position'} . ":" . $lines_ref->{'Type of Mutation'} . ":" . $lines_ref->{'Transcript ID'};
+    $lines_ref_all->{'Chrom'} =~ s/chr//;
+    my $key = $lines_ref_all->{'Chrom'} . ":" . $lines_ref_all->{'Position'} . ":" . $lines_ref_all->{'Type of Mutation'} . ":" . $lines_ref_all->{'Transcript ID'};
     next unless (exists $filteredVariants{$key});
-    $lines_ref->{'Chrom'} = &code_chrom($lines_ref->{'Chrom'});
-    $lines_ref->{'Gatk Filters'} = &code_gatk_filter($lines_ref->{'Gatk Filters'});
-    $lines_ref->{'Genotype'} = &code_genotype($lines_ref->{'Genotype'});
-    $lines_ref->{'Effect'} = &code_effect($lines_ref->{'Effect'});
-    $lines_ref->{'dbsnp'} =~ s/rs//gi;
-    $lines_ref->{'ClinVar SIG'} = &clinvar_sig($lines_ref->{'ClinVar SIG'});
-    $lines_ref->{'HGMD SIG SNVs'} =~ s/\|$//;
-    $lines_ref->{'HGMD SIG microlesions'} =~ s/\|$//;
-    my $altAllele = (split(/\|/, $lines_ref->{'Alleles'}))[1];
-    my ($aaChange,$cDNA) = &code_aa_change($lines_ref->{'Amino Acid change'});
-    my ($typeVer, $gEnd) = &code_type_of_mutation_gEnd($lines_ref->{'Type of Mutation'}, $lines_ref->{'Reference'}, $altAllele, $lines_ref->{'Position'});
+    $lines_ref_all->{'Gatk Filters'} = $variants_code->{'vcfFilter'}->{$lines_ref_all->{'Gatk Filters'}}->{'code'}; 
+    $lines_ref_all->{'Genotype'} = $variants_code->{'zygosity'}->{$lines_ref_all->{'Genotype'}}->{'code'}; 
+    
+    if ($lines_ref_all->{'Effect'}=~/&/ || $lines_ref_all->{'Effect'}=~/|/ ) {
+	#print "AMP $lines_ref_all->{'Effect'}\n";
+	my @splitAm = split(/[\&|\|]/,$lines_ref_all->{'Effect'});
+	my $newEffectEncode = "";
+	foreach my $eff (@splitAm) {
+	    if ($newEffectEncode eq "") {
+		$newEffectEncode = $variants_code->{'effect'}->{$eff}->{'code'};
+	    } else {
+		$newEffectEncode = $newEffectEncode . "&" . $variants_code->{'effect'}->{$eff}->{'code'};
+	    }
+	}
+	#print "newEffectEncode=$newEffectEncode\n";
+	$lines_ref_all->{'Effect'} = $newEffectEncode;
+    } else {
+	$lines_ref_all->{'Effect'} = $variants_code->{'effect'}->{$lines_ref_all->{'Effect'}}->{'code'};
+    }
+
+    #if (!defined $lines_ref_all->{'Effect'}) {
+#	$lines_ref_all->{'Effect'} = 0;
+#    }
+    
+    $lines_ref_all->{'dbsnp'} =~ s/rs//gi;
+    $lines_ref_all->{'ClinVar SIG'} = LoadVariants::clinvar_sig($lines_ref_all->{'ClinVar SIG'});
+    $lines_ref_all->{'HGMD SIG SNVs'} =~ s/\|$//;
+    $lines_ref_all->{'HGMD SIG microlesions'} =~ s/\|$//;
+    my $altAllele = (split(/\|/, $lines_ref_all->{'Alleles'}))[1];
+    my $aaChange = $lines_ref_all->{'Amino Acid change'}; 
+    my $cDNA = $lines_ref_all->{'Codon Change'};
+#    my ($aaChange,$cDNA) = LoadVariants::code_aa_change($lines_ref_all->{'Codon Change'});
+    my ($typeVer, $gEnd) = LoadVariants::code_type_of_mutation_gEnd($lines_ref_all->{'Type of Mutation'}, $lines_ref_all->{'Reference'}, $altAllele, $lines_ref_all->{'Position'}, $variants_code->{'variantType'}, $variants_value->{'variantType'});
 
 
     my @splitFilter = split(/\t/,$filteredVariants{$key});
-    push (@splitFilter, $lines_ref->{"Disease Gene Association"});
+    push (@splitFilter, $lines_ref_all->{"Disease Gene Association"});
 
-    my $selectCheck = "SELECT chrom FROM variants_sub WHERE postprocID = '" . $postprocID . "' AND interID != '-1'";
+    my $selectCheck = "SELECT chrom FROM variants_sub WHERE postprocID = '" . $sampleInfo->{'postprocID'} . "' AND interID != '-1'";
     my $sthVarCheck = $dbh->prepare($selectCheck) or $msg .=  "Can't prepare variants check to ensure interpretation variants have not been inputted already: " . $dbh->errstr() . "\n";
     $sthVarCheck->execute() or $msg .= "Can't execute variants check to ensure interpretation variants have not been inputted already : " . $dbh->errstr() . "\n";
     if ($sthVarCheck->rows() != 0) {
-      my $msg .= "This postprocID=$postprocID has already have interpretation variants inserted into the table\n";
-      email_error($msg);
+      my $msg .= "This postprocID=$sampleInfo->{'postprocID'} already has variants in the interpretation table\n";
+      Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variants", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
       return 1;
     }
 
     ## UPDATE the interpretation according to the known unterpretation.
-    ($splitFilter[2],$splitFilter[3],$splitFilter[4]) = &interpretation_note($lines_ref->{'Chrom'}, $lines_ref->{'Position'}, $gEnd, $typeVer, $lines_ref->{'Transcript ID'}, $altAllele);
+    ($splitFilter[2],$splitFilter[3],$splitFilter[4]) = LoadVariants::interpretation_note($dbh, $lines_ref_all->{'Chrom'}, $lines_ref_all->{'Position'}, $gEnd, $typeVer, $lines_ref_all->{'Transcript ID'}, $altAllele, $interpre_code->{'interpretation'}->{'Not yet viewed'}->{'code'},$interpre_code->{'interpretation'}->{'Benign'}->{'code'},$interpre_code->{'interpretation'}->{'Select'}->{'code'}, \%interpretationHistory);
 
-    my $flag = &add_flag($lines_ref->{"Segmental Duplication"},$lines_ref->{"Region of Homology"},$lines_ref->{"On Low Coverage Exon"},$lines_ref->{'Allelic Depths for Alternative Alleles'},$lines_ref->{'Allelic Depths for Reference'},$lines_ref->{'Genotype'});
+    #print "segdup=" . $lines_ref_all->{"SegDup"} . "\n";
+    #print "typeVer=" . $typeVer . "\n";
+    my $flag = LoadVariants::add_flag($lines_ref_all->{"SegDup"},$lines_ref_all->{"Region of Homology"},$lines_ref_all->{"On Low Coverage Exon"},$lines_ref_all->{'Allelic Depths for Alternative Alleles'},$lines_ref_all->{'Allelic Depths for Reference'},$lines_ref_all->{'Genotype'}, $typeVer, $lines_ref_all->{'Quality By Depth'}, $lines_ref_all->{"Fisher's Exact Strand Bias Test"}, $lines_ref_all->{'RMS Mapping Quality'}, $lines_ref_all->{'Mapping Quality Rank Sum Test'}, $lines_ref_all->{'Read Pos Rank Sum Test'},$lines_ref_all->{"Strand Odds Ratio"}, $config, $dbh);
     push (@splitFilter, $flag);
 
-    my $insert = "INSERT INTO interpretation (time, reporter, interpretation, note, historyInter, clinVarAcc, hgmdDbn, polyphen, sift, mutTaster, cgAF, espAF, thouGAF, internalAFSNP, internalAFINDEL, segdup, homology, lowCvgExon, espAFAA, espAFEA, thouGAFAFR, thouGAFAMR, thouGAFEASN, thouGAFSASN, thouGAFEUR, clinVarIndelWindow, hgmdIndelWindow, genePanelSnpsAF, genePanelIndelsAF, cgdInherit, variantPerGene, omimDisease, wellderly, mutAss, cadd, perCdsAff, perTxAff, acmgGene, exacALL, exacAFR, exacAMR, exacEAS, exacFIN, exacNFE, exacOTH, exacSAS, diseaseAs,flag) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    my $insert = "INSERT INTO interpretation (time, reporter, interpretation, note, historyInter, clinVarAcc, hgmdDbn, polyphen, sift, mutTaster, cgAF, espAF, thouGAF, internalAFSNP, internalAFINDEL, segdup, homology, lowCvgExon, espAFAA, espAFEA, thouGAFAFR, thouGAFAMR, thouGAFEASN, thouGAFSASN, thouGAFEUR, clinVarIndelWindow, hgmdIndelWindow, genePanelSnpsAF, genePanelIndelsAF, cgdInherit, variantPerGene, omimDisease, wellderly, mutAss, cadd, perCdsAff, perTxAff, acmgGene, exacALL, exacAFR, exacAMR, exacEAS, exacFIN, exacNFE, exacOTH, exacSAS, omimInherit, omimLink, exacPLI, exacMZ, diseaseAs, flag) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     my $sth = $dbh->prepare($insert) or die "Can't prepare insert: ". $dbh->errstr() . "\n";
     $sth->execute(@splitFilter) or die "Can't execute insert: " . $dbh->errstr() . "\n";
     $interID = $sth->{'mysql_insertid'}; #LAST_INSERT_ID(); or try $dbh->{'mysql_insertid'}
 
-
-    print ALLFILE "$postprocID\t" . $lines_ref->{'Chrom'} . "\t" . $lines_ref->{'Position'} . "\t$gEnd\t$typeVer\t" . $lines_ref->{'Genotype'} . "\t" . $lines_ref->{'Reference'} . "\t$altAllele\t$cDNA\t$aaChange\t" . $lines_ref->{'Effect'}
-      . "\t" . $lines_ref->{'Quality By Depth'} . "\t" . $lines_ref->{"Fisher's Exact Strand Bias Test"} . "\t" . $lines_ref->{'RMS Mapping Quality'} . "\t" . $lines_ref->{'Haplotype Score'} . "\t" . $lines_ref->{'Mapping Quality Rank Sum Test'}
-        . "\t" . $lines_ref->{'Read Pos Rank Sum Test'} . "\t" . $lines_ref->{'Filtered Depth'} . "\t" . $lines_ref->{'dbsnp'} . "\t" . $lines_ref->{'ClinVar SIG'} . "\t" . $lines_ref->{'HGMD SIG SNVs'}
-          . "\t" . $lines_ref->{'HGMD SIG microlesions'} . "\t$interID\t" . $lines_ref->{'Allelic Depths for Alternative Alleles'} . "\t" . $lines_ref->{'Allelic Depths for Reference'} . "\t" . $lines_ref->{'Gene Symbol'}
-            . "\t" . $lines_ref->{'Transcript ID'} . "\t" . $lines_ref->{'Gatk Filters'} . "\n";
+    my $chrEncode = "";
+    if ($lines_ref_all->{'Chrom'} eq "X") {
+	$chrEncode = 24;
+    } elsif ($lines_ref_all->{'Chrom'} eq "Y") {
+	$chrEncode = 25;
+    } elsif ($lines_ref_all->{'Chrom'} eq "M" || $lines_ref_all->{'Chrom'} eq "MT") {	    $chrEncode = 26;
+    } else {
+	$chrEncode = $lines_ref_all->{'Chrom'};
+    }
+    #print "chrEncode=$chrEncode\n";
+    print ALLFILE $sampleInfo->{'postprocID'} ."\t" . $chrEncode . "\t" . $lines_ref_all->{'Position'} . "\t$gEnd\t$typeVer\t" . $lines_ref_all->{'Genotype'} . "\t" . $lines_ref_all->{'Reference'} . "\t$altAllele\t$cDNA\t$aaChange\t" . $lines_ref_all->{'Effect'} . "\t" . $lines_ref_all->{'Quality By Depth'} . "\t" . $lines_ref_all->{"Fisher's Exact Strand Bias Test"} . "\t" . $lines_ref_all->{'RMS Mapping Quality'} . "\t\t" . $lines_ref_all->{'Mapping Quality Rank Sum Test'} . "\t" . $lines_ref_all->{'Read Pos Rank Sum Test'} . "\t" . $lines_ref_all->{'Filtered Depth'} . "\t" . $lines_ref_all->{'dbsnp'} . "\t" . $lines_ref_all->{'ClinVar SIG'} . "\t" . $lines_ref_all->{'HGMD SIG SNVs'} . "\t" . $lines_ref_all->{'HGMD SIG microlesions'} . "\t$interID\t" . $lines_ref_all->{'Allelic Depths for Alternative Alleles'} . "\t" . $lines_ref_all->{'Allelic Depths for Reference'} . "\t" . $lines_ref_all->{'Gene Symbol'} . "\t" . $lines_ref_all->{'Transcript ID'} . "\t" . $lines_ref_all->{'Gatk Filters'} . "\t" . $lines_ref_all->{"Strand Odds Ratio"} . "\n";
   }
 
   close(VARIANTS);
   close(ALLFILE);
-  my $fileload = "LOAD DATA LOCAL INFILE \'$THING1_BACKUP_DIR/sid_$sampleID.aid_$postprocID.var.loadvar2db.txt\' INTO TABLE variants_sub FIELDS TERMINATED BY \'\\t\' ENCLOSED BY \'NULL\' ESCAPED BY \'\\\\'";
+  my $fileload = "LOAD DATA LOCAL INFILE \'$config->{'THING1_BACKUP_DIR'}/sid_$sampleInfo->{'sampleID'}.aid_$sampleInfo->{'postprocID'}.var.loadvar2db.txt\' INTO TABLE variants_sub FIELDS TERMINATED BY \'\\t\' ENCLOSED BY \'NULL\' ESCAPED BY \'\\\\'";
   print $fileload,"\n";
-  my $msg = '';
+  $msg = '';
   $dbh->do( $fileload ) or $msg .= "Unable load in file: " . $dbh->errstr . "\n";
   if ($msg ne '') {
-    email_error($msg);
+    Common::email_error($config->{"EMAIL_SUBJECT_PREFIX"}, $config->{"EMAIL_CONTENT_PREFIX"}, "Warning Load Variant", $msg, $sampleInfo->{'machine'}, "NA", $sampleInfo->{'flowcellID'}, $config->{'EMAIL_WARNINGS'});
     return 1;
   } else {
     return 0;
   }
 }
 
-sub interpretation_note {
-  my ($chr, $gStart, $gEnd, $typeVer, $transcriptID, $aAllele) = @_;
-  my $variantQuery = "SELECT interID FROM variants_sub WHERE chrom = '" . $chr ."' && genomicStart = '" . $gStart . "' && genomicEnd = '" . $gEnd . "' && variantType = '" . $typeVer . "' && transcriptID = '" . $transcriptID . "' && altAllele = '" . $aAllele . "'";
-  my $sthVQ = $dbh->prepare($variantQuery) or die "Can't query database for variant : ". $dbh->errstr() . "\n";
-  $sthVQ->execute() or die "Can't execute query for variant: " . $dbh->errstr() . "\n";
-  if ($sthVQ->rows() != 0) {
-    my @allInterID = ();
-    my $dataInterID = $sthVQ->fetchall_arrayref();
-    foreach (@$dataInterID) {
-      push @allInterID, @$_;
-    }
-    my $interHistoryQuery = "SELECT interpretation FROM interpretation WHERE interID in ('" . join("', '", @allInterID) ."')";
-    my $sthInter = $dbh->prepare($interHistoryQuery) or die $dbh->errstr();
-    $sthInter->execute();
-    my %number_benign;
-    while (my @dataInterID = $sthInter->fetchrow_array()) {
-      $number_benign{$dataInterID[0]}++;
-    }
-    my @interHist = ();
-    foreach (keys %number_benign) {
-      next if ($_ eq '0' || $_ eq '1');
-      push @interHist, "$interpretationHistory{$_} $number_benign{$_}";
-    }
-    my $interHist = $#interHist >= 0 ? join(" | ", @interHist) : '.';
-    if ($number_benign{'6'} >= 10) {
-      return('6', '>= 10 Benign Interpretation', $interHist);
-    } else {
-      return('0', '.', $interHist);
-    }
-  }
-  return('0', '.', '.');
-}
-
-sub add_flag {
-  my ($segdup, $homology, $lowCvgExon, $altDP, $refDP, $zygosity) = @_;
-  #print STDERR "segdup=$segdup|\n";
-  #print STDERR "homology=$homology|\n";
-  my $flag = 0;
-
-  if ($segdup eq "Y") {
-    $flag = 1;
-  }
-  if ($homology eq "Y") {
-    $flag = 1; 
-  }
-  if ($zygosity == 1 || $zygosity == 3 ) {
-
-    if (($altDP + $refDP ) < $cvgHetCutoff) {
-      $flag = 1;
-    } else {
-      my $alleleBalance = 0;
-      if ($zygosity == 1) {
-        $alleleBalance = ($altDP/($refDP+$altDP));
-      } else {
-        my @splitC = split(/\,/,$altDP);
-        $alleleBalance = ($splitC[0]/($splitC[1]+$splitC[0]));
-      }
-      if ($alleleBalance < $hetRatioLow || $alleleBalance > $hetRatioHigh) {
-        $flag = 1;
-      }
-    }
-  } elsif ($zygosity == 2) {
-    if (($altDP + $refDP ) < $cvgHomCutoff) {
-      $flag = 1;
-    } else {
-      my $alleleBalance = ($altDP/($refDP+$altDP));
-      if ($alleleBalance < $homRatioLow) {
-        $flag = 1;
-      }
-    }
-  }
-
-  return $flag;
-}
-
-sub code_polyphen_prediction {
-  my $polyphen = shift;
-  my $forreturn = 0;
-  foreach my $tmp (split(/\|/, $polyphen)) {
-    if ($forreturn <= 0 && $tmp eq 'Benign') {
-      $forreturn = 1;
-    } elsif ($forreturn <= 1 && $tmp eq 'Possibly Damaging') {
-      $forreturn = 2;
-    } elsif ($forreturn <= 2 && $tmp eq 'Probably Damaging') {
-      $forreturn = 3;
-    }
-  }
-  return $forreturn;
-}
-
-sub code_mutation_taster_prediction {
-  my $mutT = shift;
-  my $forreturn = 0;
-  foreach my $tmp (split(/\|/, $mutT)) {
-    if ($forreturn <= 0 && $tmp eq 'Disease Causing') {
-      $forreturn = 1;
-    } elsif ($forreturn <= 1 && $tmp eq 'Disease Causing Automatic') {
-      $forreturn = 2;
-    } elsif ($forreturn <= 2 && $tmp eq 'Polymorphism') {
-      $forreturn = 3;
-    } elsif ($forreturn <= 3 && $tmp eq 'Polymorphism Automatic') {
-      $forreturn = 4;
-    }
-  }
-  return $forreturn;
-}
-
-sub code_sift_prediction {
-  my $sift = shift;
-  my $forreturn = 3;
-  foreach my $tmp (split(/\|/, $sift)) {
-    if ($forreturn >= 3 && $tmp eq 'Tolerated') {
-      $forreturn = 2;
-    } elsif ($forreturn >= 2 && $tmp eq 'Damaging') {
-      $forreturn = 1;
-    }
-  }
-  $forreturn = 0 if $forreturn == 3;
-  return $forreturn;
-}
-
-sub code_s2d {
-  my $tmp = shift;
-  if ($tmp =~ /y/i) {
-    return 1;
-  } elsif ($tmp =~ /n/i) {
-    return 0;
-  }
-}
-
-sub code_mutation_assessor_prediction {
-  my $mutA = shift;
-  my $forreturn = 7;
-  foreach my $tmp (split(/\|/, $mutA)) {
-    if ($forreturn >= 7 && $tmp eq 'non-functional') {
-      $forreturn = 6;
-    } elsif ($forreturn >= 6 && $tmp eq 'functional') {
-      $forreturn = 5;
-    } elsif ($forreturn >= 5 && $tmp eq 'neutral') {
-      $forreturn = 4;
-    } elsif ($forreturn >= 4 && $tmp eq 'low') {
-      $forreturn = 3;
-    } elsif ($forreturn >= 3 && $tmp eq 'medium') {
-      $forreturn = 2;
-    } elsif ($forreturn >= 2 && $tmp eq 'high') {
-      $forreturn = 1;
-    }
-  }
-  $forreturn = 0 if $forreturn == 7;
-  return $forreturn;
-}
-
-sub code_cadd_prediction {
-  my $cadd = shift;
-  my $forreturn = 4;
-  foreach my $tmp (split(/\|/, $cadd)) {
-    if ($forreturn >= 4 && $tmp eq 'Unknown') {
-      $forreturn = 3;
-    } elsif ($forreturn >= 3 && $tmp eq 'Possibility Deleterious') {
-      $forreturn = 2;
-    } elsif ($forreturn >= 2 && $tmp eq 'Deleterious') {
-      $forreturn = 1;
-    }
-  }
-  $forreturn = 0 if $forreturn == 4;
-  return $forreturn;
-}
-
-sub code_chrom {
-  my $chr = shift;
-  if ($chr =~ /X/i) {
-    return 24;
-  } elsif ($chr =~ /Y/i) {
-    return 25;
-  } elsif ($chr =~ /M/i) {
-    return 26;
-  }
-  return $chr;
-}
-
-sub code_gatk_filter {
-  my $filter = shift;
-  if ($filter eq 'PASS') {
-    return 1;
-  } elsif ($filter eq "VQSRTrancheINDEL99.00to99.90") {
-    return 2;
-  } elsif ($filter eq "VQSRTrancheINDEL99.90to100.00+") {
-    return 3;
-  } elsif ($filter eq "VQSRTrancheINDEL99.90to100.00") {
-    return 4;
-  } elsif ($filter eq "VQSRTrancheSNP99.00to99.90") {
-    return 5;
-  } elsif ($filter eq "VQSRTrancheSNP99.90to100.00+") {
-    return 6;
-  } elsif ($filter eq "VQSRTrancheSNP99.90to100.00") {
-    return 7;
-  } else {
-    return 8;
-  }
-}
-
-sub code_genotype {
-  my $zygosity = shift;
-  if ($zygosity eq 'het') {
-    return 1;
-  } elsif ($zygosity eq 'hom') {
-    return 2;
-  } elsif ($zygosity eq 'het-alt') {
-    return 3;
-  }
-  return 0;
-  #return "$zygosity can't be coded into number, please check the output file cafefully:\n";
-}
-
-sub code_effect {
-  my $effect = shift;
-  if ($effect eq "coding_sequence_variant") { #CDS #codon_change
-    return 1;
-  } elsif ($effect eq "chromosome") { #CHROMOSOME_LARGE_DELETION
-    return 2;
-  } elsif ($effect eq "inframe_insertion") {
-    return 3;                   #Codon_Insertion
-  } elsif ($effect eq "disruptive_inframe_insertion") {
-    return 4;
-  } elsif ($effect eq "inframe_deletion") {
-    return 5;
-  } elsif ($effect eq "disruptive_inframe_deletion") {
-    return 6;
-  } elsif ($effect eq "downstream_gene_variant") {
-    return 7;
-  } elsif ($effect eq "exon_variant") {
-    return 8;
-  } elsif ($effect eq "exon_loss_variant") {
-    return 9;
-  } elsif ($effect eq "frameshift_variant") {
-    return 10;
-  } elsif ($effect eq "gene_variant") {
-    return 11;
-  } elsif ($effect eq "intergenic_region") {
-    return 12;
-  } elsif ($effect eq "conserved_intergenic_variant") {
-    return 13;
-  } elsif ($effect eq "intragenic_variant") {
-    return 14;
-  } elsif ($effect eq "intron_variant") {
-    return 15;
-  } elsif ($effect eq "conserved_intron_variant") {
-    return 16;
-  } elsif ($effect eq "miRNA") {
-    return 17;
-  } elsif ($effect eq "missense_variant") {
-    return 18;
-  } elsif ($effect eq "initiator_codon_variant") {
-    return 19;
-  } elsif ($effect eq "stop_retained_variant") {
-    return 20;
-  } elsif ($effect eq "rare_amino_acid_variant") {
-    return 21;
-  } elsif ($effect eq "splice_acceptor_variant") {
-    return 22;
-  } elsif ($effect eq "splice_donor_variant") {
-    return 23;
-  } elsif ($effect eq "splice_region_variant") {
-    return 24;
-  } elsif ($effect eq "stop_lost") {
-    return 25;
-  } elsif ($effect eq "5_prime_UTR_premature_start_codon_gain_variant") {
-    return 26;
-  } elsif ($effect eq "start_lost") {
-    return 27;
-  } elsif ($effect eq "stop_gained") {
-    return 28;
-  } elsif ($effect eq "synonymous_variant") {
-    return 29;
-  } elsif ($effect eq "start_retained") {
-    return 30;
-  } elsif ($effect eq "stop_retained_variant") {
-    return 31;
-  } elsif ($effect eq "transcript_variant") {
-    return 32;
-  } elsif ($effect eq "regulatory_region_variant") {
-    return 33;
-  } elsif ($effect eq "upstream_gene_variant") {
-    return 34;
-  } elsif ($effect eq "3_prime_UTR_variant") {
-    return 35;
-  } elsif ($effect=~/3_prime_UTR_trunction/) {
-    return 36;
-  } elsif ($effect eq "5_prime_UTR_variant") {
-    return 37;
-  } elsif ($effect=~/5_prime_UTR_trunction/) {
-    return 38;
-  } elsif ($effect eq "splice_region_variant:missense_variant") {
-    return 39;
-  } elsif ($effect eq "missense_variant:splice_region_variant") {
-    return 40;
-  } elsif ($effect eq "splice_region_variant:stop_gained") {
-    return 41;
-  } elsif ($effect eq "stop_gained:splice_region_variant") {
-    return 42;
-  } else {
-    return 0;
-    #return "$effect can't be coded into number. please check the output file carefully:\n";
-  }
-}
-
-sub clinvar_sig {
-  my $clinvar_sig = shift;
-  my %tmp;
-  foreach (split(/\|/, $clinvar_sig)) {
-    $tmp{$_} = 0;
-  }
-  return join('|', keys %tmp);
-}
-
-sub code_type_of_mutation_gEnd {
-  my ($t_mutation, $refAllele, $altAllele, $gStart) = @_;
-  if ($t_mutation eq 'snp') {
-    return (3, $gStart);
-  } elsif ($t_mutation eq 'indel') {
-    if (length($refAllele) > length($altAllele)) { #deletion
-      return (1, $gStart + length($altAllele) - 1);
-    } else {                    #insertion
-      return (2, $gStart + length($altAllele) - 1);
-    }
-  } elsif ($t_mutation eq "mnp") {
-    return (4, $gStart);
-  } elsif ($t_mutation eq "mixed") {
-    return (5, $gStart);
-  } else {
-    return (6, $gStart);
-  }
-}
-
-sub code_aa_change {
-  my $aachange = shift;
-  my ($aaChange, $cDNA) = ("NA", "NA");
-  my @splitSlash = split(/\//,$aachange);
-  if ($splitSlash[0]=~/p/) {
-    $aaChange = $splitSlash[0];
-    $cDNA = $splitSlash[1];
-  } else {
-    $cDNA = $splitSlash[0];
-  }
-  return($aaChange,$cDNA);
-}
-
-sub loadvariants_status {
-  my $status = shift;
-  if ($status eq 'START') {
-    my $status = 'SELECT load_variants FROM cronControlPanel limit 1';
-    my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
-    $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
-    my @status = $sthUDP->fetchrow_array();
-    if ($status[0] eq '1') {
-      email_error( "load_variants is still running, aborting...\n" );
-      exit;
-    } elsif ($status[0] eq '0') {
-      my $update = 'UPDATE cronControlPanel SET load_variants = "1"';
-      my $sthUDP = $dbh->prepare($update) or die "Can't update database by $update: " . $dbh->errstr() . "\n";
-      $sthUDP->execute() or die "Can't execute update $update: " . $dbh->errstr() . "\n";
-      return;
-    } else {
-      die "IMPOSSIBLE happened!! how could the status of load_variants be " . $status[0] . " in table cronControlPanel?\n";
-    }
-  } elsif ($status eq 'STOP') {
-    my $status = 'UPDATE cronControlPanel SET load_variants = "0"';
-    my $sthUDP = $dbh->prepare($status) or die "Can't update database by $status: " . $dbh->errstr() . "\n";
-    $sthUDP->execute() or die "Can't execute update $status: " . $dbh->errstr() . "\n";
-  } else {
-    die "IMPOSSIBLE happend! the status should be START or STOP, how could " . $status . " be a status?\n";
-  }
-}
-
-
-sub email_error {
-  my $errorMsg = shift;
-  print STDERR $errorMsg;
-  $errorMsg .= "\n\nThis email is from thing1 pipelineV5.\n";
-  my $sender = Mail::Sender->new();
-  my $mail   = {
-                smtp                 => 'localhost',
-                from                 => 'notice@thing1.sickkids.ca',
-                to                   => $email_lst_ref->{'WARNINGS'}, 
-                subject              => $msg . "Variants loading status...",
-                ctype                => 'text/plain; charset=utf-8',
-                skip_bad_recipients  => 1,
-                msg                  => $msg . $errorMsg
-               };
-  my $ret =  $sender->MailMsg($mail);
-}
-
-sub email_finished {
-  my ($sampleID, $postprocID, $genePanelVer, $flowcellID, $machine) = @_;
-  my $sender = Mail::Sender->new();
-  my $mail   = {
-                smtp                 => 'localhost',
-                from                 => 'notice@thing1.sickkids.ca',
-                to                   => $email_lst_ref->{'FINISHED'}, 
-                subject              => $msg . "$sampleID ($flowcellID $machine) completed analysis",
-                ctype                => 'text/plain; charset=utf-8',
-                skip_bad_recipients  => 1,
-                msg                  => $msg . "$sampleID ($flowcellID $machine) has finished analysis using gene panel $genePanelVer with no errors. The sample can be viewed through the website. http://172.27.20.20:8080/index/clinic/ngsweb.com/main.html?#/sample/$sampleID/$postprocID/summary The filtered file can be found on thing1 directory: smb://thing1.sickkids.ca:/sample_variants/filter_variants_excel_v5/$genePanelVer.$todayDate.sid_$sampleID.annotated.filter.pID_$postprocID.xlsx.\n\nPlease login to thing1 using your Samba account in order to view this file.\n\nDo not reply to this email, Thing1 cannot read emails. If there are any issues please email lynette.lau\@sickkids.ca or weiw.wang\@sickkids.ca\n\nThanks,\n\nThing1\n"
-               };
-  my $ret =  $sender->MailMsg($mail);
-}
-
-sub email_list {
-    my $infile = shift;
-    my %email;
-    open (INF, "$infile") or die $!;
-    while (<INF>) {
-        chomp;
-        my ($type, $lst) = split(/\t/);
-        $email{$type} = $lst;
-    }
-    return(\%email);
-}
-
-sub print_time_stamp {
-  my $retval = time();
-  my $yetval = $retval - 86400;
-  $yetval = localtime($yetval);
-  my $localTime = localtime( $retval );
-  my $time = Time::Piece->strptime($localTime, '%a %b %d %H:%M:%S %Y');
-  my $timestamp = $time->strftime('%Y-%m-%d %H:%M:%S');
-  print "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-  print STDERR "\n\n_/ _/ _/ _/ _/ _/ _/ _/\n  ",$timestamp,"\n_/ _/ _/ _/ _/ _/ _/ _/\n";
-  return ($timestamp, $localTime->strftime('%Y%m%d%H%M%S'), $yetval->strftime('%Y%m%d'));
-}
-
-sub read_in_config {
-  #read in the pipeline configure file
-  #this filename will be passed from thing1 (from the database in the future)
-  my ($configFile) = @_;
-  my $data = "";
-  my ($RSYNCFILEtmp, $HPF_BACKUP_FOLDERtmp, $THING1_BACKUP_DIRtmp,$VARIANTS_EXCEL_DIRtmp,$hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$cvgHomCutofftmp,$cvgHetCutofftmp, $hetRatioHightmp, $hetRatioLowtmp, $homRatioLowtmp);
-  my $msgtmp = "";
-  open (FILE, "< $configFile") or die "Can't open $configFile for read: $!\n";
-  while ($data=<FILE>) {
-    chomp $data;
-    my @splitTab = split(/ /,$data);
-    my $type = $splitTab[0];
-    my $value = $splitTab[1];
-    if ($type eq "RSYNCCMDFILE") {
-      $RSYNCFILEtmp = $value;
-    } elsif ($type eq "HPF_BACKUP_FOLDER") {
-      $HPF_BACKUP_FOLDERtmp = $value;
-    } elsif ($type eq "THING1_BACKUP_DIR") {
-      $THING1_BACKUP_DIRtmp = $value;
-    } elsif ($type eq "VARIANTS_EXCEL_DIR") {
-      $VARIANTS_EXCEL_DIRtmp = $value;
-    } elsif ($type eq "HOST") {
-      $hosttmp = $value;
-    } elsif ($type eq "PORT") {
-      $porttmp = $value;
-    } elsif ($type eq "USER") {
-      $usertmp = $value;
-    } elsif ($type eq "PASSWORD") {
-      $passtmp = $value;
-    } elsif ($type eq "db") {
-      $dbtmp = $value;
-    } elsif ($type eq "msg") {
-      $msgtmp = $value;
-    } elsif ($type eq "coverageHomCutoff") {
-      $cvgHomCutofftmp = $value;
-    } elsif ($type eq "coverageHetCutoff") {
-      $cvgHetCutofftmp = $value;
-    } elsif ($type eq "hetRatioHigh") {
-      $hetRatioHightmp = $value;
-    } elsif ($type eq "hetRatioLow") {
-      $hetRatioLowtmp = $value;
-    } elsif ($type eq "homRatioLow") {
-      $homRatioLowtmp = $value;
-    }
-
-  }
-  close(FILE);
-  return ($RSYNCFILEtmp, $HPF_BACKUP_FOLDERtmp, $THING1_BACKUP_DIRtmp,$VARIANTS_EXCEL_DIRtmp,$hosttmp,$porttmp,$usertmp,$passtmp,$dbtmp,$msgtmp, $cvgHomCutofftmp, $cvgHetCutofftmp, $hetRatioHightmp, $hetRatioLowtmp, $homRatioLowtmp);
-}
